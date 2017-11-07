@@ -35,8 +35,8 @@ class DuckietownEnv(gym.Env):
     }
 
     # Camera image size
-    CAMERA_WIDTH = 100
-    CAMERA_HEIGHT = 100
+    CAMERA_WIDTH = 64
+    CAMERA_HEIGHT = 64
 
     # Camera image shape
     IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
