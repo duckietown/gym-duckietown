@@ -136,10 +136,14 @@ class DuckietownEnv(gym.Env):
         # TODO: figure out what the reward should be based on world data
         reward = 0
         done = False
-        if self.stateData['inside_lane'] == False:
-            reward = -1
-        if self.stateData['colliding'] == True:
-            reward = -2
+
+        # stateData["position"], z is up/down axis
+
+
+
+
+
+
 
         if self.stepCount >= self.maxSteps:
             done = True
