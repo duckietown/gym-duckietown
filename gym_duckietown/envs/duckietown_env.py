@@ -144,12 +144,12 @@ class DuckietownEnv(gym.Env):
         # Currently, robot starts at (1, 1)
         # And is facing the negative x direction
         # Moving forward decreases x
-        # y should stay as close to 1 as possible
+        # y should stay as close to 1.12 as possible (in the right lane)
         x0, y0, z0 = self.prevState['position']
         x1, y1, z1 = self.stateData['position']
         dx = x1 - x0
-        dy = abs(y1 - 1) - abs(y0 - 1)
-        reward = -dx - dy
+        dy = abs(y1 - 1.12) - abs(y0 - 1.12)
+        reward = 4 * -dx - 1 * dy
 
         # If past the maximum step count, stop the episode
         done = self.stepCount >= self.maxSteps
