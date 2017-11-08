@@ -65,7 +65,7 @@ class DuckietownEnv(gym.Env):
         self.reward_range = (-1, 1000)
 
         # Environment configuration
-        self.maxSteps = 250
+        self.maxSteps = 120
 
         # For rendering
         self.window = None
@@ -105,8 +105,6 @@ class DuckietownEnv(gym.Env):
 
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
-
-        print(self.img.transpose().shape)
 
         # Return first observation
         return self.img.transpose()

@@ -41,13 +41,14 @@ def main():
         if action is not None:
             obs, reward, done, info = env.step(action)
 
-            print(reward, done)
+            print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
             env.render()
 
             if done:
                 print('done!')
                 env.reset()
+                env.render()
 
     # Enter main event loop
     pyglet.app.run()
