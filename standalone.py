@@ -2,6 +2,7 @@
 
 from __future__ import division, print_function
 
+import numpy
 import gym
 
 from gym_duckietown.envs import DuckietownEnv
@@ -20,24 +21,24 @@ def main():
         action = None
         if symbol == key.LEFT:
             print('left')
-            action = (-1, 1)
+            action = numpy.array([-1, 1])
         elif symbol == key.RIGHT:
             print('right')
-            action = (1, -1)
+            action = numpy.array([1, -1])
         elif symbol == key.UP:
             print('forward')
-            action = (1, 1)
+            action = numpy.array([1, 1])
         elif symbol == key.DOWN:
             print('back')
-            action = (-1, -1)
+            action = numpy.array([-1, -1])
         elif symbol == key.SLASH:
             print('RESET')
-            action = (0,0)
+            action = None
             env.reset()
         else:
             return
 
-        if action != (0,0):
+        if action is not None:
             obs, reward, done, info = env.step(action)
 
             print(reward, done)

@@ -44,7 +44,7 @@ class DuckietownEnv(gym.Env):
     CAMERA_HEIGHT = 64
 
     # Camera image shape
-    IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
+    IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
 
     def __init__(self, serverAddr="localhost", serverPort=SERVER_PORT):
 
@@ -65,7 +65,7 @@ class DuckietownEnv(gym.Env):
         self.reward_range = (-1, 1000)
 
         # Environment configuration
-        self.maxSteps = 1000
+        self.maxSteps = 250
 
         # For rendering
         self.window = None
@@ -106,8 +106,10 @@ class DuckietownEnv(gym.Env):
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
+        print(self.img.transpose().shape)
+
         # Return first observation
-        return self.img
+        return self.img.transpose()
 
     def _seed(self, seed=None):
         """
@@ -122,14 +124,14 @@ class DuckietownEnv(gym.Env):
         return [seed]
 
     def _step(self, action):
-        assert isinstance(action, tuple) and len(action) == 2
+        assert self.observation_space.shape
 
         self.stepCount += 1
 
         # Send the action to the server
         self.socket.send_json({
             "command":"action",
-            "values": action
+            "values": [ float(action[0]), float(action[1]) ]
         })
 
         # State at the previous step
@@ -154,7 +156,7 @@ class DuckietownEnv(gym.Env):
         # If past the maximum step count, stop the episode
         done = self.stepCount >= self.maxSteps
 
-        return self.img, reward, done, self.stateData
+        return self.img.transpose(), reward, done, self.stateData
 
     def _render(self, mode='human', close=False):
         if mode == 'rgb_array':
