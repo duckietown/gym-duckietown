@@ -30,18 +30,23 @@ def main():
         elif symbol == key.DOWN:
             print('back')
             action = (-1, -1)
+        elif symbol == key.SLASH:
+            print('RESET')
+            action = (0,0)
+            env.reset()
         else:
             return
 
-        obs, reward, done, info = env.step(action)
+        if action != (0,0):
+            obs, reward, done, info = env.step(action)
 
-        print(reward)
+            print(reward)
 
-        env.render()
+            env.render()
 
-        if done:
-            print('done!')
-            env.reset()
+            if done:
+                print('done!')
+                env.reset()
 
     # Enter main event loop
     pyglet.app.run()
