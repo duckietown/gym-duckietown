@@ -7,23 +7,30 @@ Installation
 ------------
 
 Requirements:
-- Python 2
+- Python 3
 - OpenAI gym
 - numpy
 - scipy
 - pyglet
+- rospy
 
-Clone the repository and install the other dependencies with `pip2`:
+First, install rospy:
 
-```python2
+```
+sudo apt-get install python-rpspy
+```
+
+Clone the repository and install the other dependencies with `pip3`:
+
+```python3
 git clone https://github.com/duckietown/simulator.git
 cd gym
-pip2 install -e .
+pip3 install -e .
 ```
 
 To run the standalone UI application:
 
-```python2
+```python3
 ./standalone.py
 ```
 
