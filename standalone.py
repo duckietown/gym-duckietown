@@ -40,7 +40,7 @@ def main():
         if action != (0,0):
             obs, reward, done, info = env.step(action)
 
-            print(reward)
+            print(obs, reward, done, info)
 
             env.render()
 
