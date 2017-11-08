@@ -9,6 +9,11 @@ import pyglet
 from pyglet.image import ImageData
 from pyglet.gl import glPushMatrix, glPopMatrix, glScalef, glTranslatef
 
+# For Python 3 compatibility
+import sys
+if sys.version_info > (3,):
+    buffer = memoryview
+
 # Rendering window size
 WINDOW_SIZE = 512
 
@@ -177,7 +182,8 @@ class DuckietownEnv(gym.Env):
             width,
             height,
             'RGB',
-            self.img.data.__str__()
+            self.img.tobytes(),
+            pitch = width * 3,
         )
         glPushMatrix()
         glTranslatef(0, WINDOW_SIZE, 0)
