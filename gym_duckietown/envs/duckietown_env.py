@@ -127,26 +127,27 @@ class DuckietownEnv(gym.Env):
             "values": action
         })
 
+        # State at the previous step
+        self.prevState = self.stateData
+
         # Receive state data (position, etc)
         self.stateData = self.socket.recv_json()
 
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
-        # TODO: figure out what the reward should be based on world data
-        reward = 0
-        done = False
+        # Currently, robot starts at (1, 1)
+        # And is facing the negative x direction
+        # Moving forward decreases x
+        # y should stay as close to 1 as possible
+        x0, y0, z0 = self.prevState['position']
+        x1, y1, z1 = self.stateData['position']
+        dx = x1 - x0
+        dy = abs(y1 - 1) - abs(y0 - 1)
+        reward = -dx - dy
 
-        # stateData["position"], z is up/down axis
-
-
-
-
-
-
-
-        if self.stepCount >= self.maxSteps:
-            done = True
+        # If past the maximum step count, stop the episode
+        done = self.stepCount >= self.maxSteps
 
         return self.img, reward, done, self.stateData
 
