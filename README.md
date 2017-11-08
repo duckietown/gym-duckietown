@@ -17,7 +17,7 @@ Requirements:
 First, install rospy:
 
 ```
-sudo apt-get install python-rpspy
+sudo apt-get install python-rospy
 ```
 
 Clone the repository and install the other dependencies with `pip3`:
@@ -28,7 +28,7 @@ cd gym
 pip3 install -e .
 ```
 
-To run the standalone UI application:
+To run the standalone UI application, which allows you to control the robot manually:
 
 ```python3
 ./standalone.py
