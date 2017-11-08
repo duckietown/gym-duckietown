@@ -185,7 +185,7 @@ class DuckietownEnv(gym.Env):
         glPopMatrix()
 
         # Display position/state information
-        pos = self.stateData['position']
+        pos = self.stateData['state'][:3]
         self.textLabel.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
         self.textLabel.draw()
 
