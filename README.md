@@ -28,6 +28,9 @@ cd gym
 pip3 install -e .
 ```
 
+Usage
+-----
+
 To run the standalone UI application, which allows you to control the robot manually:
 
 ```python3
@@ -37,3 +40,11 @@ To run the standalone UI application, which allows you to control the robot manu
 The standalone application will connect to the ROS bridge node, display
 camera images received and send actions (keyboard commands) back. By
 default, the ROS bridge is assumed to be running on localhost.
+
+To train a reinforcement learning agent, you can clone the PyTorch code from [this repository](https://github.com/maximecb/pytorch-a2c-ppo-acktr). It has been modified and tested for
+compatibility with `gym-duckietown`. I recommend using the PPO or ACKTR implementations.
+A sample command to launch training is:
+
+```
+python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo ppo
+```
