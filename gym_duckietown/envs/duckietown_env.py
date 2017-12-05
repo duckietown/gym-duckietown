@@ -2,6 +2,8 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 import math
+import time
+from subprocess import call, check_call
 import numpy
 import zmq
 
@@ -16,9 +18,6 @@ if sys.version_info > (3,):
 
 # Rendering window size
 WINDOW_SIZE = 512
-
-# Port to connect to on the server
-SERVER_PORT = 7777
 
 def recvArray(socket):
     """Receive a numpy array over zmq"""
@@ -39,6 +38,9 @@ class DuckietownEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
+    # Port to connect to on the server
+    SERVER_PORT = 7777
+
     # Camera image size
     CAMERA_WIDTH = 64
     CAMERA_HEIGHT = 64
@@ -46,7 +48,11 @@ class DuckietownEnv(gym.Env):
     # Camera image shape
     IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-    def __init__(self, serverAddr="localhost", serverPort=SERVER_PORT):
+    def __init__(
+        self,
+        serverAddr="localhost",
+        serverPort=SERVER_PORT,
+        startDocker=False):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -84,6 +90,43 @@ class DuckietownEnv(gym.Env):
         # Last received image
         self.img = None
 
+        # If a docker image should be started
+        if startDocker:
+            self.docker_name = 'duckietown_%s' % serverPort
+
+            # Kill old containers, if running
+            call([
+                'docker', 'rm', '-f', self.docker_name
+            ])
+
+            print('starting docker container %s' % self.docker_name)
+            check_call([
+                'docker', 'run', '-d',
+                '-p', '%s:7777' % serverPort,
+                '--name', self.docker_name,
+                '-it', 'yanjundream/duckietown_simulator'
+            ])
+
+            print('%s starting gazebo...' % self.docker_name)
+            check_call([
+                'docker', 'exec', '-d', self.docker_name,
+                'bash', '-c',
+                'cd / && source ./start.sh && ./run_gazebo.sh'
+            ])
+
+            # H4xxx, need a way to wait until we know this is started
+            time.sleep(15)
+
+            print('%s starting gym server node...' % self.docker_name)
+            check_call([
+                'docker', 'exec', '-d', self.docker_name,
+                'bash', '-c',
+                'cd / && source ./start.sh && python2 ./gym-gazebo-server.py'
+            ])
+
+            # H4xxx, need a way to wait until we know this is started
+            time.sleep(15)
+
         # Connect to the Gym bridge ROS node
         context = zmq.Context()
         self.socket = context.socket(zmq.PAIR)
@@ -92,6 +135,11 @@ class DuckietownEnv(gym.Env):
         # Initialize the state
         self.reset()
         self.seed()
+
+    def _close(self):
+        if hasattr(self, 'docker_name'):
+            print('killing docker container %s' % self.docker_name)
+            call(['docker', 'rm', '-f', self.docker_name])
 
     def _reset(self):
         # Step count since episode start
@@ -141,6 +189,8 @@ class DuckietownEnv(gym.Env):
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
+
+
         # Currently, robot starts at (1, 1)
         # And is facing the negative x direction
         # Moving forward decreases x
@@ -153,6 +203,26 @@ class DuckietownEnv(gym.Env):
 
         # If past the maximum step count, stop the episode
         done = self.stepCount >= self.maxSteps
+
+
+
+
+
+
+        """
+        done = False
+        reward = 0
+
+        x, y, z = self.stateData['position']
+        targetPos = (0.3, 1.07)
+        dx = x - targetPos[0]
+        dy = y - targetPos[1]
+        dist = math.sqrt(dx**2 + dy**2)
+
+        if dist <= 0.05 or self.stepCount >= self.maxSteps:
+            done = True
+            reward = 4 - dist
+        """
 
         return self.img.transpose(), reward, done, self.stateData
 
