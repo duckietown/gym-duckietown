@@ -39,7 +39,9 @@ def main():
             return
 
         if action is not None:
+            print('stepping')
             obs, reward, done, info = env.step(action)
+            print('stepped')
 
             print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
