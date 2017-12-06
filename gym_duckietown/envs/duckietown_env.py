@@ -208,40 +208,34 @@ class DuckietownEnv(gym.Env):
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
-
-
-        # Currently, robot starts at (1, 1)
-        # And is facing the negative x direction
-        # Moving forward decreases x
-        # y should stay as close to 1.12 as possible (in the right lane)
-        x0, y0, z0 = self.prevState['position']
-        x1, y1, z1 = self.stateData['position']
-        dx = x1 - x0
-        dy = abs(y1 - 1.12) - abs(y0 - 1.12)
-        reward = 4 * -dx - 1 * dy
-
-        # If past the maximum step count, stop the episode
-        done = self.stepCount >= self.maxSteps
-
-
-
-
-
-
-        """
-        done = False
-        reward = 0
-
         x, y, z = self.stateData['position']
-        targetPos = (0.3, 1.07)
+
+        # End of lane, to the right
+        #targetPos = (0.0, 1.12)
+
+        # End of lane, centered on yellow markers
+        targetPos = (0.0, 1.00)
+
         dx = x - targetPos[0]
         dy = y - targetPos[1]
-        dist = math.sqrt(dx**2 + dy**2)
 
-        if dist <= 0.05 or self.stepCount >= self.maxSteps:
+        dist = abs(dx) + abs(dy)
+        reward = -dist
+
+        #print('x=%.2f, y=%.2f' % (x, y))
+        #print('  d=%.2f' % dist)
+        #print('  a=%s' % str(action))
+
+        done = False
+
+        # If the objective is reached
+        if dist <= 0.05:
+            reward = 1000
             done = True
-            reward = 4 - dist
-        """
+
+        # If the maximum time step count is reached
+        if self.stepCount >= self.maxSteps:
+            done = True
 
         return self.img.transpose(), reward, done, self.stateData
 
