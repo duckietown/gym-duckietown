@@ -27,6 +27,27 @@ def recvArray(socket):
     A = numpy.frombuffer(buf, dtype=md['dtype'])
     return A.reshape(md['shape'])
 
+class DiscreteEnv(gym.ActionWrapper):
+    """
+    Duckietown environment with discrete actions (left, right, forward)
+    instead of continuous control
+    """
+
+    def __init__(self, env):
+        super(DiscreteEnv, self).__init__(env)
+
+        self.action_space = spaces.Discrete(3)
+
+    def _action(self, action):
+        if action == 0:
+            return [-1, 1]
+        elif action == 1:
+            return [1, -1]
+        elif action == 2:
+            return [1, 1]
+        else:
+            assert False, "unknown action"
+
 class DuckietownEnv(gym.Env):
     """
     OpenAI gym environment wrapper for the Duckietown simulation.
@@ -170,8 +191,6 @@ class DuckietownEnv(gym.Env):
         return [seed]
 
     def _step(self, action):
-        assert self.observation_space.shape
-
         self.stepCount += 1
 
         # Send the action to the server
