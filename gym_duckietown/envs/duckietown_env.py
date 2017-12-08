@@ -116,7 +116,11 @@ class DuckietownEnv(gym.Env):
             self.docker_name = 'duckietown_%s' % serverPort
 
             # Kill old containers, if running
-            subprocess.call(['docker', 'rm', '-f', self.docker_name])
+            subprocess.call(
+                ['docker', 'rm', '-f', self.docker_name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
 
             print('starting docker container %s' % self.docker_name)
             subprocess.check_call([
@@ -150,6 +154,10 @@ class DuckietownEnv(gym.Env):
                 'bash', '-c',
                 'cd / && source ./start.sh && python2 ./gym-gazebo-server.py'
             ])
+
+            time.sleep(2)
+
+            print('%s connecting to gym server node...' % self.docker_name)
 
         # Connect to the Gym bridge ROS node
         context = zmq.Context()
