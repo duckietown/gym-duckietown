@@ -3,7 +3,7 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 import math
 import time
-from subprocess import call, check_call
+import subprocess
 import numpy
 import zmq
 
@@ -116,12 +116,10 @@ class DuckietownEnv(gym.Env):
             self.docker_name = 'duckietown_%s' % serverPort
 
             # Kill old containers, if running
-            call([
-                'docker', 'rm', '-f', self.docker_name
-            ])
+            subprocess.call(['docker', 'rm', '-f', self.docker_name])
 
             print('starting docker container %s' % self.docker_name)
-            check_call([
+            subprocess.check_call([
                 'docker', 'run', '-d',
                 '-p', '%s:7777' % serverPort,
                 '--name', self.docker_name,
@@ -129,24 +127,29 @@ class DuckietownEnv(gym.Env):
             ])
 
             print('%s starting gazebo...' % self.docker_name)
-            check_call([
-                'docker', 'exec', '-d', self.docker_name,
+            pipe = subprocess.Popen([
+                'docker', 'exec', self.docker_name,
                 'bash', '-c',
                 'cd / && source ./start.sh && ./run_gazebo.sh'
-            ])
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # H4xxx, need a way to wait until we know this is started
-            time.sleep(15)
+            while True:
+                line = pipe.stdout.readline().decode('utf-8').lower().rstrip()
+                #if not line == "":
+                #    print(line)
+
+                if "advertise odom" in line:
+                    pipe.stdout.close()
+                    break
+
+                assert "error" not in line
 
             print('%s starting gym server node...' % self.docker_name)
-            check_call([
+            subprocess.check_call([
                 'docker', 'exec', '-d', self.docker_name,
                 'bash', '-c',
                 'cd / && source ./start.sh && python2 ./gym-gazebo-server.py'
             ])
-
-            # H4xxx, need a way to wait until we know this is started
-            time.sleep(15)
 
         # Connect to the Gym bridge ROS node
         context = zmq.Context()
@@ -160,7 +163,7 @@ class DuckietownEnv(gym.Env):
     def _close(self):
         if hasattr(self, 'docker_name'):
             print('killing docker container %s' % self.docker_name)
-            call(['docker', 'rm', '-f', self.docker_name])
+            subprocess.call(['docker', 'rm', '-f', self.docker_name])
 
     def _reset(self):
         # Step count since episode start
