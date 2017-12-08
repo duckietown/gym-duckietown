@@ -73,7 +73,7 @@ class DuckietownEnv(gym.Env):
         self,
         serverAddr="localhost",
         serverPort=SERVER_PORT,
-        startDocker=False):
+        startContainer=False):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -112,7 +112,7 @@ class DuckietownEnv(gym.Env):
         self.img = None
 
         # If a docker image should be started
-        if startDocker:
+        if startContainer:
             self.docker_name = 'duckietown_%s' % serverPort
 
             # Kill old containers, if running
