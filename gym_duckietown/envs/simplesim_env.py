@@ -4,7 +4,6 @@ import time
 import numpy as np
 
 import pyglet
-from pyglet.image import ImageData
 from pyglet.gl import *
 from ctypes import byref, POINTER
 
@@ -74,6 +73,11 @@ def createFBO():
     # Attach the texture to the framebuffer
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbTex, 0)
     res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+
+    #context = pyglet.gl.get_current_context()
+    #print(id(context))
+    #print('res=%s' % res)
+
     assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Generate a depth  buffer and bind it to the frame buffer
@@ -240,6 +244,10 @@ class SimpleSimEnv(gym.Env):
         #glGetIntegerv(GL_FRAMEBUFFER_BINDING, byref(fbBinding))
         #print('current fb binding: %s' % fbBinding)
 
+        # Switch to the default context
+        # This is necessary on Linux nvidia drivers
+        pyglet.gl._shadow_window.switch_to()
+
         isFb = glIsFramebuffer(self.fbId)
         assert isFb == True
 
@@ -297,20 +305,25 @@ class SimpleSimEnv(gym.Env):
         return self.imgArray
 
     def _render(self, mode='human', close=False):
+        if close:
+            if self.window:
+                self.window.close()
+            return
+
         # Render the observation
         img = self._renderObs()
 
         if mode == 'rgb_array':
             return img
 
-        if close:
-            if self.window:
-                self.window.close()
-            return
-
         if self.window is None:
-            self.window = pyglet.window.Window(width=WINDOW_SIZE, height=WINDOW_SIZE)
+            context = pyglet.gl.get_current_context()
+            self.window = pyglet.window.Window(
+                width=WINDOW_SIZE,
+                height=WINDOW_SIZE
+            )
 
+        self.window.switch_to()
         self.window.dispatch_events()
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -329,7 +342,7 @@ class SimpleSimEnv(gym.Env):
         width = img.shape[0]
         height = img.shape[1]
         img = np.uint8(img * 255)
-        imgData = ImageData(
+        imgData = pyglet.image.ImageData(
             width,
             height,
             'RGB',
