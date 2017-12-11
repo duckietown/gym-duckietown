@@ -25,7 +25,7 @@ CAMERA_WIDTH = 64
 CAMERA_HEIGHT = 64
 
 # Camera image shape
-IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
+IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
 def loadTexture(texName):
     # Assemble the absolute path to the texture
@@ -69,7 +69,7 @@ class SimpleSimDscEnv(gym.ActionWrapper):
 class SimpleSimEnv(gym.Env):
 
     metadata = {
-        'render.modes': ['human', 'rgb_array'],
+        'render.modes': ['human', 'rgb_array', 'app'],
         'video.frames_per_second' : 30
     }
 
@@ -270,7 +270,7 @@ class SimpleSimEnv(gym.Env):
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        data = np.empty((CAMERA_HEIGHT, CAMERA_WIDTH, 3), dtype=np.float32)
+        data = np.empty(shape=IMG_SHAPE, dtype=np.float32)
         glReadPixels(
             0,
             0,
@@ -337,3 +337,6 @@ class SimpleSimEnv(gym.Env):
         pos = self.curPos
         self.textLabel.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
         self.textLabel.draw()
+
+        if mode == 'human':
+            self.window.flip()
