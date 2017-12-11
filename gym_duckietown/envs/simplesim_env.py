@@ -45,28 +45,8 @@ def loadTexture(texName):
 
     return tex
 
-class SimpleSimDscEnv(gym.ActionWrapper):
-    """
-    Duckietown environment with discrete actions (left, right, forward)
-    instead of continuous control
-    """
-
-    def __init__(self, env):
-        super(SimpleSimDscEnv, self).__init__(env)
-
-        self.action_space = spaces.Discrete(3)
-
-    def _action(self, action):
-        if action == 0:
-            return [-1, 1]
-        elif action == 1:
-            return [1, -1]
-        elif action == 2:
-            return [1, 1]
-        else:
-            assert False, "unknown action"
-
 class SimpleSimEnv(gym.Env):
+    """Simplistic road simulator to test RL training"""
 
     metadata = {
         'render.modes': ['human', 'rgb_array', 'app'],
@@ -91,7 +71,7 @@ class SimpleSimEnv(gym.Env):
         self.reward_range = (-1, 1000)
 
         # Environment configuration
-        self.maxSteps = 120
+        self.maxSteps = 80
 
         # For rendering
         self.window = None
@@ -150,8 +130,8 @@ class SimpleSimEnv(gym.Env):
         self.startPos = (-0.25, 0.2, 0.5)
 
         # Initialize the state
-        self.reset()
         self.seed()
+        self.reset()
 
     def _close(self):
         pass
@@ -183,13 +163,21 @@ class SimpleSimEnv(gym.Env):
 
         # Left
         if action[0] < 0:
-            self.curPos = (x - 0.06, y, z)
+            x -= 0.06
         # Right
         elif action[1] < 0:
-            self.curPos = (x + 0.06, y, z)
+            x += 0.06
         # Forward
         else:
-            self.curPos = (x, y, z - 0.06)
+            z -= 0.06
+
+        # Add a small amount of noise to the position
+        # This will randomize the movement dynamics
+        posNoise = self.np_random.uniform(low=-0.01, high=0.01, size=(3,))
+        x += posNoise[0]
+        #y += posNoise[1]
+        z += posNoise[2]
+        self.curPos = (x, y, z)
 
         # End of lane, to the right
         targetPos = (0.25, 0.2, -2.0)
@@ -205,6 +193,12 @@ class SimpleSimEnv(gym.Env):
         # If the objective is reached
         if dist <= 0.05:
             reward = 1000
+            done = True
+
+        # If the agent goes too far left or right,
+        # end the episode early
+        if dx < -1.00 or dx > 0.50:
+            reward = 0
             done = True
 
         obs = self._renderObs()
@@ -280,8 +274,14 @@ class SimpleSimEnv(gym.Env):
             GL_FLOAT,
             data.ctypes.data_as(POINTER(GLfloat))
         )
+
+        # Add noise to the image
+        # TODO: adjustable noise coefficient
+        noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
+        data = np.clip(data + noise, a_min=0, a_max=1)
+
+        # Convert the image to RGB888
         data = np.uint8(data * 255)
-        data = np.flip(data, axis=0)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -327,11 +327,7 @@ class SimpleSimEnv(gym.Env):
             img.tobytes(),
             pitch = width * 3,
         )
-        glPushMatrix()
-        glTranslatef(0, WINDOW_SIZE, 0)
-        glScalef(1, -1, 1)
         imgData.blit(0, 0, 0, WINDOW_SIZE, WINDOW_SIZE)
-        glPopMatrix()
 
         # Display position/state information
         pos = self.curPos
