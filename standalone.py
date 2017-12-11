@@ -10,7 +10,7 @@ import pyglet
 
 def main():
 
-    env = gym.make('Duckietown-v0')
+    env = gym.make('Duckie-SimpleSim-v0')
     env.reset()
 
     env.render()
