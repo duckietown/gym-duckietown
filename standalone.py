@@ -13,7 +13,7 @@ def main():
     env = gym.make('Duckie-SimpleSim-v0')
     env.reset()
 
-    env.render()
+    env.render('app')
     @env.window.event
     def on_key_press(symbol, modifiers):
         from pyglet.window import key
@@ -45,12 +45,12 @@ def main():
 
             print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
-            env.render()
+            env.render('app')
 
             if done:
                 print('done!')
                 env.reset()
-                env.render()
+                env.render('app')
 
     # Enter main event loop
     pyglet.app.run()
