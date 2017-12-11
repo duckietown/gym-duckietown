@@ -236,7 +236,9 @@ class SimpleSimEnv(gym.Env):
         glEnable(GL_TEXTURE_2D)
         glBindTexture(self.roadTex.target, self.roadTex.id)
 
-        vlist.draw(GL_QUADS)
+        for i in range(3):
+            vlist.draw(GL_QUADS)
+            glTranslatef(0, 0, -1)
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
