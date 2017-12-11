@@ -117,6 +117,9 @@ class SimpleSimEnv(gym.Env):
         # Environment configuration
         self.maxSteps = 80
 
+        # Array to render the image into
+        self.imgArray = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
+
         # For rendering
         self.window = None
 
@@ -133,6 +136,21 @@ class SimpleSimEnv(gym.Env):
 
         # Create a frame buffer object
         self.fbId, self.fbTex = createFBO()
+
+        # Create the vertex list for our road quad
+        verts = [
+            -0.5, 0.0,  0,
+            -0.5, 0.0, -1,
+             0.5, 0.0, -1,
+             0.5, 0.0,  0
+        ]
+        texCoords = [
+            0.0, 0.0,
+            0.0, 1.0,
+            1.0, 1.0,
+            1.0, 0.0
+        ]
+        self.roadVList = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
         # Starting position
         self.startPos = (-0.25, 0.2, 0.5)
@@ -249,30 +267,15 @@ class SimpleSimEnv(gym.Env):
         glLoadIdentity()
         gluPerspective(45.0, CAMERA_WIDTH / float(CAMERA_HEIGHT), 0.05, 100.0)
 
-        verts = [
-            -0.5, 0.0,  0,
-            -0.5, 0.0, -1,
-             0.5, 0.0, -1,
-             0.5, 0.0,  0
-        ]
-        texCoords = [
-            0.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0,
-            1.0, 0.0
-        ]
-        vlist = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
-
+        # Draw the road quads
         glEnable(GL_TEXTURE_2D)
         glBindTexture(self.roadTex.target, self.roadTex.id)
-
         for i in range(3):
-            vlist.draw(GL_QUADS)
+            self.roadVList.draw(GL_QUADS)
             glTranslatef(0, 0, -1)
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        data = np.empty(shape=IMG_SHAPE, dtype=np.float32)
         glReadPixels(
             0,
             0,
@@ -280,21 +283,18 @@ class SimpleSimEnv(gym.Env):
             CAMERA_HEIGHT,
             GL_RGB,
             GL_FLOAT,
-            data.ctypes.data_as(POINTER(GLfloat))
+            self.imgArray.ctypes.data_as(POINTER(GLfloat))
         )
 
         # Add noise to the image
         # TODO: adjustable noise coefficient
-        noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
-        data = np.clip(data + noise, a_min=0, a_max=1)
-
-        # Convert the image to RGB888
-        data = np.uint8(data * 255)
+        #noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
+        #data = np.clip(data + noise, a_min=0, a_max=1)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        return data
+        return self.imgArray
 
     def _render(self, mode='human', close=False):
         # Render the observation
@@ -328,6 +328,7 @@ class SimpleSimEnv(gym.Env):
         # Draw the image to the rendering window
         width = img.shape[0]
         height = img.shape[1]
+        img = np.uint8(img * 255)
         imgData = ImageData(
             width,
             height,
