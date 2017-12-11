@@ -85,9 +85,8 @@ class SimpleSimEnv(gym.Env):
             y = WINDOW_SIZE - 19
         )
 
-
-
-
+        # Starting position
+        self.startPos = (-0.5, 0.2, 0)
 
         # Initialize the state
         self.reset()
@@ -100,12 +99,12 @@ class SimpleSimEnv(gym.Env):
         # Step count since episode start
         self.stepCount = 0
 
+        self.curPos = self.startPos
+
+        obs = self._renderObs()
 
         # Return first observation
-        #return self.img.transpose()
-
-
-
+        return obs
 
     def _seed(self, seed=None):
         """
@@ -119,25 +118,16 @@ class SimpleSimEnv(gym.Env):
     def _step(self, action):
         self.stepCount += 1
 
-        reward = 0
-        done = False
-
-
-        """
-        x, y, z = self.stateData['position']
+        x, y, z = self.curPos
 
         # End of lane, to the right
-        targetPos = (0.0, 1.12)
+        targetPos = (0.0, 0.2, -2.0)
 
         dx = x - targetPos[0]
-        dy = y - targetPos[1]
+        dz = z - targetPos[2]
 
-        dist = abs(dx) + abs(dy)
+        dist = abs(dx) + abs(dz)
         reward = -dist
-
-        #print('x=%.2f, y=%.2f' % (x, y))
-        #print('  d=%.2f' % dist)
-        #print('  a=%s' % str(action))
 
         done = False
 
@@ -145,19 +135,28 @@ class SimpleSimEnv(gym.Env):
         if dist <= 0.05:
             reward = 1000
             done = True
-        """
 
-
-        # TODO
-        obs = None
-
-
+        obs = self._renderObs()
 
         # If the maximum time step count is reached
         if self.stepCount >= self.maxSteps:
             done = True
 
         return obs, reward, done, {}
+
+    def _renderObs(self):
+        # TODO: produce a numpy array
+
+
+
+
+
+
+
+
+
+        # FIXME
+        return None
 
     def _render(self, mode='human', close=False):
         if mode == 'rgb_array':
@@ -175,6 +174,7 @@ class SimpleSimEnv(gym.Env):
         self.window.switch_to()
         self.window.dispatch_events()
 
+        img = self._renderObs()
 
         """
         # Draw the image to the rendering window
@@ -192,11 +192,11 @@ class SimpleSimEnv(gym.Env):
         glScalef(1, -1, 1)
         imgData.blit(0, 0, 0, WINDOW_SIZE, WINDOW_SIZE)
         glPopMatrix()
+        """
 
         # Display position/state information
-        pos = self.stateData['position']
+        pos = self.curPos
         self.textLabel.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
         self.textLabel.draw()
-        """
 
         self.window.flip()
