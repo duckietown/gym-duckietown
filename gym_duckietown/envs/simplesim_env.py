@@ -122,6 +122,8 @@ class SimpleSimEnv(gym.Env):
             GL_FLOAT,
             None
         )
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
         # Attach the texture to the framebuffer
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.fbTex, 0)
@@ -163,8 +165,15 @@ class SimpleSimEnv(gym.Env):
 
         x, y, z = self.curPos
 
-
-        self.curPos = (x, y, z - 0.06)
+        # Left
+        if action[0] < 0:
+            self.curPos = (x - 0.06, y, z)
+        # Right
+        elif action[1] < 0:
+            self.curPos = (x + 0.06, y, z)
+        # Forward
+        else:
+            self.curPos = (x, y, z - 0.06)
 
 
 
