@@ -296,8 +296,8 @@ class SimpleSimEnv(gym.Env):
 
         # Add noise to the image
         # TODO: adjustable noise coefficient
-        #noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
-        #data = np.clip(data + noise, a_min=0, a_max=1)
+        noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
+        np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
