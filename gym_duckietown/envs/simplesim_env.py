@@ -1,10 +1,11 @@
 import math
 import time
-import numpy
+import numpy as np
 
 import pyglet
 from pyglet.image import ImageData
 from pyglet.gl import *
+from ctypes import byref, POINTER
 
 import gym
 from gym import error, spaces, utils
@@ -17,6 +18,26 @@ if sys.version_info > (3,):
 
 # Rendering window size
 WINDOW_SIZE = 512
+
+# Camera image size
+CAMERA_WIDTH = 64
+CAMERA_HEIGHT = 64
+
+# Camera image shape
+IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
+
+def loadTexture(fileName):
+    img = pyglet.image.load(fileName)
+    tex = img.get_texture()
+    glEnable(tex.target)
+    glBindTexture(tex.target, tex.id)
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height, 0,
+        GL_RGBA, GL_UNSIGNED_BYTE,
+        img.get_image_data().get_data('RGBA', img.width * 4)
+    )
+
+    return tex
 
 class SimpleSimDscEnv(gym.ActionWrapper):
     """
@@ -46,13 +67,6 @@ class SimpleSimEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
-    # Camera image size
-    CAMERA_WIDTH = 64
-    CAMERA_HEIGHT = 64
-
-    # Camera image shape
-    IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
-
     def __init__(self):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -66,7 +80,7 @@ class SimpleSimEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=SimpleSimEnv.IMG_SHAPE
+            shape=IMG_SHAPE
         )
 
         self.reward_range = (-1, 1000)
@@ -85,8 +99,37 @@ class SimpleSimEnv(gym.Env):
             y = WINDOW_SIZE - 19
         )
 
+        # Load the road texture
+        self.roadTex = loadTexture("road.png")
+
+        # Create the framebuffer (rendering target)
+        self.fb = gl.GLuint(0)
+        glGenFramebuffers(1, byref(self.fb))
+        glBindFramebuffer(GL_FRAMEBUFFER, self.fb)
+
+        # Create the texture to render into
+        self.fbTex = gl.GLuint(0)
+        glGenTextures(1, byref(self.fbTex))
+        glBindTexture(GL_TEXTURE_2D, self.fbTex)
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGBA,
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            0,
+            GL_RGBA,
+            GL_FLOAT,
+            None
+        )
+
+        # Attach the texture to the framebuffer
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.fbTex, 0)
+        res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+        assert res == GL_FRAMEBUFFER_COMPLETE
+
         # Starting position
-        self.startPos = (-0.5, 0.2, 0)
+        self.startPos = (-0.25, 0.2, 0.5)
 
         # Initialize the state
         self.reset()
@@ -120,8 +163,15 @@ class SimpleSimEnv(gym.Env):
 
         x, y, z = self.curPos
 
+
+        self.curPos = (x, y, z - 0.06)
+
+
+
+
+
         # End of lane, to the right
-        targetPos = (0.0, 0.2, -2.0)
+        targetPos = (0.25, 0.2, -2.0)
 
         dx = x - targetPos[0]
         dz = z - targetPos[2]
@@ -145,22 +195,75 @@ class SimpleSimEnv(gym.Env):
         return obs, reward, done, {}
 
     def _renderObs(self):
-        # TODO: produce a numpy array
+        # Bind the frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, self.fb);
+        glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
+        glClearColor(0.4, 0.4, 0.4, 1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        # Set modelview matrix
+        glMatrixMode(gl.GL_MODELVIEW)
+        glLoadIdentity()
+        gluLookAt(
+            # Eye position
+            *self.curPos, # eye position
+            # Target
+            self.curPos[0], self.curPos[1], self.curPos[2] - 1,
+            # Up vector
+            0, 1.0, 0.0
+        )
 
+        # Set the projection matrix
+        glMatrixMode(gl.GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(45.0, CAMERA_WIDTH / float(CAMERA_HEIGHT), 0.05, 100.0)
 
+        verts = [
+            -0.5, 0.0,  0,
+            -0.5, 0.0, -1,
+             0.5, 0.0, -1,
+             0.5, 0.0,  0
+        ]
+        texCoords = [
+            0.0, 0.0,
+            0.0, 1.0,
+            1.0, 1.0,
+            1.0, 0.0
+        ]
+        vlist = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(self.roadTex.target, self.roadTex.id)
 
+        vlist.draw(GL_QUADS)
 
+        # Copy the frame buffer contents into a numpy array
+        # Note: glReadPixels reads starting from the lower left corner
+        data = np.empty((CAMERA_HEIGHT, CAMERA_WIDTH, 3), dtype=np.float32)
+        glReadPixels(
+            0,
+            0,
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            GL_RGB,
+            GL_FLOAT,
+            data.ctypes.data_as(POINTER(GLfloat))
+        )
+        data = np.uint8(data * 255)
+        data = np.flip(data, axis=0)
 
+        # Unbind the frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        # FIXME
-        return None
+        return data
 
     def _render(self, mode='human', close=False):
+        # Render the observation
+        img = self._renderObs()
+
         if mode == 'rgb_array':
-            return self.img
+            return img
 
         if close:
             if self.window:
@@ -170,21 +273,28 @@ class SimpleSimEnv(gym.Env):
         if self.window is None:
             self.window = pyglet.window.Window(width=WINDOW_SIZE, height=WINDOW_SIZE)
 
-        self.window.clear()
-        self.window.switch_to()
         self.window.dispatch_events()
 
-        img = self._renderObs()
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, WINDOW_SIZE, WINDOW_SIZE)
 
-        """
+        self.window.clear()
+
+        # Setup orghogonal projection
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        glOrtho(0, WINDOW_SIZE, 0, WINDOW_SIZE, 0, 10)
+
         # Draw the image to the rendering window
-        width = self.img.shape[0]
-        height = self.img.shape[1]
+        width = img.shape[0]
+        height = img.shape[1]
         imgData = ImageData(
             width,
             height,
             'RGB',
-            self.img.tobytes(),
+            img.tobytes(),
             pitch = width * 3,
         )
         glPushMatrix()
@@ -192,11 +302,8 @@ class SimpleSimEnv(gym.Env):
         glScalef(1, -1, 1)
         imgData.blit(0, 0, 0, WINDOW_SIZE, WINDOW_SIZE)
         glPopMatrix()
-        """
 
         # Display position/state information
         pos = self.curPos
         self.textLabel.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
         self.textLabel.draw()
-
-        self.window.flip()
