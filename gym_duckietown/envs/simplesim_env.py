@@ -45,6 +45,50 @@ def loadTexture(texName):
 
     return tex
 
+def createFBO():
+    """Create a frame buffer object"""
+
+    # Create the framebuffer (rendering target)
+    fbId = GLuint(0)
+    glGenFramebuffers(1, byref(fbId))
+    glBindFramebuffer(GL_FRAMEBUFFER, fbId)
+
+    # Create the texture to render into
+    fbTex = GLuint(0)
+    glGenTextures(1, byref(fbTex))
+    glBindTexture(GL_TEXTURE_2D, fbTex)
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        CAMERA_WIDTH,
+        CAMERA_HEIGHT,
+        0,
+        GL_RGBA,
+        GL_FLOAT,
+        None
+    )
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    # Attach the texture to the framebuffer
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbTex, 0)
+    res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+    assert res == GL_FRAMEBUFFER_COMPLETE
+
+    # Generate a depth  buffer and bind it to the frame buffer
+    depthBuffer = GLuint(0);
+    glGenRenderbuffers( 1, byref(depthBuffer))
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer)
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, CAMERA_WIDTH, CAMERA_HEIGHT)
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+
+    # Unbind the frame buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
+    return fbId, fbTex
+
 class SimpleSimEnv(gym.Env):
     """Simplistic road simulator to test RL training"""
 
@@ -87,44 +131,8 @@ class SimpleSimEnv(gym.Env):
         # Load the road texture
         self.roadTex = loadTexture('road.png')
 
-        # Create the framebuffer (rendering target)
-        self.fb = GLuint(0)
-        glGenFramebuffers(1, byref(self.fb))
-        glBindFramebuffer(GL_FRAMEBUFFER, self.fb)
-
-        # Create the texture to render into
-        self.fbTex = GLuint(0)
-        glGenTextures(1, byref(self.fbTex))
-        glBindTexture(GL_TEXTURE_2D, self.fbTex)
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
-            0,
-            GL_RGBA,
-            GL_FLOAT,
-            None
-        )
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        # Attach the texture to the framebuffer
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.fbTex, 0)
-        res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-        assert res == GL_FRAMEBUFFER_COMPLETE
-
-        # Generate a depth  buffer and bind it to the frame buffer
-        depthBuffer = GLuint(0);
-        glGenRenderbuffers( 1, byref(depthBuffer))
-        glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, CAMERA_WIDTH, CAMERA_HEIGHT)
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
-
-        # Unbind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        # Create a frame buffer object
+        self.fbId, self.fbTex = createFBO()
 
         # Starting position
         self.startPos = (-0.25, 0.2, 0.5)
@@ -190,9 +198,11 @@ class SimpleSimEnv(gym.Env):
 
         done = False
 
+        print(dist)
+
         # If the objective is reached
-        if dist <= 0.05:
-            reward = 1000
+        if dist <= 0.10:
+            reward = 1000 - self.stepCount
             done = True
 
         # If the agent goes too far left or right,
@@ -214,11 +224,11 @@ class SimpleSimEnv(gym.Env):
         #glGetIntegerv(GL_FRAMEBUFFER_BINDING, byref(fbBinding))
         #print('current fb binding: %s' % fbBinding)
 
-        isFb = glIsFramebuffer(self.fb)
+        isFb = glIsFramebuffer(self.fbId)
         assert isFb == True
 
         # Bind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, self.fb);
+        glBindFramebuffer(GL_FRAMEBUFFER, self.fbId);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
         glClearColor(0.4, 0.4, 0.4, 1.0)
