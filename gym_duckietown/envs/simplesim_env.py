@@ -198,7 +198,7 @@ class SimpleSimEnv(gym.Env):
         dz = z - targetPos[2]
 
         dist = abs(dx) + abs(dz)
-        reward = -dist
+        reward = max(0, 3 - dist)
 
         done = False
 
