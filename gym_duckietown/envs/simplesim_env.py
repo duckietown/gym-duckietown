@@ -1,3 +1,4 @@
+import os
 import math
 import time
 import numpy as np
@@ -26,8 +27,13 @@ CAMERA_HEIGHT = 64
 # Camera image shape
 IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-def loadTexture(fileName):
-    img = pyglet.image.load(fileName)
+def loadTexture(texName):
+    # Assemble the absolute path to the texture
+    absPathModule = os.path.realpath(__file__)
+    moduleDir, _ = os.path.split(absPathModule)
+    texPath = os.path.join(moduleDir, texName)
+
+    img = pyglet.image.load(texPath)
     tex = img.get_texture()
     glEnable(tex.target)
     glBindTexture(tex.target, tex.id)
@@ -99,7 +105,7 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Load the road texture
-        self.roadTex = loadTexture("road.png")
+        self.roadTex = loadTexture('road.png')
 
         # Create the framebuffer (rendering target)
         self.fb = GLuint(0)
