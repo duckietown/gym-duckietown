@@ -68,7 +68,6 @@ class SimpleSimEnv(gym.Env):
     }
 
     def __init__(self):
-
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -103,12 +102,12 @@ class SimpleSimEnv(gym.Env):
         self.roadTex = loadTexture("road.png")
 
         # Create the framebuffer (rendering target)
-        self.fb = gl.GLuint(0)
+        self.fb = GLuint(0)
         glGenFramebuffers(1, byref(self.fb))
         glBindFramebuffer(GL_FRAMEBUFFER, self.fb)
 
         # Create the texture to render into
-        self.fbTex = gl.GLuint(0)
+        self.fbTex = GLuint(0)
         glGenTextures(1, byref(self.fbTex))
         glBindTexture(GL_TEXTURE_2D, self.fbTex)
         glTexImage2D(
@@ -129,6 +128,17 @@ class SimpleSimEnv(gym.Env):
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.fbTex, 0)
         res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
         assert res == GL_FRAMEBUFFER_COMPLETE
+
+        # Generate a depth  buffer and bind it to the frame buffer
+        depthBuffer = GLuint(0);
+        glGenRenderbuffers( 1, byref(depthBuffer))
+        glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer)
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, CAMERA_WIDTH, CAMERA_HEIGHT)
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+
+        # Unbind the frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Starting position
         self.startPos = (-0.25, 0.2, 0.5)
@@ -175,10 +185,6 @@ class SimpleSimEnv(gym.Env):
         else:
             self.curPos = (x, y, z - 0.06)
 
-
-
-
-
         # End of lane, to the right
         targetPos = (0.25, 0.2, -2.0)
 
@@ -204,6 +210,13 @@ class SimpleSimEnv(gym.Env):
         return obs, reward, done, {}
 
     def _renderObs(self):
+        #fbBinding = GLint(0)
+        #glGetIntegerv(GL_FRAMEBUFFER_BINDING, byref(fbBinding))
+        #print('current fb binding: %s' % fbBinding)
+
+        isFb = glIsFramebuffer(self.fb)
+        assert isFb == True
+
         # Bind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, self.fb);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
