@@ -119,7 +119,7 @@ class SimpleSimEnv(gym.Env):
         self.reward_range = (-1, 1000)
 
         # Environment configuration
-        self.maxSteps = 80
+        self.maxSteps = 65
 
         # Array to render the image into
         self.imgArray = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
@@ -263,9 +263,13 @@ class SimpleSimEnv(gym.Env):
         glLoadIdentity()
         gluLookAt(
             # Eye position
-            *self.curPos, # eye position
+            self.curPos[0],
+            self.curPos[1] + self.np_random.uniform(low=-0.006, high=0.006),
+            self.curPos[2],
             # Target
-            self.curPos[0], self.curPos[1], self.curPos[2] - 1,
+            self.curPos[0],
+            self.curPos[1],
+            self.curPos[2] - 1,
             # Up vector
             0, 1.0, 0.0
         )
