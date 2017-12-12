@@ -73,7 +73,7 @@ class DuckietownEnv(gym.Env):
         self,
         serverAddr="localhost",
         serverPort=SERVER_PORT,
-        startContainer=False):
+        startContainer=True):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -225,23 +225,27 @@ class DuckietownEnv(gym.Env):
         #targetPos = (0.0, 1.12)
 
         # End of lane, centered on yellow markers
-        targetPos = (0.0, 1.00)
+        targetPos = (0.1, 1.00)
 
         dx = x - targetPos[0]
         dy = y - targetPos[1]
 
         dist = abs(dx) + abs(dy)
-        reward = -dist
-
-        #print('x=%.2f, y=%.2f' % (x, y))
-        #print('  d=%.2f' % dist)
-        #print('  a=%s' % str(action))
+        reward = 1 - dist
+        #print('dist=%s' % dist)
+        #print('dy=%s' % dy)
 
         done = False
 
         # If the objective is reached
-        if dist <= 0.05:
-            reward = 1000
+        if dist <= 0.06:
+            reward = 1000 - self.stepCount
+            done = True
+
+        # If the agent goes too far left or right,
+        # end the episode early
+        if dy < -0.25 or dy > 0.25:
+            reward = -10
             done = True
 
         # If the maximum time step count is reached
