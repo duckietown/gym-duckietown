@@ -157,7 +157,7 @@ class SimpleSimEnv(gym.Env):
         self.roadVList = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
         # Starting position
-        self.startPos = (-0.25, 0.2, 0.5)
+        self.startPos = (-0.25, 0.2, 0.47)
 
         # Initialize the state
         self.seed()
@@ -216,7 +216,7 @@ class SimpleSimEnv(gym.Env):
         dz = z - targetPos[2]
 
         dist = abs(dx) + abs(dz)
-        reward = max(0, 3 - dist)
+        reward = 3 - dist
 
         done = False
 
@@ -228,7 +228,7 @@ class SimpleSimEnv(gym.Env):
         # If the agent goes too far left or right,
         # end the episode early
         if dx < -1.00 or dx > 0.50:
-            reward = 0
+            reward = -10
             done = True
 
         obs = self._renderObs()
@@ -296,8 +296,8 @@ class SimpleSimEnv(gym.Env):
 
         # Add noise to the image
         # TODO: adjustable noise coefficient
-        noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
-        np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
+        #noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
+        #np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
