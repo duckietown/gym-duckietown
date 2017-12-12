@@ -112,7 +112,7 @@ class SimpleSimEnv(gym.Env):
         # We observe an RGB image with pixels in [0, 255]
         self.observation_space = spaces.Box(
             low=0,
-            high=255,
+            high=1,
             shape=IMG_SHAPE
         )
 
