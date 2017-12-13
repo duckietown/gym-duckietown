@@ -88,6 +88,15 @@ def createFBO():
 
     return fbId, fbTex
 
+def rotatePoint(px, py, cx, cy, theta):
+    dx = px - cx
+    dy = py - cy
+
+    dx = dx * math.cos(theta) - dy * math.sin(theta)
+    dy = dy * math.cos(theta) + dx * math.sin(theta)
+
+    return cx + dx, cy + dy
+
 class SimpleSimEnv(gym.Env):
     """Simplistic road simulator to test RL training"""
 
@@ -154,6 +163,9 @@ class SimpleSimEnv(gym.Env):
         # Starting position
         self.startPos = (-0.25, 0.2, 0.47)
 
+        # Distance between the robot's wheels
+        self.wheelDist = 0.4
+
         # Initialize the state
         self.seed()
         self.reset()
@@ -186,31 +198,71 @@ class SimpleSimEnv(gym.Env):
 
         return (x, 0, z)
 
+    def getLeftVec(self):
+        x = math.sin(self.curAngle)
+        z = -math.cos(self.curAngle)
+
+        return (x, 0, z)
+
+    def _updatePos(self, wheelVels, deltaTime):
+        """
+        Update the position of the robot, simulating differential drive
+        """
+
+        Vl, Vr = wheelVels
+        l = self.wheelDist
+
+        # If the wheel velocities are the same, then there is no rotation
+        if Vl == Vr:
+            dx, dy, dz = self.getDirVec()
+            px, py, pz = self.curPos
+            self.curPos = (
+                px + dx * Vl * deltaTime,
+                py + dy * Vl * deltaTime,
+                pz + dz * Vl * deltaTime
+            )
+            return
+
+        # Compute the angular rotation velocity about the ICC (center of curvature)
+        w = (Vr - Vl) / l
+
+        # Compute the distance to the center of curvature
+        r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
+
+        rotAngle = w * deltaTime
+
+        #print('rotAngle=%s' % rotAngle)
+        #print('r=%s' % r)
+
+        # Rotate the robot's position
+        leftVec = self.getLeftVec()
+        px, py, pz = self.curPos
+        cx = px + leftVec[0] * -r
+        cz = pz + leftVec[2] * -r
+        npx, npz = rotatePoint(px, pz, cx, cz, -rotAngle)
+        self.curPos = (npx, py, npz)
+
+        # Update the robot's angle
+        self.curAngle -= rotAngle
+
     def _step(self, action):
         self.stepCount += 1
 
-        x, y, z = self.curPos
-
-        # Left
-        if action[0] < 0:
-            x -= 0.06
-        # Right
-        elif action[1] < 0:
-            x += 0.06
-        # Forward
-        else:
-            z -= 0.06
+        # Update the robot's position
+        self._updatePos(action, 0.1)
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics
         posNoise = self.np_random.uniform(low=-0.01, high=0.01, size=(3,))
+        x, y, z = self.curPos
         x += posNoise[0]
-        #y += posNoise[1]
         z += posNoise[2]
         self.curPos = (x, y, z)
 
         # End of lane, to the right
         targetPos = (0.25, 0.2, -2.0)
+
+        x, y, z = self.curPos
 
         dx = x - targetPos[0]
         dz = z - targetPos[2]
@@ -240,10 +292,6 @@ class SimpleSimEnv(gym.Env):
         return obs, reward, done, {}
 
     def _renderObs(self):
-        #fbBinding = GLint(0)
-        #glGetIntegerv(GL_FRAMEBUFFER_BINDING, byref(fbBinding))
-        #print('current fb binding: %s' % fbBinding)
-
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
         pyglet.gl._shadow_window.switch_to()
