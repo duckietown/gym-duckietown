@@ -303,7 +303,7 @@ class SimpleSimEnv(gym.Env):
 
         # If the agent goes too far left or right,
         # end the episode early
-        if dx < -1.00 or dx > 0.50:
+        if x < -ROAD_TILE_SIZE/2 or x > ROAD_TILE_SIZE/2:
             reward = -10
             done = True
 
