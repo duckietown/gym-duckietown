@@ -26,6 +26,9 @@ CAMERA_HEIGHT = 64
 # Camera image shape
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
+# Horizon/wall color
+HORIZON_COLOR = (0.75, 0.70, 0.70)
+
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
 
@@ -193,13 +196,20 @@ class SimpleSimEnv(gym.Env):
         # Step count since episode start
         self.stepCount = 0
 
+        # Horizon/wall color
+        colorNoise = self.np_random.uniform(low=0.9, high=1.1, size=(3,))
+        self.horizonColor = (
+            HORIZON_COLOR[0] * colorNoise[0],
+            HORIZON_COLOR[1] * colorNoise[1],
+            HORIZON_COLOR[2] * colorNoise[2]
+        )
+
         # Distance between the robot's wheels
         # TODO: add randomization
         self.wheelDist = WHEEL_DIST
 
         # Distance bwteen camera and ground
-        # TODO: add randomization
-        self.camHeight = CAMERA_FLOOR_DIST
+        self.camHeight = CAMERA_FLOOR_DIST * self.np_random.uniform(0.95, 1.05)
 
         # Randomize the starting position
         self.curPos = (
@@ -330,7 +340,7 @@ class SimpleSimEnv(gym.Env):
         glBindFramebuffer(GL_FRAMEBUFFER, self.fbId);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-        glClearColor(0.75, 0.70, 0.70, 1.0)
+        glClearColor(*self.horizonColor, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         # Set the projection matrix
