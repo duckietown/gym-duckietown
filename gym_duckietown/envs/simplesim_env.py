@@ -114,7 +114,7 @@ class SimpleSimEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
-    def __init__(self, imgNoiseScale=0.05):
+    def __init__(self, imgNoiseScale=0):
         # Amount of image noise to produce (standard deviation)
         self.imgNoiseScale = imgNoiseScale
 
