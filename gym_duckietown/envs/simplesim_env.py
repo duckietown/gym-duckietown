@@ -114,7 +114,10 @@ class SimpleSimEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
-    def __init__(self):
+    def __init__(self, imgNoiseScale=0.05):
+        # Amount of image noise to produce (standard deviation)
+        self.imgNoiseScale = imgNoiseScale
+
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -382,9 +385,13 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Add noise to the image
-        # TODO: adjustable noise coefficient
-        #noise = self.np_random.normal(size=IMG_SHAPE, loc=0, scale=0.05)
-        #np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
+        if self.imgNoiseScale > 0:
+            noise = self.np_random.normal(
+                size=IMG_SHAPE,
+                loc=0,
+                scale=self.imgNoiseScale
+            )
+            np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
