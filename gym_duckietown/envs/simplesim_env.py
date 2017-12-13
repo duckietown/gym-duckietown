@@ -191,12 +191,38 @@ class SimpleSimEnv(gym.Env):
         ]
         self.groundVList = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
+        # Tile grid size
+        self.gridWidth = 5
+        self.gridHeight = 5
+        self.grid = [None] * self.gridWidth * self.gridHeight
+
+        # Assemble the initial grid
+        self._setGrid(0, 0, ('linear', 0))
+        self._setGrid(0, 1, ('linear', 0))
+        self._setGrid(0, 2, ('linear', 0))
+        self._setGrid(0, 3, ('linear', 0))
+
+        # TODO: left turn
+
+
+
+
         # Initialize the state
         self.seed()
         self.reset()
 
     def _close(self):
         pass
+
+    def _setGrid(self, i, j, tile):
+        assert i >= 0 and i < self.gridWidth
+        assert j >= 0 and j < self.gridHeight
+        self.grid[j * self.gridWidth + i] = tile
+
+    def _getGrid(self, i, j):
+        assert i >= 0 and i < self.gridWidth
+        assert j >= 0 and j < self.gridHeight
+        return self.grid[j * self.gridWidth + i]
 
     def _noisify(self, val, scale=0.1):
         """Add noise to a value"""
@@ -387,11 +413,31 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
-        glBindTexture(self.roadTex.target, self.roadTex.id)
         glColor3f(1, 1, 1)
-        for i in range(4):
-            self.roadVList.draw(GL_QUADS)
-            glTranslatef(0, 0, -ROAD_TILE_SIZE)
+
+        # For each grid tile
+        for j in range(self.gridHeight):
+            for i in range(self.gridWidth):
+                # Get the tile type and angle
+                tile = self._getGrid(i, j)
+                if tile == None:
+                    continue
+                kind, angle = tile
+                glPushMatrix()
+                glTranslatef(i * ROAD_TILE_SIZE, 0, -j * ROAD_TILE_SIZE)
+                glRotatef(angle * 90, 0, 1, 0)
+
+                # Linear tile type
+                if kind == 'linear':
+                    glBindTexture(self.roadTex.target, self.roadTex.id)
+
+                # TODO:
+                # Left turn tile type
+
+
+
+                self.roadVList.draw(GL_QUADS)
+                glPopMatrix()
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
