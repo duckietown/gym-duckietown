@@ -27,7 +27,10 @@ CAMERA_HEIGHT = 64
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
 # Horizon/wall color
-HORIZON_COLOR = (0.75, 0.70, 0.70)
+HORIZON_COLOR = np.array([0.75, 0.70, 0.70])
+
+# Ground/floor color
+GROUND_COLOR = np.array([0.2, 0.2, 0.2])
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
@@ -157,6 +160,9 @@ class SimpleSimEnv(gym.Env):
         # Load the road texture
         self.roadTex = loadTexture('road.png')
 
+        # Load the road turn texture
+        self.roadDiagTex = loadTexture('road_diag.png')
+
         # Create a frame buffer object
         self.fbId, self.fbTex = createFBO()
 
@@ -192,35 +198,45 @@ class SimpleSimEnv(gym.Env):
     def _close(self):
         pass
 
+    def _noisify(self, val, scale=0.1):
+        """Add noise to a value"""
+        assert scale >= 0
+        assert scale < 1
+
+        if isinstance(val, np.ndarray):
+            noise = self.np_random.uniform(low=1-scale, high=1+scale, size=val.shape)
+        else:
+            noise = self.np_random.uniform(low=1-scale, high=1+scale)
+
+        return val * noise
+
     def _reset(self):
         # Step count since episode start
         self.stepCount = 0
 
-        # Horizon/wall color
-        colorNoise = self.np_random.uniform(low=0.9, high=1.1, size=(3,))
-        self.horizonColor = (
-            HORIZON_COLOR[0] * colorNoise[0],
-            HORIZON_COLOR[1] * colorNoise[1],
-            HORIZON_COLOR[2] * colorNoise[2]
-        )
+        # Horizon color
+        self.horizonColor = self._noisify(HORIZON_COLOR)
+
+        # Ground color
+        self.groundColor = self._noisify(GROUND_COLOR, 0.1)
 
         # Distance between the robot's wheels
-        # TODO: add randomization
-        self.wheelDist = WHEEL_DIST
+        self.wheelDist = self._noisify(WHEEL_DIST)
 
-        # Distance bwteen camera and ground
-        self.camHeight = CAMERA_FLOOR_DIST * self.np_random.uniform(0.95, 1.05)
+        # Distance bewteen camera and ground
+        self.camHeight = self._noisify(CAMERA_FLOOR_DIST, 0.05)
 
         # Randomize the starting position
-        self.curPos = (
+        self.curPos = np.array([
             self.np_random.uniform(-0.30, 0.30),
             self.camHeight,
             0.40
-        )
+        ])
 
         # Starting direction angle, facing (0, 0, -1)
-        self.curAngle = self.np_random.uniform(0.8, 1.2) * (-math.pi/2)
+        self.curAngle = self._noisify(-math.pi/2, 0.2)
 
+        # Get the first camera image
         obs = self._renderObs()
 
         # Return first observation
@@ -255,11 +271,11 @@ class SimpleSimEnv(gym.Env):
         if Vl == Vr:
             dx, dy, dz = self.getDirVec()
             px, py, pz = self.curPos
-            self.curPos = (
+            self.curPos = np.array([
                 px + dx * Vl * deltaTime,
                 py + dy * Vl * deltaTime,
                 pz + dz * Vl * deltaTime
-            )
+            ])
             return
 
         # Compute the angular rotation velocity about the ICC (center of curvature)
@@ -277,7 +293,7 @@ class SimpleSimEnv(gym.Env):
         cx = px + leftVec[0] * -r
         cz = pz + leftVec[2] * -r
         npx, npz = rotatePoint(px, pz, cx, cz, -rotAngle)
-        self.curPos = (npx, py, npz)
+        self.curPos = np.array([npx, py, npz])
 
         # Update the robot's angle
         self.curAngle -= rotAngle
@@ -290,20 +306,15 @@ class SimpleSimEnv(gym.Env):
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics
-        posNoise = self.np_random.uniform(low=-0.01, high=0.01, size=(3,))
-        x, y, z = self.curPos
-        x += posNoise[0]
-        z += posNoise[2]
-        self.curPos = (x, y, z)
+        self.curPos = self._noisify(self.curPos, 0.01)
+        self.curPos[1] = self.camHeight
 
         # End of lane, to the right
         targetPos = (0.15, self.camHeight, -1.5)
 
         x, y, z = self.curPos
-
         dx = x - targetPos[0]
         dz = z - targetPos[2]
-
         dist = abs(dx) + abs(dz)
         reward = 3 - dist
 
@@ -368,7 +379,7 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the ground quad
         glDisable(GL_TEXTURE_2D)
-        glColor3f(0.2, 0.2, 0.2)
+        glColor3f(*self.groundColor)
         glPushMatrix()
         glScalef(50, 1, 50)
         self.groundVList.draw(GL_QUADS)
