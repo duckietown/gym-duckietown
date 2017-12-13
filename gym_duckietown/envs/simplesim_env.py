@@ -275,7 +275,7 @@ class SimpleSimEnv(gym.Env):
         done = False
 
         # If the objective is reached
-        if dist <= 0.15:
+        if dist <= 0.12:
             reward = 1000 - self.stepCount
             done = True
 
