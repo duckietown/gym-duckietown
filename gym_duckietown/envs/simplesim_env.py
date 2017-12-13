@@ -123,7 +123,7 @@ class SimpleSimEnv(gym.Env):
         self.reward_range = (-1, 1000)
 
         # Environment configuration
-        self.maxSteps = 65
+        self.maxSteps = 50
 
         # Array to render the image into
         self.imgArray = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
@@ -160,9 +160,6 @@ class SimpleSimEnv(gym.Env):
         ]
         self.roadVList = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
-        # Starting position
-        self.startPos = (-0.25, 0.2, 0.47)
-
         # Distance between the robot's wheels
         self.wheelDist = 0.4
 
@@ -177,10 +174,15 @@ class SimpleSimEnv(gym.Env):
         # Step count since episode start
         self.stepCount = 0
 
-        self.curPos = self.startPos
+        # Randomize the starting position
+        self.curPos = (
+            self.np_random.uniform(-0.30, 0.30),
+            0.20,
+            0.40
+        )
 
-        # Starting angle ifacing (0, 0, -1)
-        self.curAngle = -math.pi / 2
+        # Starting angle, facing (0, 0, -1)
+        self.curAngle = self.np_random.uniform(0.8, 1.2) * (-math.pi/2)
 
         obs = self._renderObs()
 
@@ -273,7 +275,7 @@ class SimpleSimEnv(gym.Env):
         done = False
 
         # If the objective is reached
-        if dist <= 0.10:
+        if dist <= 0.15:
             reward = 1000 - self.stepCount
             done = True
 
