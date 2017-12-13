@@ -21,10 +21,10 @@ def main():
         action = None
         if symbol == key.LEFT:
             print('left')
-            action = numpy.array([-1, 1])
+            action = numpy.array([0, 0.2])
         elif symbol == key.RIGHT:
             print('right')
-            action = numpy.array([1, -1])
+            action = numpy.array([0.2, -0])
         elif symbol == key.UP:
             print('forward')
             action = numpy.array([1, 1])
