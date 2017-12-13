@@ -26,6 +26,15 @@ CAMERA_HEIGHT = 64
 # Camera image shape
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
+# Distance from camera to floor (10.8cm)
+CAMERA_FLOOR_DIST = 0.108
+
+# Distance betwen robot wheels (10.2cm)
+WHEEL_DIST = 0.102
+
+# Road tile dimensions (2ft x 2ft, 61cm wide)
+ROAD_TILE_SIZE = 0.61
+
 def loadTexture(texName):
     # Assemble the absolute path to the texture
     absPathModule = os.path.realpath(__file__)
@@ -146,11 +155,12 @@ class SimpleSimEnv(gym.Env):
         self.fbId, self.fbTex = createFBO()
 
         # Create the vertex list for our road quad
+        halfSize = ROAD_TILE_SIZE / 2
         verts = [
-            -0.5, 0.0,  0,
-            -0.5, 0.0, -1,
-             0.5, 0.0, -1,
-             0.5, 0.0,  0
+            -halfSize, 0.0,  halfSize,
+            -halfSize, 0.0, -halfSize,
+             halfSize, 0.0, -halfSize,
+             halfSize, 0.0,  halfSize
         ]
         texCoords = [
             0.0, 0.0,
@@ -160,8 +170,14 @@ class SimpleSimEnv(gym.Env):
         ]
         self.roadVList = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
-        # Distance between the robot's wheels
-        self.wheelDist = 0.4
+        # Create the vertex list for the ground quad
+        verts = [
+            -1, -0.05,  1,
+            -1, -0.05, -1,
+             1, -0.05, -1,
+             1, -0.05,  1
+        ]
+        self.groundVList = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
         # Initialize the state
         self.seed()
@@ -174,14 +190,22 @@ class SimpleSimEnv(gym.Env):
         # Step count since episode start
         self.stepCount = 0
 
+        # Distance between the robot's wheels
+        # TODO: add randomization
+        self.wheelDist = WHEEL_DIST
+
+        # Distance bwteen camera and ground
+        # TODO: add randomization
+        self.camHeight = CAMERA_FLOOR_DIST
+
         # Randomize the starting position
         self.curPos = (
             self.np_random.uniform(-0.30, 0.30),
-            0.20,
+            self.camHeight,
             0.40
         )
 
-        # Starting angle, facing (0, 0, -1)
+        # Starting direction angle, facing (0, 0, -1)
         self.curAngle = self.np_random.uniform(0.8, 1.2) * (-math.pi/2)
 
         obs = self._renderObs()
@@ -231,10 +255,8 @@ class SimpleSimEnv(gym.Env):
         # Compute the distance to the center of curvature
         r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
 
+        # Compute the rotatio angle for this time step
         rotAngle = w * deltaTime
-
-        #print('rotAngle=%s' % rotAngle)
-        #print('r=%s' % r)
 
         # Rotate the robot's position
         leftVec = self.getLeftVec()
@@ -262,7 +284,7 @@ class SimpleSimEnv(gym.Env):
         self.curPos = (x, y, z)
 
         # End of lane, to the right
-        targetPos = (0.25, 0.2, -2.0)
+        targetPos = (0.15, self.camHeight, -1.5)
 
         x, y, z = self.curPos
 
@@ -305,7 +327,7 @@ class SimpleSimEnv(gym.Env):
         glBindFramebuffer(GL_FRAMEBUFFER, self.fbId);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-        glClearColor(0.4, 0.4, 0.4, 1.0)
+        glClearColor(0.75, 0.70, 0.70, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         # Set the projection matrix
@@ -331,12 +353,21 @@ class SimpleSimEnv(gym.Env):
             0, 1.0, 0.0
         )
 
+        # Draw the ground quad
+        glDisable(GL_TEXTURE_2D)
+        glColor3f(0.2, 0.2, 0.2)
+        glPushMatrix()
+        glScalef(50, 1, 50)
+        self.groundVList.draw(GL_QUADS)
+        glPopMatrix()
+
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
         glBindTexture(self.roadTex.target, self.roadTex.id)
-        for i in range(3):
+        glColor3f(1, 1, 1)
+        for i in range(4):
             self.roadVList.draw(GL_QUADS)
-            glTranslatef(0, 0, -1)
+            glTranslatef(0, 0, -ROAD_TILE_SIZE)
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
