@@ -73,11 +73,6 @@ def createFBO():
     # Attach the texture to the framebuffer
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbTex, 0)
     res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-
-    #context = pyglet.gl.get_current_context()
-    #print(id(context))
-    #print('res=%s' % res)
-
     assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Generate a depth  buffer and bind it to the frame buffer
@@ -172,19 +167,24 @@ class SimpleSimEnv(gym.Env):
 
         self.curPos = self.startPos
 
+        # Starting angle ifacing (0, 0, -1)
+        self.curAngle = -math.pi / 2
+
         obs = self._renderObs()
 
         # Return first observation
         return obs
 
     def _seed(self, seed=None):
-        """
-        The seed function sets the random elements of the environment.
-        """
-
         self.np_random, _ = seeding.np_random(seed)
 
         return [seed]
+
+    def getDirVec(self):
+        x = math.cos(self.curAngle)
+        z = math.sin(self.curAngle)
+
+        return (x, 0, z)
 
     def _step(self, action):
         self.stepCount += 1
@@ -258,26 +258,28 @@ class SimpleSimEnv(gym.Env):
         glClearColor(0.4, 0.4, 0.4, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        # Set the projection matrix
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(45.0, CAMERA_WIDTH / float(CAMERA_HEIGHT), 0.05, 100.0)
+
         # Set modelview matrix
-        glMatrixMode(gl.GL_MODELVIEW)
+        x, y, z = self.curPos
+        dx, dy, dz = self.getDirVec()
+        glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         gluLookAt(
             # Eye position
-            self.curPos[0],
-            self.curPos[1] + self.np_random.uniform(low=-0.006, high=0.006),
-            self.curPos[2],
+            x,
+            y + self.np_random.uniform(low=-0.006, high=0.006),
+            z,
             # Target
-            self.curPos[0],
-            self.curPos[1],
-            self.curPos[2] - 1,
+            x + dx,
+            y + dy,
+            z + dz,
             # Up vector
             0, 1.0, 0.0
         )
-
-        # Set the projection matrix
-        glMatrixMode(gl.GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(45.0, CAMERA_WIDTH / float(CAMERA_HEIGHT), 0.05, 100.0)
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
