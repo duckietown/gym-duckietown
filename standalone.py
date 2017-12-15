@@ -2,6 +2,7 @@
 
 from __future__ import division, print_function
 
+import sys
 import numpy
 import gym
 
@@ -15,7 +16,9 @@ def main():
     env.reset()
 
     env.render('app')
-    @env.unwrapped.window.event
+    window = env.unwrapped.window
+
+    @window.event
     def on_key_press(symbol, modifiers):
         from pyglet.window import key
 
@@ -29,27 +32,29 @@ def main():
         elif symbol == key.UP:
             print('forward')
             action = 2
-        #elif symbol == key.DOWN:
-        #    print('back')
-        #    action = numpy.array([-1, -1])
         elif symbol == key.SPACE:
             print('RESET')
-            action = None
             env.reset()
+            env.render('app')
+            return
+        elif symbol == key.ESCAPE:
+            sys.exit(0)
         else:
             return
 
-        if action is not None:
-            print('stepping')
-            obs, reward, done, info = env.step(action)
+        obs, reward, done, info = env.step(action)
 
-            print('stepCount = %s, reward=%.3f' % (env.unwrapped.stepCount, reward))
+        print('stepCount = %s, reward=%.3f' % (env.unwrapped.stepCount, reward))
 
-            if done:
-                print('done!')
-                env.reset()
+        if done:
+            print('done!')
+            env.reset()
 
         env.render('app')
+
+    @window.event
+    def on_close():
+        sys.exit(0)
 
     # Enter main event loop
     pyglet.app.run()

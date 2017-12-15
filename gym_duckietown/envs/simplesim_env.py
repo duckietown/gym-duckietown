@@ -120,10 +120,10 @@ class SimpleSimEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
-    def __init__(self, imgNoiseScale=0):
-        # Amount of image noise to produce (standard deviation)
-        self.imgNoiseScale = imgNoiseScale
-
+    def __init__(self,
+        maxSteps=200,
+        imgNoiseScale=0
+    ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -140,14 +140,20 @@ class SimpleSimEnv(gym.Env):
 
         self.reward_range = (-1, 1000)
 
-        # Environment configuration
-        self.maxSteps = 50
+        # Maximum number of steps per episode
+        self.maxSteps = maxSteps
+
+        # Amount of image noise to produce (standard deviation)
+        self.imgNoiseScale = imgNoiseScale
 
         # Array to render the image into
         self.imgArray = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
 
-        # For rendering
+        # Window for displaying the environment to humans
         self.window = None
+
+        # Invisible window to render into (shadow OpenGL context)
+        self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
 
         # For displaying text
         self.textLabel = pyglet.text.Label(
@@ -169,16 +175,16 @@ class SimpleSimEnv(gym.Env):
         # Create the vertex list for our road quad
         halfSize = ROAD_TILE_SIZE / 2
         verts = [
-            -halfSize, 0.0,  halfSize,
             -halfSize, 0.0, -halfSize,
              halfSize, 0.0, -halfSize,
-             halfSize, 0.0,  halfSize
+             halfSize, 0.0,  halfSize,
+            -halfSize, 0.0,  halfSize
         ]
         texCoords = [
+            1.0, 0.0,
             0.0, 0.0,
             0.0, 1.0,
-            1.0, 1.0,
-            1.0, 0.0
+            1.0, 1.0
         ]
         self.roadVList = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
@@ -192,20 +198,39 @@ class SimpleSimEnv(gym.Env):
         self.groundVList = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
         # Tile grid size
-        self.gridWidth = 5
-        self.gridHeight = 5
+        self.gridWidth = 6
+        self.gridHeight = 6
         self.grid = [None] * self.gridWidth * self.gridHeight
 
         # Assemble the initial grid
-        self._setGrid(0, 0, ('linear', 0))
+        # Left turn
+        self._setGrid(0, 0, ('diag_left', 3))
+        # First straight
         self._setGrid(0, 1, ('linear', 0))
         self._setGrid(0, 2, ('linear', 0))
         self._setGrid(0, 3, ('linear', 0))
-
-        # TODO: left turn
-
-
-
+        self._setGrid(0, 4, ('linear', 0))
+        # Left turn
+        self._setGrid(0, 5, ('diag_left', 0))
+        # Second straight
+        self._setGrid(1, 5, ('linear', 3))
+        self._setGrid(2, 5, ('linear', 3))
+        self._setGrid(3, 5, ('linear', 3))
+        self._setGrid(4, 5, ('linear', 3))
+        # Third turn
+        self._setGrid(5, 5, ('diag_left', 1))
+        # Third straight
+        self._setGrid(5, 4, ('linear', 2))
+        self._setGrid(5, 3, ('linear', 2))
+        self._setGrid(5, 2, ('linear', 2))
+        self._setGrid(5, 1, ('linear', 2))
+        # Fourth turn
+        self._setGrid(5, 0, ('diag_left', 2))
+        # Last straight
+        self._setGrid(1, 0, ('linear', 1))
+        self._setGrid(2, 0, ('linear', 1))
+        self._setGrid(3, 0, ('linear', 1))
+        self._setGrid(4, 0, ('linear', 1))
 
         # Initialize the state
         self.seed()
@@ -224,7 +249,7 @@ class SimpleSimEnv(gym.Env):
         assert j >= 0 and j < self.gridHeight
         return self.grid[j * self.gridWidth + i]
 
-    def _noisify(self, val, scale=0.1):
+    def _perturb(self, val, scale=0.1):
         """Add noise to a value"""
         assert scale >= 0
         assert scale < 1
@@ -241,26 +266,26 @@ class SimpleSimEnv(gym.Env):
         self.stepCount = 0
 
         # Horizon color
-        self.horizonColor = self._noisify(HORIZON_COLOR)
+        self.horizonColor = self._perturb(HORIZON_COLOR)
 
         # Ground color
-        self.groundColor = self._noisify(GROUND_COLOR, 0.1)
+        self.groundColor = self._perturb(GROUND_COLOR, 0.1)
 
         # Distance between the robot's wheels
-        self.wheelDist = self._noisify(WHEEL_DIST)
+        self.wheelDist = self._perturb(WHEEL_DIST)
 
         # Distance bewteen camera and ground
-        self.camHeight = self._noisify(CAMERA_FLOOR_DIST, 0.05)
+        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.05)
 
         # Randomize the starting position
         self.curPos = np.array([
-            self.np_random.uniform(-0.30, 0.30),
+            self.np_random.uniform(-0.25, 0.25),
             self.camHeight,
             0.40
         ])
 
-        # Starting direction angle, facing (0, 0, -1)
-        self.curAngle = self._noisify(-math.pi/2, 0.2)
+        # Starting direction angle
+        self.curAngle = self._perturb(math.pi/2, 0.2)
 
         # Get the first camera image
         obs = self._renderObs()
@@ -332,43 +357,83 @@ class SimpleSimEnv(gym.Env):
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics
-        self.curPos = self._noisify(self.curPos, 0.01)
+        self.curPos = self._perturb(self.curPos, 0.01)
         self.curPos[1] = self.camHeight
 
-        # End of lane, to the right
-        targetPos = (0.15, self.camHeight, -1.5)
-
+        # Get the current position
         x, y, z = self.curPos
-        dx = x - targetPos[0]
-        dz = z - targetPos[2]
-        dist = abs(dx) + abs(dz)
-        reward = 3 - dist
 
-        done = False
+        # Compute the grid position of the agent
+        xR = x / ROAD_TILE_SIZE
+        i = int(xR + (0.5 if xR > 0 else -0.5))
+        zR = z / ROAD_TILE_SIZE
+        j = int(zR + (0.5 if zR > 0 else -0.5))
 
-        # If the objective is reached
-        if dist <= 0.12:
-            reward = 1000 - self.stepCount
-            done = True
+        # Generate the current camera image
+        obs = self._renderObs()
 
-        # If the agent goes too far left or right,
-        # end the episode early
-        if x < -ROAD_TILE_SIZE/2 or x > ROAD_TILE_SIZE/2:
+        # If the agent is outside of the grid
+        if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
             reward = -10
             done = True
+            return obs, reward, done, {}
 
-        obs = self._renderObs()
+        cell = self._getGrid(i, j)
+
+        # If there is nothing at this grid cell
+        if cell == None:
+            reward = -10
+            done = True
+            return obs, reward, done, {}
 
         # If the maximum time step count is reached
         if self.stepCount >= self.maxSteps:
             done = True
+            reward = 0
+            return obs, reward, done, {}
+
+        kind, angle = cell
+
+        # Compute the fractional grid position
+        # This is the position of the agent within the cell
+        xM = xR + 0.5 - i
+        zM = zR + 0.5 - j
+
+        xC, zC = rotatePoint(xM, zM, 0.5, 0.5, -math.pi / 2 * angle)
+
+        #print('i=%s, j=%s' % (i, j))
+        #print('xM=%s, zM=%s' % (xM, zM))
+        #print('xC=%s, zC=%s' % (xC, zC))
+
+        reward = 0
+        done = False
+
+        if kind == 'linear':
+            if xC < 0.5:
+                #print('in right lane')
+                reward = 1
+            else:
+                #print('in left lane')
+                reward = -1
+
+        elif kind == 'diag_left':
+            if xC - zC < 0.5:
+                #print('in right lane')
+                reward = 1
+            else:
+                reward = -1
+
+        # Bonus for moving forward
+        if action[0] > 0 and action[1] > 0:
+            reward += 1
 
         return obs, reward, done, {}
 
     def _renderObs(self):
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
-        pyglet.gl._shadow_window.switch_to()
+        #pyglet.gl._shadow_window.switch_to()
+        self.shadow_window.switch_to()
 
         isFb = glIsFramebuffer(self.fbId)
         assert isFb == True
@@ -424,17 +489,16 @@ class SimpleSimEnv(gym.Env):
                     continue
                 kind, angle = tile
                 glPushMatrix()
-                glTranslatef(i * ROAD_TILE_SIZE, 0, -j * ROAD_TILE_SIZE)
+                glTranslatef(i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE)
                 glRotatef(angle * 90, 0, 1, 0)
 
-                # Linear tile type
+                # Bind the appropriate texture
                 if kind == 'linear':
                     glBindTexture(self.roadTex.target, self.roadTex.id)
-
-                # TODO:
-                # Left turn tile type
-
-
+                elif kind == 'diag_left':
+                    glBindTexture(self.roadDiagTex.target, self.roadDiagTex.id)
+                else:
+                    assert False
 
                 self.roadVList.draw(GL_QUADS)
                 glPopMatrix()
