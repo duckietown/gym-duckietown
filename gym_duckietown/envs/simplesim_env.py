@@ -30,10 +30,16 @@ IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 HORIZON_COLOR = np.array([0.75, 0.70, 0.70])
 
 # Ground/floor color
-GROUND_COLOR = np.array([0.2, 0.2, 0.2])
+GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
+
+# Angle at which the camera is pitched downwards
+CAMERA_ANGLE = 8
+
+# Camera field of view angle
+CAMERA_FOV = 82
 
 # Distance betwen robot wheels (10.2cm)
 WHEEL_DIST = 0.102
@@ -291,13 +297,19 @@ class SimpleSimEnv(gym.Env):
         self.horizonColor = self._perturb(HORIZON_COLOR)
 
         # Ground color
-        self.groundColor = self._perturb(GROUND_COLOR, 0.1)
+        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)
 
         # Distance bewteen camera and ground
         self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.05)
+
+        # Angle at which the camera is pitched downwards
+        self.camAngle = self._perturb(CAMERA_ANGLE, 0.12)
+
+        # Field of view angle of the camera
+        self.camFOV = self._perturb(CAMERA_FOV, 0.15)
 
         # Randomize the starting position
         self.curPos = np.array([
@@ -468,13 +480,19 @@ class SimpleSimEnv(gym.Env):
         # Set the projection matrix
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45.0, CAMERA_WIDTH / float(CAMERA_HEIGHT), 0.05, 100.0)
+        gluPerspective(
+            self.camFOV,
+            CAMERA_WIDTH / float(CAMERA_HEIGHT),
+            0.05,
+            100.0
+        )
 
         # Set modelview matrix
         x, y, z = self.curPos
         dx, dy, dz = self.getDirVec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+        glRotatef(self.camAngle, 1, 0, 0)
         gluLookAt(
             # Eye position
             x,
