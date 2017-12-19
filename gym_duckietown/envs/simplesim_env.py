@@ -59,15 +59,43 @@ def loadTexture(texName):
 
     return tex
 
-def createFBO():
-    """Create a frame buffer object"""
+def createFrameBuffers():
+    """Create the frame buffer objects"""
 
-    # Create the framebuffer (rendering target)
-    fbId = GLuint(0)
-    glGenFramebuffers(1, byref(fbId))
-    glBindFramebuffer(GL_FRAMEBUFFER, fbId)
+    # Create the multisampled frame buffer (rendering target)
+    multiFBO = GLuint(0)
+    glGenFramebuffers(1, byref(multiFBO))
+    glBindFramebuffer(GL_FRAMEBUFFER, multiFBO)
 
-    # Create the texture to render into
+    # Create a multisampled texture to render into
+    numSamples = 32
+    fbTex = GLuint(0)
+    glGenTextures( 1, byref(fbTex));
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex);
+    glTexImage2DMultisample(
+        GL_TEXTURE_2D_MULTISAMPLE,
+        numSamples,
+        GL_RGBA32F,
+        CAMERA_WIDTH,
+        CAMERA_HEIGHT,
+        True
+    );
+    glFramebufferTexture2D(
+        GL_FRAMEBUFFER,
+        GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D_MULTISAMPLE,
+        fbTex,
+        0
+    );
+    res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+    assert res == GL_FRAMEBUFFER_COMPLETE
+
+    # Create the frame buffer used to resolve the final render
+    finalFBO = GLuint(0)
+    glGenFramebuffers(1, byref(finalFBO))
+    glBindFramebuffer(GL_FRAMEBUFFER, finalFBO)
+
+    # Create the texture used to resolve the final render
     fbTex = GLuint(0)
     glGenTextures(1, byref(fbTex))
     glBindTexture(GL_TEXTURE_2D, fbTex)
@@ -82,26 +110,20 @@ def createFBO():
         GL_FLOAT,
         None
     )
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    # Attach the texture to the framebuffer
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbTex, 0)
+    glFramebufferTexture2D(
+        GL_FRAMEBUFFER,
+        GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D,
+        fbTex,
+        0
+    )
     res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     assert res == GL_FRAMEBUFFER_COMPLETE
-
-    # Generate a depth  buffer and bind it to the frame buffer
-    depthBuffer = GLuint(0);
-    glGenRenderbuffers( 1, byref(depthBuffer))
-    glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer)
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, CAMERA_WIDTH, CAMERA_HEIGHT)
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
 
     # Unbind the frame buffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-    return fbId, fbTex
+    return multiFBO, finalFBO
 
 def rotatePoint(px, py, cx, cy, theta):
     dx = px - cx
@@ -170,7 +192,7 @@ class SimpleSimEnv(gym.Env):
         self.roadDiagTex = loadTexture('road_diag.png')
 
         # Create a frame buffer object
-        self.fbId, self.fbTex = createFBO()
+        self.multiFBO, self.finalFBO = createFrameBuffers()
 
         # Create the vertex list for our road quad
         halfSize = ROAD_TILE_SIZE / 2
@@ -399,8 +421,8 @@ class SimpleSimEnv(gym.Env):
         xM = xR + 0.5 - i
         zM = zR + 0.5 - j
 
+        # Compute the unrotated position of the agent in the cell
         xC, zC = rotatePoint(xM, zM, 0.5, 0.5, -math.pi / 2 * angle)
-
         #print('i=%s, j=%s' % (i, j))
         #print('xM=%s, zM=%s' % (xM, zM))
         #print('xC=%s, zC=%s' % (xC, zC))
@@ -435,11 +457,9 @@ class SimpleSimEnv(gym.Env):
         #pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
-        isFb = glIsFramebuffer(self.fbId)
-        assert isFb == True
-
-        # Bind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, self.fbId);
+        # Bind the multisampled frame buffer
+        glEnable(GL_MULTISAMPLE)
+        glBindFramebuffer(GL_FRAMEBUFFER, self.multiFBO);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
         glClearColor(*self.horizonColor, 1.0)
@@ -503,8 +523,20 @@ class SimpleSimEnv(gym.Env):
                 self.roadVList.draw(GL_QUADS)
                 glPopMatrix()
 
+        # Resolve the multisampled frame buffer into the final frame buffer
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.finalFBO);
+        glBlitFramebuffer(
+            0, 0,
+            CAMERA_WIDTH, CAMERA_HEIGHT,
+            0, 0,
+            CAMERA_WIDTH, CAMERA_HEIGHT,
+            GL_COLOR_BUFFER_BIT, GL_LINEAR
+        );
+
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
+        glBindFramebuffer(GL_FRAMEBUFFER, self.finalFBO);
         glReadPixels(
             0,
             0,
