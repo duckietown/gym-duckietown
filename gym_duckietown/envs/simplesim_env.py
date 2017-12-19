@@ -498,6 +498,8 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glColor3f(1, 1, 1)
 
         # For each grid tile
@@ -531,7 +533,8 @@ class SimpleSimEnv(gym.Env):
             CAMERA_WIDTH, CAMERA_HEIGHT,
             0, 0,
             CAMERA_WIDTH, CAMERA_HEIGHT,
-            GL_COLOR_BUFFER_BIT, GL_LINEAR
+            GL_COLOR_BUFFER_BIT,
+            GL_LINEAR
         );
 
         # Copy the frame buffer contents into a numpy array
