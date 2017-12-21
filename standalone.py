@@ -9,6 +9,8 @@ import gym
 from gym_duckietown.envs import DuckietownEnv, DiscreteEnv
 import pyglet
 
+import scipy.misc
+
 def main():
 
     env = gym.make('Duckie-SimpleSim-v0')
