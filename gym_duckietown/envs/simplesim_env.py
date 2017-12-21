@@ -149,7 +149,7 @@ class SimpleSimEnv(gym.Env):
     }
 
     def __init__(self,
-        maxSteps=300,
+        maxSteps=200,
         imgNoiseScale=0
     ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -402,9 +402,6 @@ class SimpleSimEnv(gym.Env):
     def _step(self, action):
         self.stepCount += 1
 
-        # Store the pre-update position
-        oldX, _, oldZ = self.curPos
-
         # Update the robot's position
         self._updatePos(action, 0.1)
 
@@ -414,7 +411,7 @@ class SimpleSimEnv(gym.Env):
         self.curPos[1] = self.camHeight
 
         # Get the current position
-        x, _, z = self.curPos
+        x, y, z = self.curPos
 
         # Compute the grid position of the agent
         xR = x / ROAD_TILE_SIZE
@@ -477,11 +474,7 @@ class SimpleSimEnv(gym.Env):
                 reward = -1
 
         # Bonus for moving forward
-        dX, dZ = rotatePoint(0, 1, 0, 0, math.pi / 2 * angle)
-        mX, mZ = (x - oldX, z - oldZ)
-        dirDot = dX*mX + dZ*mZ
-        if dirDot > 0:
-            #print('forward bonus')
+        if action[0] >= 0.3 and action[1] >= 0.3:
             reward += 1
 
         return obs, reward, done, {}
