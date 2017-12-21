@@ -192,7 +192,7 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Load the road texture
-        self.roadTex = loadTexture('road.png')
+        self.roadTex = loadTexture('road_plain.png')
 
         # Load the road turn texture
         self.roadDiagTex = loadTexture('road_diag.png')
@@ -298,6 +298,9 @@ class SimpleSimEnv(gym.Env):
 
         # Ground color
         self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
+
+        # Road color multiplier
+        self.roadColor = self.np_random.uniform(low=0.7, high=1.0, size=(3,))
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)
@@ -458,7 +461,7 @@ class SimpleSimEnv(gym.Env):
                 reward = -1
 
         # Bonus for moving forward
-        if action[0] > 0 and action[1] > 0:
+        if action[0] >= 0.3 and action[1] >= 0.3:
             reward += 1
 
         return obs, reward, done, {}
@@ -518,7 +521,8 @@ class SimpleSimEnv(gym.Env):
         glEnable(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glColor3f(1, 1, 1)
+        #glColor3f(1, 1, 1)
+        glColor3f(*self.roadColor)
 
         # For each grid tile
         for j in range(self.gridHeight):
