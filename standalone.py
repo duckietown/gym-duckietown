@@ -12,6 +12,7 @@ import pyglet
 def main():
 
     env = gym.make('Duckie-SimpleSim-v0')
+    #env = gym.make('Duckiebot-v0')
     env = DiscreteEnv(env)
     env.reset()
 
