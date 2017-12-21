@@ -36,10 +36,10 @@ GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 CAMERA_FLOOR_DIST = 0.108
 
 # Angle at which the camera is pitched downwards
-CAMERA_ANGLE = 8
+CAMERA_ANGLE = 14
 
 # Camera field of view angle
-CAMERA_FOV = 82
+CAMERA_FOV = 48
 
 # Distance betwen robot wheels (10.2cm)
 WHEEL_DIST = 0.102

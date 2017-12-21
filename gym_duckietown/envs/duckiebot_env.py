@@ -26,7 +26,7 @@ CAMERA_WIDTH = 64
 CAMERA_HEIGHT = 64
 
 # Camera image shape
-IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
+IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
 # Port to connect to on the server
 SERVER_PORT = 7777
@@ -120,7 +120,7 @@ class DuckiebotEnv(gym.Env):
         print("got image")
 
         # Return first observation
-        return self.img.transpose()
+        return self.img
 
     def _seed(self, seed=None):
         self.np_random, _ = seeding.np_random(seed)
@@ -128,6 +128,8 @@ class DuckiebotEnv(gym.Env):
         return [seed]
 
     def _step(self, action):
+
+        print(action)
 
         # we don't care about this reward since we're not training..
         reward = 0
@@ -137,14 +139,14 @@ class DuckiebotEnv(gym.Env):
         # Send the action to the server
         self.socket.send_json({
             "command":"action",
-            "values": [ float(action[0]), float(action[1]) ]
+            "values": [ float(action[0] * 0.7), float(action[1] * 0.7) ]
         })
 
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
         self.img = numpy.flip(self.img, axis=0)
 
-        return self.img.transpose(), reward, done, {}
+        return self.img, reward, done, {}
 
     def _render(self, mode='human', close=False):
         if close:
