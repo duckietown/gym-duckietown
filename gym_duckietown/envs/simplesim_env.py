@@ -324,6 +324,19 @@ class SimpleSimEnv(gym.Env):
         # Starting direction angle
         self.curAngle = self._perturb(math.pi/2, 0.2)
 
+        # Create the vertex list for the ground/noise triangles
+        # These are distractors, junk on the floor
+        numTris = 12
+        verts = []
+        colors = []
+        for i in range(0, 3 * numTris):
+            p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
+            c = self.np_random.uniform(low=0, high=0.9)
+            c = self._perturb(np.array([c, c, c]), 0.1)
+            verts += [p[0], p[1], p[2]]
+            colors += [c[0], c[1], c[2]]
+        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
+
         # Get the first camera image
         obs = self._renderObs()
 
@@ -517,11 +530,13 @@ class SimpleSimEnv(gym.Env):
         self.groundVList.draw(GL_QUADS)
         glPopMatrix()
 
+        # Draw the ground/noise triangles
+        self.triVList.draw(GL_TRIANGLES)
+
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        #glColor3f(1, 1, 1)
         glColor3f(*self.roadColor)
 
         # For each grid tile
