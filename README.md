@@ -49,7 +49,7 @@ I recommend using the PPO or ACKTR implementations.
 A sample command to launch training is:
 
 ```
-python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo a2c --entropy-coef 0.22 --lr e0.0002
+python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo a2c --entropy-coef 0.22 --lr 0.0002
 ```
 
 NOTE: you will likely have to tweak the `--entropy-coef` command-line argument.
