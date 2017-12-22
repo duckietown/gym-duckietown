@@ -41,18 +41,17 @@ The standalone application will connect to the ROS bridge node, display
 camera images received and send actions (keyboard commands) back. By
 default, the ROS bridge is assumed to be running on localhost.
 
-To train a reinforcement learning agent, you can clone the PyTorch code
-from [this repository](https://github.com/maximecb/pytorch-a2c-ppo-acktr).
-It has been modified and tested for compatibility with `gym-duckietown`.
-I recommend using the PPO or ACKTR implementations.
-
+To train a reinforcement learning agent, you can clone the PyTorch code from [this repository](https://github.com/maximecb/pytorch-a2c-ppo-acktr). It has been modified and tested for
+compatibility with `gym-duckietown`. I recommend using the PPO or ACKTR implementations.
 A sample command to launch training is:
 
 ```
-python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo a2c --entropy-coef 0.22 --lr 0.0002
+python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo acktr  --num-frames 10000000 --entropy-coef 0.22 --lr 0.0002
 ```
 
-NOTE: you will likely have to tweak the `--entropy-coef` command-line argument.
-You may also need to tweak the learning rate `--lr`. These are unfortunately
-fairly finnicky and depend on the algorithm you use, the size of your input,
-etc. See `arguments.py` for a list of command-line arguments.
+Then, to visualize the result of training, you can run the following command.
+Note that you can do this while the training process is still ongoing.
+
+```
+python3 enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 4 --load-dir trained_models/acktr
+```
