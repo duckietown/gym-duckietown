@@ -118,6 +118,7 @@ def main():
     # These variables are used to compute average rewards for all processes.
     episode_rewards = torch.zeros([args.num_processes, 1])
     final_rewards = torch.zeros([args.num_processes, 1])
+    reward_avg = 0
 
     if args.cuda:
         current_obs = current_obs.cuda()
@@ -260,8 +261,24 @@ def main():
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:
+            reward_avg = 0.99 * reward_avg + 0.01 * final_rewards.mean()
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
+
+            print(
+                "Updates {}, num timesteps {}, FPS {}, running avg reward {:.3f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                format(
+                    j,
+                    total_num_steps,
+                    int(total_num_steps / (end - start)),
+                    reward_avg,
+                    dist_entropy.data[0],
+                    value_loss.data[0],
+                    action_loss.data[0]
+                )
+            )
+
+            """
             print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
                 format(
                     j,
@@ -273,6 +290,8 @@ def main():
                     final_rewards.max(), dist_entropy.data[0],
                     value_loss.data[0], action_loss.data[0])
                 )
+            """
+
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
