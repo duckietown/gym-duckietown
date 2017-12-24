@@ -67,14 +67,14 @@ To train a reinforcement learning agent, you can use the code provided under [/b
 A sample command to launch training is:
 
 ```
-python3 basicrl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 4 --num-steps 20 --algo a2c --num-frames 1000000 --lr 0.0002 --entropy-coef 0.01 --max-grad-norm 0.5
+python3 basicrl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --num-frames 1000000 --lr 0.0002 --entropy-coef 0.01 --max-grad-norm 0.5
 ```
 
 Then, to visualize the result of training, you can run the following command.
 Note that you can do this while the training process is still ongoing.
 
 ```
-python3 basicrl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 4 --load-dir trained_models/a2c
+python3 basicrl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
 ```
 
 Reinforcement Learning Notes
