@@ -6,7 +6,7 @@ import sys
 import numpy
 import gym
 
-from gym_duckietown.envs import DuckietownEnv, DiscreteEnv
+from gym_duckietown.envs import DiscreteWrapper, HeadingWrapper
 import pyglet
 
 import scipy.misc
@@ -15,7 +15,7 @@ def main():
 
     env = gym.make('Duckie-SimpleSim-v0')
     #env = gym.make('Duckiebot-v0')
-    env = DiscreteEnv(env)
+    env = DiscreteWrapper(env)
     env.reset()
 
     env.render('app')

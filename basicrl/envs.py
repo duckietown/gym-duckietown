@@ -24,7 +24,6 @@ try:
 except ImportError:
     pass
 
-
 def make_env(env_id, seed, rank, log_dir, start_container):
     def _thunk():
         if env_id.startswith('Duckietown'):
@@ -36,14 +35,16 @@ def make_env(env_id, seed, rank, log_dir, start_container):
                 startContainer=start_container
             )
             if "Discrete" in env_id:
-                env = DiscreteEnv(env)
+                env = DiscreteWrapper(env)
         elif "SimpleSim" in env_id:
             env = SimpleSimEnv()
             if "Discrete" in env_id:
-                env = DiscreteEnv(env)
+                env = DiscreteWrapper(env)
+            elif "Heading" in env_id:
+                env = HeadingWrapper(env)
         else:
             env = gym.make(env_id)
-            env = DiscreteEnv(env)
+            env = DiscreteWrapper(env)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
@@ -65,7 +66,6 @@ def make_env(env_id, seed, rank, log_dir, start_container):
 
     return _thunk
 
-
 class ScaleObservations(gym.ObservationWrapper):
     def __init__(self, env=None):
         super(ScaleObservations, self).__init__(env)
@@ -79,7 +79,6 @@ class ScaleObservations(gym.ObservationWrapper):
             return obs
         else:
             return (obs - self.obs_lo) / (self.obs_hi - self.obs_lo)
-
 
 class WrapPyTorch(gym.ObservationWrapper):
     def __init__(self, env=None):

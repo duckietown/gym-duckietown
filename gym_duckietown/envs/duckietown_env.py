@@ -27,14 +27,59 @@ def recvArray(socket):
     A = numpy.frombuffer(buf, dtype=md['dtype'])
     return A.reshape(md['shape'])
 
-class DiscreteEnv(gym.ActionWrapper):
+class HeadingWrapper(gym.Wrapper):
+    """
+    Duckietown environment with discrete actions that
+    control the current vehicle heading/direction
+    """
+
+    def __init__(self, env):
+        super(HeadingWrapper, self).__init__(env)
+
+        self.action_space = spaces.Discrete(3)
+
+        self.heading = 0
+
+        self.turnSpeed = 0.5
+
+    def _step(self, action):
+
+        if action == 0:
+            self.heading = max(-1, self.heading - self.turnSpeed)
+        elif action == 1:
+            self.heading = min(1, self.heading + self.turnSpeed)
+        elif action == 2:
+            if self.heading > 0:
+                self.heading -= self.turnSpeed
+            elif self.heading < 0:
+                self.heading += self.turnSpeed
+        else:
+            assert False, "unknown action"
+
+        # Compute the motor velocities
+        lVel = numpy.array([0.4, 0.5])
+        rVel = numpy.array([0.5, 0.4])
+
+        x = (self.heading + 1) / 2
+        #print(x)
+
+        vel = lVel * (1 - x) + x * rVel
+
+        return self.env.step(vel)
+
+    def _reset(self, **kwargs):
+        self.heading = 0
+        return self.env.reset(**kwargs)
+
+
+class DiscreteWrapper(gym.ActionWrapper):
     """
     Duckietown environment with discrete actions (left, right, forward)
     instead of continuous control
     """
 
     def __init__(self, env):
-        super(DiscreteEnv, self).__init__(env)
+        super(DiscreteWrapper, self).__init__(env)
 
         self.action_space = spaces.Discrete(3)
 
