@@ -67,16 +67,26 @@ To train a reinforcement learning agent, you can use the code provided under [/b
 A sample command to launch training is:
 
 ```
-python3 basicrl/main.py --env-name Duckie-SimpleSim-Discrete-v0 --no-vis --num-processes 1 --algo acktr --num-frames 5000000 --entropy-coef 0.22 --lr 0.0002
+python3 basicrl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 4 --num-steps 20 --algo a2c --num-frames 1000000 --lr 0.0002 --entropy-coef 0.01 --max-grad-norm 0.5
 ```
 
 Then, to visualize the result of training, you can run the following command.
 Note that you can do this while the training process is still ongoing.
 
 ```
-python3 basicrl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 4 --load-dir trained_models/acktr
+python3 basicrl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 4 --load-dir trained_models/a2c
 ```
 
-Note that reinforcement learning algorithms are extremely sensitive to hyperparameters. Choosing the
+Reinforcement Learning Notes
+----------------------------
+
+Reinforcement learning algorithms are extremely sensitive to hyperparameters. Choosing the
 wrong set of parameters could prevent convergence completely, or lead to unstable performance over
-training. You will likely want to experiment.
+training. You will likely want to experiment. A learning rate that is too low can lead to no
+learning happening. A learning rate that is too high can lead to an unstable or suboptimal
+fixed-point.
+
+The reward values are currently rescaled into the [0,1] range, because the RL code in
+`basicrl` doesn't do reward clipping, and deals poorly with large reward values. Also
+note that changing the reward function might mean you also have to retune your choice
+of hyperparameters.

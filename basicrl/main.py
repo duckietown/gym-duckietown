@@ -43,7 +43,6 @@ except OSError:
     for f in files:
         os.remove(f)
 
-
 def main():
     print("#######")
     print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
@@ -99,7 +98,7 @@ def main():
     elif args.algo == 'ppo':
         optimizer = optim.Adam(actor_critic.parameters(), args.lr, eps=args.eps)
     elif args.algo == 'acktr':
-        optimizer = KFACOptimizer(actor_critic, weight_decay=2e-2)
+        optimizer = KFACOptimizer(actor_critic)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
@@ -133,8 +132,13 @@ def main():
                                                                       Variable(rollouts.masks[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
-            # Obser reward and next obs
+            # Observation, reward and next obs
             obs, reward, done, info = envs.step(cpu_actions)
+
+            # Maxime: clip the reward within [0,1] for more reliable training
+            # This code deals poorly with large reward values
+            reward = np.clip(reward, a_min=0, a_max=None) / 400
+
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
             episode_rewards += reward
 
@@ -199,6 +203,7 @@ def main():
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
+
         elif args.algo == 'ppo':
             advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
@@ -258,13 +263,16 @@ def main():
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, total_num_steps,
-                       int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
+                format(
+                    j,
+                    total_num_steps,
+                    int(total_num_steps / (end - start)),
+                    final_rewards.mean(),
+                    final_rewards.median(),
+                    final_rewards.min(),
+                    final_rewards.max(), dist_entropy.data[0],
+                    value_loss.data[0], action_loss.data[0])
+                )
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
