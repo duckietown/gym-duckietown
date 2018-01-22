@@ -44,7 +44,7 @@ class CNNPolicy(FFPolicy):
         self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
         self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
 
-        self.linear1 = nn.Linear(32 * 2 * 2, 256)
+        self.linear1 = nn.Linear(32 * 10 * 10, 256)
 
         if use_gru:
             self.gru = nn.GRUCell(512, 512)
@@ -103,7 +103,7 @@ class CNNPolicy(FFPolicy):
         x = self.conv4(x)
         x = F.relu(x)
 
-        x = x.view(-1, 32 * 2 * 2)
+        x = x.view(-1, 32 * 10 * 10)
         x = self.linear1(x)
         x = F.relu(x)
 
@@ -118,6 +118,7 @@ class CNNPolicy(FFPolicy):
                     hx = states = self.gru(x[i], states * masks[i])
                     outputs.append(hx)
                 x = torch.cat(outputs, 0)
+
         return self.critic_linear(x), x, states
 
 

@@ -17,11 +17,11 @@ if sys.version_info > (3,):
     buffer = memoryview
 
 # Rendering window size
-WINDOW_SIZE = 512
+WINDOW_SIZE = 800
 
 # Camera image size
-CAMERA_WIDTH = 64
-CAMERA_HEIGHT = 64
+CAMERA_WIDTH = 128
+CAMERA_HEIGHT = 128
 
 # Camera image shape
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
@@ -149,7 +149,7 @@ class SimpleSimEnv(gym.Env):
     }
 
     def __init__(self,
-        maxSteps=200,
+        maxSteps=250,
         imgNoiseScale=0
     ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -191,11 +191,10 @@ class SimpleSimEnv(gym.Env):
             y = WINDOW_SIZE - 19
         )
 
-        # Load the road texture
+        # Load the road textures
         self.roadTex = loadTexture('road_plain.png')
-
-        # Load the road turn texture
-        self.roadDiagTex = loadTexture('road_diag.png')
+        self.roadLeftTex = loadTexture('road_left.png')
+        self.roadRightTex = loadTexture('road_right.png')
 
         # Create a frame buffer object
         self.multiFBO, self.finalFBO = createFrameBuffers()
@@ -236,13 +235,23 @@ class SimpleSimEnv(gym.Env):
         # First straight
         self._setGrid(0, 1, ('linear', 0))
         self._setGrid(0, 2, ('linear', 0))
-        self._setGrid(0, 3, ('linear', 0))
-        self._setGrid(0, 4, ('linear', 0))
+        #self._setGrid(0, 2, ('linear', 0))
+        #self._setGrid(0, 3, ('linear', 0))
+        #self._setGrid(0, 4, ('linear', 0))
+        # Left
+        self._setGrid(0, 3, ('diag_left', 0))
+        # Straight, towards the left
+        self._setGrid(1, 3, ('linear', 3))
+        # Right
+        self._setGrid(2, 3, ('diag_right', 1))
+        # Forward towads the back
+        self._setGrid(2, 4, ('linear', 0))
         # Left turn
-        self._setGrid(0, 5, ('diag_left', 0))
-        # Second straight
-        self._setGrid(1, 5, ('linear', 3))
-        self._setGrid(2, 5, ('linear', 3))
+        self._setGrid(2, 5, ('diag_left', 0))
+
+        # Second straight, towards the left
+        #self._setGrid(1, 5, ('linear', 3))
+        #self._setGrid(2, 5, ('linear', 3))
         self._setGrid(3, 5, ('linear', 3))
         self._setGrid(4, 5, ('linear', 3))
         # Third turn
@@ -473,6 +482,18 @@ class SimpleSimEnv(gym.Env):
             else:
                 reward = -1
 
+        elif kind == 'diag_right':
+            #print(xC)
+            #print(zC)
+            if xC - zC > 0.5:
+                #print('in right lane')
+                reward = 1
+            else:
+                reward = -1
+
+        else:
+            assert False, "unknown tile kind"
+
         # Bonus for moving forward
         if action[0] >= 0.3 and action[1] >= 0.3:
             reward += 1
@@ -555,7 +576,9 @@ class SimpleSimEnv(gym.Env):
                 if kind == 'linear':
                     glBindTexture(self.roadTex.target, self.roadTex.id)
                 elif kind == 'diag_left':
-                    glBindTexture(self.roadDiagTex.target, self.roadDiagTex.id)
+                    glBindTexture(self.roadLeftTex.target, self.roadLeftTex.id)
+                elif kind == 'diag_right':
+                    glBindTexture(self.roadRightTex.target, self.roadRightTex.id)
                 else:
                     assert False
 
