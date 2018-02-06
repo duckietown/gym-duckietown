@@ -26,7 +26,7 @@ CAMERA_WIDTH = 64
 CAMERA_HEIGHT = 64
 
 # Camera image shape
-IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
+IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
 
 # Port to connect to on the server
 SERVER_PORT = 7777
@@ -50,7 +50,7 @@ class DuckiebotEnv(gym.Env):
     }
 
     def __init__(self,
-                 serverAddr="couguar.local",
+                 serverAddr="localhost",
                  serverPort=SERVER_PORT):
         print("entering init!!!")
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -90,21 +90,22 @@ class DuckiebotEnv(gym.Env):
         )
 
         # Connect to the Gym bridge ROS node
-        print("connecting...")
+        addr_str = "tcp://%s:%s" % (serverAddr, serverPort)
+        print("connecting to %s ..." % addr_str)
         context = zmq.Context()
         self.socket = context.socket(zmq.PAIR)
-        self.socket.connect("tcp://%s:%s" % (serverAddr, serverPort))
+        self.socket.connect(addr_str)
         print("connected! :)")
 
         # Initialize the state
         self.seed()
         self.reset()
 
+    def close(self):
+        # Stop the motors
+        self.step(numpy.array([0, 0]))
 
-    def _close(self):
-        pass
-
-    def _reset(self):
+    def reset(self):
         # Step count since episode start
         self.stepCount = 0
 
@@ -120,16 +121,14 @@ class DuckiebotEnv(gym.Env):
         print("got image")
 
         # Return first observation
-        return self.img
+        return self.img.transpose()
 
-    def _seed(self, seed=None):
+    def seed(self, seed=None):
         self.np_random, _ = seeding.np_random(seed)
 
         return [seed]
 
-    def _step(self, action):
-
-        print(action)
+    def step(self, action):
 
         # we don't care about this reward since we're not training..
         reward = 0
@@ -139,16 +138,16 @@ class DuckiebotEnv(gym.Env):
         # Send the action to the server
         self.socket.send_json({
             "command":"action",
-            "values": [ float(action[0] * 0.7), float(action[1] * 0.7) ]
+            "values": [ float(action[0]), float(action[1]) ]
         })
 
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
         self.img = numpy.flip(self.img, axis=0)
 
-        return self.img, reward, done, {}
+        return self.img.transpose(), reward, done, {}
 
-    def _render(self, mode='human', close=False):
+    def render(self, mode='human', close=False):
         if close:
             if self.window:
                 self.window.close()
