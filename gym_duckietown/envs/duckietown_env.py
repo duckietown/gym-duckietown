@@ -85,11 +85,17 @@ class DiscreteWrapper(gym.ActionWrapper):
 
     def _action(self, action):
         if action == 0:
-            return [0.4, 0.5]
+            print('left')
+            #return [0,0]
+            return [0.10, 0.45]
         elif action == 1:
-            return [0.5, 0.4]
+            print('right')
+            #return [0,0]
+            return [0.20, 0.10]
         elif action == 2:
-            return [0.5, 0.5]
+            print('forward')
+            #return [0,0]
+            return [0.30, 0.30]
         else:
             assert False, "unknown action"
 
