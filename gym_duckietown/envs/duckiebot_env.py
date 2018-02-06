@@ -22,8 +22,8 @@ if sys.version_info > (3,):
 WINDOW_SIZE = 512
 
 # Camera image size
-CAMERA_WIDTH = 64
-CAMERA_HEIGHT = 64
+CAMERA_WIDTH = 128
+CAMERA_HEIGHT = 128
 
 # Camera image shape
 IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
@@ -129,7 +129,6 @@ class DuckiebotEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-
         # we don't care about this reward since we're not training..
         reward = 0
         # don't worry about episodes blah blah blah we will just shut down the robot when we're done
