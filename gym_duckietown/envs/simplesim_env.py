@@ -273,7 +273,7 @@ class SimpleSimEnv(gym.Env):
         self.seed()
         self.reset()
 
-    def _close(self):
+    def close(self):
         pass
 
     def _setGrid(self, i, j, tile):
@@ -298,7 +298,7 @@ class SimpleSimEnv(gym.Env):
 
         return val * noise
 
-    def _reset(self):
+    def reset(self):
         # Step count since episode start
         self.stepCount = 0
 
@@ -352,9 +352,8 @@ class SimpleSimEnv(gym.Env):
         # Return first observation
         return obs
 
-    def _seed(self, seed=None):
+    def seed(self, seed=None):
         self.np_random, _ = seeding.np_random(seed)
-
         return [seed]
 
     def getDirVec(self):
@@ -408,7 +407,7 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's angle
         self.curAngle -= rotAngle
 
-    def _step(self, action):
+    def step(self, action):
         self.stepCount += 1
 
         # Update the robot's position
@@ -624,7 +623,7 @@ class SimpleSimEnv(gym.Env):
 
         return self.imgArray
 
-    def _render(self, mode='human', close=False):
+    def render(self, mode='human', close=False):
         if close:
             if self.window:
                 self.window.close()
