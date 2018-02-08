@@ -44,8 +44,8 @@ CAMERA_FOV = 48
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
 
-# TODO:
-# CAMERA_FORWARD_DIST = 0.066
+# Forward distance between camera and center of rotation (6.6cm)
+CAMERA_FORWARD_DIST = 0.066
 
 # Distance betwen robot wheels (10.2cm)
 WHEEL_DIST = 0.102
@@ -426,7 +426,8 @@ class SimpleSimEnv(gym.Env):
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics
-        self.curPos = self._perturb(self.curPos, 0.01)
+        posNoise = self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
+        self.curPos += posNoise
         self.curPos[1] = self.camHeight
 
         # Get the current position
