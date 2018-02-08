@@ -1,22 +1,13 @@
 import os
-import numpy
-import gym
 import random
 
+import numpy as np
+
+import gym
 from gym.spaces.box import Box
 
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
-
-try:
-    import pybullet_envs
-except ImportError:
-    pass
-
-try:
-    import gym_aigame
-except ImportError:
-    pass
 
 try:
     import gym_duckietown
@@ -72,7 +63,7 @@ class ScaleObservations(gym.ObservationWrapper):
         self.obs_lo = self.observation_space.low[0,0,0]
         self.obs_hi = self.observation_space.high[0,0,0]
         obs_shape = self.observation_space.shape
-        self.observation_space = Box(0.0, 1.0, obs_shape)
+        self.observation_space = Box(0.0, 1.0, obs_shape, dtype=np.float32)
 
     def observation(self, obs):
         if self.obs_lo == 0.0 and self.obs_hi == 1.0:
@@ -87,7 +78,8 @@ class WrapPyTorch(gym.ObservationWrapper):
         self.observation_space = Box(
             self.observation_space.low[0,0,0],
             self.observation_space.high[0,0,0],
-            [obs_shape[2], obs_shape[1], obs_shape[0]]
+            [obs_shape[2], obs_shape[1], obs_shape[0]],
+            dtype=np.float32
         )
 
     def observation(self, observation):
