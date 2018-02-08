@@ -35,23 +35,26 @@ ROAD_COLOR = np.array([0.96, 0.98, 0.64])
 # Ground/floor color
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
-# Distance from camera to floor (10.8cm)
-CAMERA_FLOOR_DIST = 0.108
-
-# TODO:
-# CAMERA_FORWARD_DIST = 0.066
-
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 14
 
 # Camera field of view angle
 CAMERA_FOV = 48
 
+# Distance from camera to floor (10.8cm)
+CAMERA_FLOOR_DIST = 0.108
+
+# TODO:
+# CAMERA_FORWARD_DIST = 0.066
+
 # Distance betwen robot wheels (10.2cm)
 WHEEL_DIST = 0.102
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
+
+# Maximum forward robot speed in meters/second
+ROBOT_SPEED = 0.45
 
 def loadTexture(texName):
     # Assemble the absolute path to the texture
@@ -419,7 +422,7 @@ class SimpleSimEnv(gym.Env):
         self.stepCount += 1
 
         # Update the robot's position
-        self._updatePos(action, 0.1)
+        self._updatePos(action * ROBOT_SPEED, 0.1)
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics

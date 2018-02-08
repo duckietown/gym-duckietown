@@ -76,24 +76,18 @@ class DiscreteWrapper(gym.ActionWrapper):
 
     def __init__(self, env):
         super(DiscreteWrapper, self).__init__(env)
-
         self.action_space = spaces.Discrete(3)
 
-    def _action(self, action):
+    def action(self, action):
         if action == 0:
-            print('left')
-            #return [0,0]
-            return [0.10, 0.45]
+            vels = [0.20, 0.45]
         elif action == 1:
-            print('right')
-            #return [0,0]
-            return [0.20, 0.10]
+            vels = [0.45, 0.20]
         elif action == 2:
-            print('forward')
-            #return [0,0]
-            return [0.30, 0.30]
+            vels = [0.40, 0.40]
         else:
             assert False, "unknown action"
+        return np.array(vels)
 
 class DuckietownEnv(gym.Env):
     """
@@ -126,14 +120,16 @@ class DuckietownEnv(gym.Env):
         self.action_space = spaces.Box(
             low=-1,
             high=1,
-            shape=(2,)
+            shape=(2,),
+            dtype=np.float32
         )
 
         # We observe an RGB image with pixels in [0, 255]
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=DuckietownEnv.IMG_SHAPE
+            shape=DuckietownEnv.IMG_SHAPE,
+            dtype=np.float32
         )
 
         self.reward_range = (-1, 1000)
