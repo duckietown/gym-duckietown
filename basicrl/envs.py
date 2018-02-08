@@ -74,7 +74,7 @@ class ScaleObservations(gym.ObservationWrapper):
         obs_shape = self.observation_space.shape
         self.observation_space = Box(0.0, 1.0, obs_shape)
 
-    def _observation(self, obs):
+    def observation(self, obs):
         if self.obs_lo == 0.0 and self.obs_hi == 1.0:
             return obs
         else:
@@ -90,5 +90,5 @@ class WrapPyTorch(gym.ObservationWrapper):
             [obs_shape[2], obs_shape[1], obs_shape[0]]
         )
 
-    def _observation(self, observation):
+    def observation(self, observation):
         return observation.transpose(2, 0, 1)
