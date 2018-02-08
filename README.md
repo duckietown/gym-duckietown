@@ -1,7 +1,3 @@
-# Duckie-Expo
-
-python3 basicrl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c --num-stack 1
-
 # Gym-Duckietown
 
 Duckietown environment for OpenAI gym. Connects to a remote ROS simulation

@@ -27,13 +27,19 @@ CAMERA_HEIGHT = 128
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
 # Horizon/wall color
-HORIZON_COLOR = np.array([0.75, 0.70, 0.70])
+HORIZON_COLOR = np.array([0.90, 0.98, 0.47])
+
+# Road color multiplier
+ROAD_COLOR = np.array([0.96, 0.98, 0.64])
 
 # Ground/floor color
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
+
+# TODO:
+# CAMERA_FORWARD_DIST = 0.066
 
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 14
@@ -311,7 +317,7 @@ class SimpleSimEnv(gym.Env):
         self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
 
         # Road color multiplier
-        self.roadColor = self.np_random.uniform(low=0.7, high=1.0, size=(3,))
+        self.roadColor = self._perturb(ROAD_COLOR)
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)
