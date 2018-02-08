@@ -83,6 +83,7 @@ while True:
     states = states.data
     cpu_actions = action.data.squeeze(1).cpu().numpy()
 
+    print(cpu_actions)
     #print(np.tanh(cpu_actions[0]))
 
     # Obser reward and next obs
