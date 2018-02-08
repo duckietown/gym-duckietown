@@ -11,7 +11,6 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 
 from envs import make_env
 
-
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
@@ -28,13 +27,10 @@ parser.add_argument('--start-container', action='store_true', default=False,
 
 args = parser.parse_args()
 
-
 env = make_env(args.env_name, args.seed, 0, None, args.start_container)
 env = DummyVecEnv([env])
 
-actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
-
+actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 
 if len(env.observation_space.shape) == 1:
     env = VecNormalize(env, ret=False)
@@ -58,7 +54,6 @@ current_obs = torch.zeros(1, *obs_shape)
 states = torch.zeros(1, actor_critic.state_size)
 masks = torch.zeros(1, 1)
 
-
 def update_current_obs(obs):
     shape_dim0 = env.observation_space.shape[0]
     obs = torch.from_numpy(obs).float()
@@ -66,18 +61,19 @@ def update_current_obs(obs):
         current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
     current_obs[:, -shape_dim0:] = obs
 
-
 render_func('human')
 obs = env.reset()
 update_current_obs(obs)
 
-if args.env_name.find('Bullet') > -1:
-    import pybullet as p
-
-    torsoId = -1
-    for i in range(p.getNumBodies()):
-        if (p.getBodyInfo(i)[0].decode() == "torso"):
-            torsoId = i
+window = env.envs[0].unwrapped.window
+@window.event
+def on_key_press(symbol, modifiers):
+    from pyglet.window import key
+    import sys
+    if symbol == key.ESCAPE:
+        env.close()
+        sys.exit(0)
+    return
 
 while True:
     value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
@@ -86,6 +82,9 @@ while True:
                                                 deterministic=True)
     states = states.data
     cpu_actions = action.data.squeeze(1).cpu().numpy()
+
+    print(np.tanh(cpu_actions[0]))
+
     # Obser reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
     time.sleep(0.08)
@@ -97,12 +96,5 @@ while True:
     else:
         current_obs *= masks
     update_current_obs(obs)
-
-    if args.env_name.find('Bullet') > -1:
-        if torsoId > -1:
-            distance = 5
-            yaw = 0
-            humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
-            p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
 
     render_func('human')

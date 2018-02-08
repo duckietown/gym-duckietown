@@ -1,11 +1,14 @@
-import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
 import math
 import time
 import subprocess
 import numpy
 import zmq
+
+import numpy as np
+
+import gym
+from gym import error, spaces, utils
+from gym.utils import seeding
 
 import pyglet
 from pyglet.image import ImageData
@@ -29,48 +32,41 @@ def recvArray(socket):
 
 class HeadingWrapper(gym.Wrapper):
     """
-    Duckietown environment with discrete actions that
-    control the current vehicle heading/direction
+    Duckietown environment with a single continuous value that
+    controls the current vehicle heading/direction
     """
 
     def __init__(self, env):
         super(HeadingWrapper, self).__init__(env)
 
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Box(
+            low=-1,
+            high=1,
+            shape=(1,),
+            dtype=np.float32
+        )
 
-        self.heading = 0
+    def step(self, action):
+        action = np.tanh(action)
+        #action = max(action, -1)
+        #action = min(action, 1)
 
-        self.turnSpeed = 0.5
-
-    def _step(self, action):
-
-        if action == 0:
-            self.heading = max(-1, self.heading - self.turnSpeed)
-        elif action == 1:
-            self.heading = min(1, self.heading + self.turnSpeed)
-        elif action == 2:
-            if self.heading > 0:
-                self.heading -= self.turnSpeed
-            elif self.heading < 0:
-                self.heading += self.turnSpeed
-        else:
-            assert False, "unknown action"
+        #print(action)
 
         # Compute the motor velocities
         lVel = numpy.array([0.4, 0.5])
         rVel = numpy.array([0.5, 0.4])
 
-        x = (self.heading + 1) / 2
+        x = (action + 1) / 2
         #print(x)
 
         vel = lVel * (1 - x) + x * rVel
 
         return self.env.step(vel)
 
-    def _reset(self, **kwargs):
+    def reset(self, **kwargs):
         self.heading = 0
         return self.env.reset(**kwargs)
-
 
 class DiscreteWrapper(gym.ActionWrapper):
     """
