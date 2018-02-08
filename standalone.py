@@ -11,7 +11,6 @@ from gym_duckietown.envs import DuckiebotEnv
 import pyglet
 
 def main():
-
     #env = gym.make('Duckiebot-v0')
     env = gym.make('Duckie-SimpleSim-v0')
     env.reset()
@@ -24,16 +23,13 @@ def main():
         action = None
         if symbol == key.LEFT:
             print('left')
-            action = numpy.array([-0.15, 0.15])
+            action = numpy.array([0.00, 0.40])
         elif symbol == key.RIGHT:
             print('right')
-            action = numpy.array([0.15, -0.15])
+            action = numpy.array([0.40, 0.00])
         elif symbol == key.UP:
             print('forward')
-            action = numpy.array([0.2, 0.2])
-        elif symbol == key.DOWN:
-            print('back')
-            action = numpy.array([-0.1, -0.1])
+            action = numpy.array([0.40, 0.40])
         elif symbol == key.SLASH:
             print('RESET')
             action = None

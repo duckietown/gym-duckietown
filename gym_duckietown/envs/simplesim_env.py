@@ -541,6 +541,7 @@ class SimpleSimEnv(gym.Env):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         glRotatef(self.camAngle, 1, 0, 0)
+        glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
         gluLookAt(
             # Eye position
             x,
