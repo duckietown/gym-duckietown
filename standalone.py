@@ -2,9 +2,10 @@
 
 from __future__ import division, print_function
 
+import sys
 import numpy
-import gym
 
+import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckiebotEnv
 import pyglet
@@ -37,8 +38,12 @@ def main():
             print('RESET')
             action = None
             env.reset()
+            env.render()
         elif symbol == key.SPACE:
             action = numpy.array([0, 0])
+        elif symbol == key.ESCAPE:
+            env.close()
+            sys.exit(0)
         else:
             return
 
