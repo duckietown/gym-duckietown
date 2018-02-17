@@ -149,6 +149,37 @@ def rotatePoint(px, py, cx, cy, theta):
 
     return cx + dx, cy + dy
 
+def cubicPoint(cp, t):
+    """
+    Cubic Bezier curve interpolation
+    B(t) = (1-t)^3 * P0 + 3t(1-t)^2 * P1 + 3t^2(1-t) * P2 + t^3 * P3
+    """
+
+    p  = ((1-t)**3) * cp[0]
+    p += 3 * t * ((1-t)**2) * cp[1]
+    p += 3 * (t**2) * (1-t) * cp[2]
+    p += (t**3) * cp[3]
+
+    return p
+
+def cubicTangent(cp, t):
+    """
+    Derivative of a cubic Bezier curve
+    The derivative of a Bezier curve is its tangent vector
+    """
+
+    # TODO
+    assert False
+
+def drawBezier(cp, n = 20):
+    pts = [cubicPoint(cp, i/(n-1)) for i in range(0,n)]
+    glColor3f(1,0,0)
+    glBegin(GL_LINE_STRIP)
+    for p in pts:
+        glVertex3f(*p)
+    glEnd()
+    glColor3f(1,1,1)
+
 class SimpleSimEnv(gym.Env):
     """Simplistic road simulator to test RL training"""
 
@@ -246,9 +277,6 @@ class SimpleSimEnv(gym.Env):
         # First straight
         self._setGrid(0, 1, ('linear', 0))
         self._setGrid(0, 2, ('linear', 0))
-        #self._setGrid(0, 2, ('linear', 0))
-        #self._setGrid(0, 3, ('linear', 0))
-        #self._setGrid(0, 4, ('linear', 0))
         # Left
         self._setGrid(0, 3, ('diag_left', 0))
         # Straight, towards the left
@@ -261,8 +289,6 @@ class SimpleSimEnv(gym.Env):
         self._setGrid(2, 5, ('diag_left', 0))
 
         # Second straight, towards the left
-        #self._setGrid(1, 5, ('linear', 3))
-        #self._setGrid(2, 5, ('linear', 3))
         self._setGrid(3, 5, ('linear', 3))
         self._setGrid(4, 5, ('linear', 3))
         # Third turn
@@ -342,6 +368,7 @@ class SimpleSimEnv(gym.Env):
         ])
 
         # Starting direction angle
+        # Facing towards (0, 0, 1) vector (positive Z)
         self.curAngle = self._perturb(math.pi/2, 0.2)
 
         # Create the vertex list for the ground/noise triangles
@@ -595,6 +622,15 @@ class SimpleSimEnv(gym.Env):
                     assert False
 
                 self.roadVList.draw(GL_QUADS)
+
+                if kind == 'diag_left':
+                    p0 = np.array([-0.25, 0,-0.50]) * ROAD_TILE_SIZE
+                    p1 = np.array([-0.25, 0, 0.00]) * ROAD_TILE_SIZE
+                    p2 = np.array([ 0.00, 0, 0.25]) * ROAD_TILE_SIZE
+                    p3 = np.array([ 0.50, 0, 0.25]) * ROAD_TILE_SIZE
+                    pts = [p0,p1,p2,p3]
+                    drawBezier(pts, n = 20)
+
                 glPopMatrix()
 
         # Resolve the multisampled frame buffer into the final frame buffer
