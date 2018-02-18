@@ -294,7 +294,7 @@ class SimpleSimEnv(gym.Env):
         # Left
         self._setGrid(0, 3, ('diag_left', 0))
         # Straight, towards the left
-        self._setGrid(1, 3, ('linear', 3))
+        self._setGrid(1, 3, ('linear', 1))
         # Right
         self._setGrid(2, 3, ('diag_right', 1))
         # Forward towads the back
@@ -303,8 +303,8 @@ class SimpleSimEnv(gym.Env):
         self._setGrid(2, 5, ('diag_left', 0))
 
         # Second straight, towards the left
-        self._setGrid(3, 5, ('linear', 3))
-        self._setGrid(4, 5, ('linear', 3))
+        self._setGrid(3, 5, ('linear', 1))
+        self._setGrid(4, 5, ('linear', 1))
         # Third turn
         self._setGrid(5, 5, ('diag_left', 1))
         # Third straight
@@ -315,10 +315,10 @@ class SimpleSimEnv(gym.Env):
         # Fourth turn
         self._setGrid(5, 0, ('diag_left', 2))
         # Last straight
-        self._setGrid(1, 0, ('linear', 1))
-        self._setGrid(2, 0, ('linear', 1))
-        self._setGrid(3, 0, ('linear', 1))
-        self._setGrid(4, 0, ('linear', 1))
+        self._setGrid(1, 0, ('linear', 3))
+        self._setGrid(2, 0, ('linear', 3))
+        self._setGrid(3, 0, ('linear', 3))
+        self._setGrid(4, 0, ('linear', 3))
 
         # Initialize the state
         self.seed()
@@ -459,11 +459,52 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's angle
         self.curAngle -= rotAngle
 
+    def _getCurve(self, i, j):
+        """
+        Get the Bezier curve control points for a given tile
+        """
+
+        tile = self._getGrid(i, j)
+        assert tile is not None
+
+        kind, angle = tile
+
+        if kind == 'linear':
+            pts = np.array([
+                [-0.25, 0,-0.50],
+                [-0.25, 0,-0.25],
+                [-0.25, 0, 0.25],
+                [-0.25, 0, 0.50],
+            ]) * ROAD_TILE_SIZE
+        elif kind == 'diag_left':
+            pts = np.array([
+                [-0.25, 0,-0.50],
+                [-0.25, 0, 0.00],
+                [ 0.00, 0, 0.25],
+                [ 0.50, 0, 0.25],
+            ]) * ROAD_TILE_SIZE
+        elif kind == 'diag_right':
+            pts = np.array([
+                [-0.25, 0,-0.50],
+                [-0.25, 0,-0.25],
+                [-0.30, 0,-0.25],
+                [-0.50, 0,-0.25],
+            ]) * ROAD_TILE_SIZE
+        else:
+            assert False, kind
+
+        mat = rotMatrix(np.array([0, 1, 0]), angle * math.pi / 2)
+
+        pts = np.matmul(pts, mat)
+        pts += np.array([i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE])
+
+        return pts
+
     def step(self, action):
         self.stepCount += 1
 
         # Update the robot's position
-        self._updatePos(action * ROBOT_SPEED, 0.1)
+        self._updatePos(action * ROBOT_SPEED * 1, 0.1)
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics
@@ -512,9 +553,6 @@ class SimpleSimEnv(gym.Env):
 
         # Compute the unrotated position of the agent in the cell
         xC, zC = rotatePoint(xM, zM, 0.5, 0.5, -math.pi / 2 * angle)
-        #print('i=%s, j=%s' % (i, j))
-        #print('xM=%s, zM=%s' % (xM, zM))
-        #print('xC=%s, zC=%s' % (xC, zC))
 
         reward = 0
         done = False
@@ -642,22 +680,8 @@ class SimpleSimEnv(gym.Env):
                 self.roadVList.draw(GL_QUADS)
                 glPopMatrix()
 
-
-                if kind == 'diag_left':
-                    pts = np.array([
-                        [-0.25, 0,-0.50],
-                        [-0.25, 0, 0.00],
-                        [ 0.00, 0, 0.25],
-                        [ 0.50, 0, 0.25],
-                    ]) * ROAD_TILE_SIZE
-
-                    mat = rotMatrix(np.array([0, 1, 0]), angle * math.pi / 2)
-
-                    pts = np.matmul(pts, mat)
-                    pts += np.array([i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE])
-
-
-                    drawBezier(pts, n = 20)
+                pts = self._getCurve(i, j)
+                drawBezier(pts, n = 20)
 
 
 
