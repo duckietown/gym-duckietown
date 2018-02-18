@@ -495,24 +495,24 @@ class SimpleSimEnv(gym.Env):
 
         if kind == 'linear':
             pts = np.array([
-                [-0.25, 0,-0.50],
-                [-0.25, 0,-0.25],
-                [-0.25, 0, 0.25],
-                [-0.25, 0, 0.50],
+                [-0.20, 0,-0.50],
+                [-0.20, 0,-0.25],
+                [-0.20, 0, 0.25],
+                [-0.20, 0, 0.50],
             ]) * ROAD_TILE_SIZE
         elif kind == 'diag_left':
             pts = np.array([
-                [-0.25, 0,-0.50],
-                [-0.25, 0, 0.00],
-                [ 0.00, 0, 0.25],
-                [ 0.50, 0, 0.25],
+                [-0.20, 0,-0.50],
+                [-0.20, 0, 0.00],
+                [ 0.00, 0, 0.20],
+                [ 0.50, 0, 0.20],
             ]) * ROAD_TILE_SIZE
         elif kind == 'diag_right':
             pts = np.array([
-                [-0.25, 0,-0.50],
-                [-0.25, 0,-0.25],
-                [-0.30, 0,-0.25],
-                [-0.50, 0,-0.25],
+                [-0.20, 0,-0.50],
+                [-0.20, 0,-0.20],
+                [-0.30, 0,-0.20],
+                [-0.50, 0,-0.20],
             ]) * ROAD_TILE_SIZE
         else:
             assert False, kind
@@ -591,7 +591,7 @@ class SimpleSimEnv(gym.Env):
         #print('t=%.3f' % t)
         #print('dot=%.2f' % dot)
 
-        reward = dot - dist
+        reward = 1.0 * dot - 3.00 * dist
 
         return obs, reward, done, {}
 
