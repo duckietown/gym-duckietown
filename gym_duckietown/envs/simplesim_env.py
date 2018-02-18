@@ -164,29 +164,53 @@ def rotMatrix(axis, angle):
         [2*(b*d-a*c), 2*(c*d+a*b), a*a+d*d-b*b-c*c]
     ])
 
-def cubicPoint(cp, t):
+def bezierPoint(cps, t):
     """
     Cubic Bezier curve interpolation
     B(t) = (1-t)^3 * P0 + 3t(1-t)^2 * P1 + 3t^2(1-t) * P2 + t^3 * P3
     """
 
-    p  = ((1-t)**3) * cp[0, :]
-    p += 3 * t * ((1-t)**2) * cp[1, :]
-    p += 3 * (t**2) * (1-t) * cp[2, :]
-    p += (t**3) * cp[3, :]
+    p  = ((1-t)**3) * cps[0,:]
+    p += 3 * t * ((1-t)**2) * cps[1,:]
+    p += 3 * (t**2) * (1-t) * cps[2,:]
+    p += (t**3) * cps[3,:]
 
     return p
 
-def cubicTangent(cp, t):
+def bezierTangent(cps, t):
     """
     Tangent of a cubic Bezier curve (first order derivative)
+    B'(t) = 3(1-t)^2(P1-P0) + 6(1-t)t(P2-P1) + 3t^2(P3-P2)
     """
 
-    # TODO
-    assert False
+    p  = 3 * ((1-t)**2) * (cps[1,:] - cps[0,:])
+    p += 6 * (1-t) * t * (cps[2,:] - cps[1,:])
+    p += 3 * (t ** 2) * (cps[3,:] - cps[2,:])
+
+    norm = np.linalg.norm(p)
+    p /= norm
+
+    return p
+
+def bezierClosest(cps, p, t_bot=0, t_top=1, n=8):
+    mid = (t_bot + t_top) * 0.5
+
+    if n == 0:
+        return mid
+
+    p_bot = bezierPoint(cps, t_bot)
+    p_top = bezierPoint(cps, t_top)
+
+    d_bot = np.linalg.norm(p_bot - p)
+    d_top = np.linalg.norm(p_top - p)
+
+    if d_bot < d_top:
+        return bezierClosest(cps, p, t_bot, mid, n-1)
+
+    return bezierClosest(cps, p, mid, t_top, n-1)
 
 def drawBezier(cps, n = 20):
-    pts = [cubicPoint(cps, i/(n-1)) for i in range(0,n)]
+    pts = [bezierPoint(cps, i/(n-1)) for i in range(0,n)]
     glColor3f(1,0,0)
     glBegin(GL_LINE_STRIP)
     for p in pts:
@@ -203,7 +227,7 @@ class SimpleSimEnv(gym.Env):
     }
 
     def __init__(self,
-        maxSteps=250,
+        maxSteps=600,
         imgNoiseScale=0
     ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -544,49 +568,30 @@ class SimpleSimEnv(gym.Env):
             reward = 0
             return obs, reward, done, {}
 
-        kind, angle = cell
-
-        # Compute the fractional grid position
-        # This is the position of the agent within the cell
-        xM = xR + 0.5 - i
-        zM = zR + 0.5 - j
-
-        # Compute the unrotated position of the agent in the cell
-        xC, zC = rotatePoint(xM, zM, 0.5, 0.5, -math.pi / 2 * angle)
-
         reward = 0
         done = False
 
-        if kind == 'linear':
-            if xC < 0.5:
-                #print('in right lane')
-                reward = 1
-            else:
-                #print('in left lane')
-                reward = -1
+        # Get the closest point along the right lane's Bezier curve
+        cps = self._getCurve(i, j)
+        pos = np.array(self.curPos)
+        t = bezierClosest(cps, pos)
 
-        elif kind == 'diag_left':
-            if xC - zC < 0.5:
-                #print('in right lane')
-                reward = 1
-            else:
-                reward = -1
+        # Compute the distance to the curve
+        point = bezierPoint(cps, t)
+        dist = np.linalg.norm(point - pos)
 
-        elif kind == 'diag_right':
-            #print(xC)
-            #print(zC)
-            if xC - zC > 0.5:
-                #print('in right lane')
-                reward = 1
-            else:
-                reward = -1
+        # Compute the alignment of the agent direction with the curve tangent
+        dirVec = self.getDirVec()
+        tangent = bezierTangent(cps, t)
+        dot = np.dot(dirVec, tangent)
 
-        else:
-            assert False, "unknown tile kind"
+        #print(i, j)
+        #print(t)
+        #print('dist=%.2f' % dist)
+        #print('t=%.3f' % t)
+        #print('dot=%.2f' % dot)
 
-        # Bonus for moving forward
-        if action[0] >= 0.3 and action[1] >= 0.3:
-            reward += 1
+        reward = dot - dist
 
         return obs, reward, done, {}
 
@@ -680,11 +685,8 @@ class SimpleSimEnv(gym.Env):
                 self.roadVList.draw(GL_QUADS)
                 glPopMatrix()
 
-                pts = self._getCurve(i, j)
-                drawBezier(pts, n = 20)
-
-
-
+                #pts = self._getCurve(i, j)
+                #drawBezier(pts, n = 20)
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
