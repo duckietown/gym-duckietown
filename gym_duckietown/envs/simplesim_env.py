@@ -149,30 +149,44 @@ def rotatePoint(px, py, cx, cy, theta):
 
     return cx + dx, cy + dy
 
+def rotMatrix(axis, angle):
+    """
+    Rotation matrix for a counterclockwise rotation around the given axis
+    """
+
+    axis = axis / math.sqrt(np.dot(axis, axis))
+    a = math.cos(angle / 2.0)
+    b, c, d = -axis * math.sin(angle / 2.0)
+
+    return np.array([
+        [a*a+b*b-c*c-d*d, 2*(b*c-a*d), 2*(b*d+a*c)],
+        [2*(b*c+a*d), a*a+c*c-b*b-d*d, 2*(c*d-a*b)],
+        [2*(b*d-a*c), 2*(c*d+a*b), a*a+d*d-b*b-c*c]
+    ])
+
 def cubicPoint(cp, t):
     """
     Cubic Bezier curve interpolation
     B(t) = (1-t)^3 * P0 + 3t(1-t)^2 * P1 + 3t^2(1-t) * P2 + t^3 * P3
     """
 
-    p  = ((1-t)**3) * cp[0]
-    p += 3 * t * ((1-t)**2) * cp[1]
-    p += 3 * (t**2) * (1-t) * cp[2]
-    p += (t**3) * cp[3]
+    p  = ((1-t)**3) * cp[0, :]
+    p += 3 * t * ((1-t)**2) * cp[1, :]
+    p += 3 * (t**2) * (1-t) * cp[2, :]
+    p += (t**3) * cp[3, :]
 
     return p
 
 def cubicTangent(cp, t):
     """
-    Derivative of a cubic Bezier curve
-    The derivative of a Bezier curve is its tangent vector
+    Tangent of a cubic Bezier curve (first order derivative)
     """
 
     # TODO
     assert False
 
-def drawBezier(cp, n = 20):
-    pts = [cubicPoint(cp, i/(n-1)) for i in range(0,n)]
+def drawBezier(cps, n = 20):
+    pts = [cubicPoint(cps, i/(n-1)) for i in range(0,n)]
     glColor3f(1,0,0)
     glBegin(GL_LINE_STRIP)
     for p in pts:
@@ -597,16 +611,20 @@ class SimpleSimEnv(gym.Env):
         glEnable(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glColor3f(*self.roadColor)
 
         # For each grid tile
         for j in range(self.gridHeight):
             for i in range(self.gridWidth):
                 # Get the tile type and angle
                 tile = self._getGrid(i, j)
+
                 if tile == None:
                     continue
+
                 kind, angle = tile
+
+                glColor3f(*self.roadColor)
+
                 glPushMatrix()
                 glTranslatef(i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE)
                 glRotatef(angle * 90, 0, 1, 0)
@@ -622,16 +640,27 @@ class SimpleSimEnv(gym.Env):
                     assert False
 
                 self.roadVList.draw(GL_QUADS)
+                glPopMatrix()
+
 
                 if kind == 'diag_left':
-                    p0 = np.array([-0.25, 0,-0.50]) * ROAD_TILE_SIZE
-                    p1 = np.array([-0.25, 0, 0.00]) * ROAD_TILE_SIZE
-                    p2 = np.array([ 0.00, 0, 0.25]) * ROAD_TILE_SIZE
-                    p3 = np.array([ 0.50, 0, 0.25]) * ROAD_TILE_SIZE
-                    pts = [p0,p1,p2,p3]
+                    pts = np.array([
+                        [-0.25, 0,-0.50],
+                        [-0.25, 0, 0.00],
+                        [ 0.00, 0, 0.25],
+                        [ 0.50, 0, 0.25],
+                    ]) * ROAD_TILE_SIZE
+
+                    mat = rotMatrix(np.array([0, 1, 0]), angle * math.pi / 2)
+
+                    pts = np.matmul(pts, mat)
+                    pts += np.array([i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE])
+
+
                     drawBezier(pts, n = 20)
 
-                glPopMatrix()
+
+
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
