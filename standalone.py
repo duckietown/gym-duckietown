@@ -11,8 +11,8 @@ from gym_duckietown.envs import DuckiebotEnv
 import pyglet
 
 def main():
-    #env = gym.make('Duckiebot-v0')
-    env = gym.make('Duckie-SimpleSim-v0')
+    env = gym.make('Duckiebot-v0')
+    #env = gym.make('Duckie-SimpleSim-v0')
     env.reset()
 
     env.render()

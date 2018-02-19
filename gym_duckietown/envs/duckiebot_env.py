@@ -7,7 +7,8 @@ import math
 import time
 import numpy
 import zmq
-from PIL import Image
+import cv2
+from skimage.transform import resize
 import pyglet
 from pyglet.image import ImageData
 from pyglet.gl import *
@@ -40,7 +41,6 @@ def recvArray(socket):
     A = A.reshape(md['shape'])
     return A
 
-
 class DuckiebotEnv(gym.Env):
     """An environment that is the actual real robot """
 
@@ -50,7 +50,7 @@ class DuckiebotEnv(gym.Env):
     }
 
     def __init__(self,
-                 serverAddr="localhost",
+                 serverAddr="akira.local",
                  serverPort=SERVER_PORT):
         print("entering init!!!")
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -105,6 +105,23 @@ class DuckiebotEnv(gym.Env):
         # Stop the motors
         self.step(numpy.array([0, 0]))
 
+    def _recvFrame(self):
+        # Receive a camera image from the server
+        self.img = recvArray(self.socket)
+
+        #print(self.img.shape)
+
+        # Resize the image
+        self.img = cv2.resize(self.img, (CAMERA_HEIGHT, CAMERA_WIDTH))
+
+        #print(self.img.shape)
+
+        # BGR to RGB
+        self.img = self.img[:, :, ::-1]
+
+        # Flip vertically
+        self.img = numpy.flip(self.img, axis=0)
+
     def reset(self):
         # Step count since episode start
         self.stepCount = 0
@@ -114,14 +131,9 @@ class DuckiebotEnv(gym.Env):
         })
 
         # Receive a camera image from the server
-        print("grabbing image..")
-        self.img = recvArray(self.socket)
-        self.img = numpy.flip(self.img, axis=0)
+        self._recvFrame()
 
-        print("got image")
-
-        # Return first observation
-        return self.img.transpose()
+        return self.img
 
     def seed(self, seed=None):
         self.np_random, _ = seeding.np_random(seed)
@@ -141,10 +153,9 @@ class DuckiebotEnv(gym.Env):
         })
 
         # Receive a camera image from the server
-        self.img = recvArray(self.socket)
-        self.img = numpy.flip(self.img, axis=0)
+        self._recvFrame()
 
-        return self.img.transpose(), reward, done, {}
+        return self.img, reward, done, {}
 
     def render(self, mode='human', close=False):
         if close:
