@@ -80,11 +80,11 @@ class DiscreteWrapper(gym.ActionWrapper):
 
     def action(self, action):
         if action == 0:
-            vels = [0.20, 0.45]
+            vels = [0.40, 0.80]
         elif action == 1:
-            vels = [0.45, 0.20]
+            vels = [0.80, 0.40]
         elif action == 2:
-            vels = [0.40, 0.40]
+            vels = [0.80, 0.80]
         else:
             assert False, "unknown action"
         return np.array(vels)

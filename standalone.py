@@ -13,9 +13,10 @@ import pyglet
 def main():
     env = gym.make('Duckiebot-v0')
     #env = gym.make('Duckie-SimpleSim-v0')
-    env.reset()
 
+    env.reset()
     env.render()
+
     @env.window.event
     def on_key_press(symbol, modifiers):
         from pyglet.window import key
@@ -44,6 +45,7 @@ def main():
             return
 
         if action is not None:
+            print('stepping')
             obs, reward, done, info = env.step(action)
 
             print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
