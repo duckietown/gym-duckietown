@@ -75,27 +75,32 @@ def on_key_press(symbol, modifiers):
         sys.exit(0)
     return
 
-while True:
-    value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
-                                                Variable(states, volatile=True),
-                                                Variable(masks, volatile=True),
-                                                deterministic=True)
-    states = states.data
-    cpu_actions = action.data.squeeze(1).cpu().numpy()
+try:
+    while True:
+        value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
+                                                    Variable(states, volatile=True),
+                                                    Variable(masks, volatile=True),
+                                                    deterministic=True)
+        states = states.data
+        cpu_actions = action.data.squeeze(1).cpu().numpy()
 
-    print(cpu_actions)
-    #print(np.tanh(cpu_actions[0]))
+        print(cpu_actions)
+        #print(np.tanh(cpu_actions[0]))
 
-    # Obser reward and next obs
-    obs, reward, done, _ = env.step(cpu_actions)
-    time.sleep(0.08)
+        # Obser reward and next obs
+        obs, reward, done, _ = env.step(cpu_actions)
+        time.sleep(0.08)
 
-    masks.fill_(0.0 if done else 1.0)
+        masks.fill_(0.0 if done else 1.0)
 
-    if current_obs.dim() == 4:
-        current_obs *= masks.unsqueeze(2).unsqueeze(2)
-    else:
-        current_obs *= masks
-    update_current_obs(obs)
+        if current_obs.dim() == 4:
+            current_obs *= masks.unsqueeze(2).unsqueeze(2)
+        else:
+            current_obs *= masks
+        update_current_obs(obs)
 
-    render_func('human')
+        render_func('human')
+
+except:
+    env.envs[0].unwrapped.close()
+    time.sleep(0.25)

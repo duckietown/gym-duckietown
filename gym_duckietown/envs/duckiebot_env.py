@@ -52,7 +52,6 @@ class DuckiebotEnv(gym.Env):
     def __init__(self,
                  serverAddr="akira.local",
                  serverPort=SERVER_PORT):
-        print("entering init!!!")
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -109,10 +108,17 @@ class DuckiebotEnv(gym.Env):
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
-        #print(self.img.shape)
+        h, w, _ = self.img.shape
+        if w > h:
+            d = (w - h) // 2
+            self.img = self.img[:, d:(w-d), :]
 
         # Resize the image
-        self.img = cv2.resize(self.img, (CAMERA_HEIGHT, CAMERA_WIDTH))
+        self.img = cv2.resize(
+            self.img,
+            (CAMERA_HEIGHT, CAMERA_WIDTH),
+            interpolation = cv2.INTER_AREA
+        )
 
         #print(self.img.shape)
 
