@@ -27,19 +27,19 @@ CAMERA_HEIGHT = 128
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
 
 # Horizon/wall color
-HORIZON_COLOR = np.array([0.90, 0.98, 0.47])
+HORIZON_COLOR = np.array([0.64, 0.71, 0.28])
 
 # Road color multiplier
-ROAD_COLOR = np.array([0.96, 0.98, 0.64])
+ROAD_COLOR = np.array([0.79, 0.88, 0.53])
 
 # Ground/floor color
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Angle at which the camera is pitched downwards
-CAMERA_ANGLE = 14
+CAMERA_ANGLE = 5
 
 # Camera field of view angle
-CAMERA_FOV = 48
+CAMERA_FOV = 42
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
