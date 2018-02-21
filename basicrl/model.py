@@ -40,10 +40,17 @@ class CNNPolicy(FFPolicy):
         #print('num_inputs=%s' % str(num_inputs))
 
         self.conv1 = nn.Conv2d(num_inputs, 32, 8, stride=2)
+        self.conv1_drop = torch.nn.Dropout2d(p=0.2)
+
         self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
+        self.conv2_drop = torch.nn.Dropout2d(p=0.2)
+
         self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
+        self.conv3_drop = torch.nn.Dropout2d(p=0.2)
+
         self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
 
+        self.linear1_drop = nn.Dropout(p=0.5)
         self.linear1 = nn.Linear(32 * 10 * 10, 256)
 
         if use_gru:
@@ -92,18 +99,22 @@ class CNNPolicy(FFPolicy):
 
     def forward(self, inputs, states, masks):
         x = self.conv1(inputs)
+        x = self.conv1_drop(x)
         x = F.relu(x)
 
         x = self.conv2(x)
+        x = self.conv2_drop(x)
         x = F.relu(x)
 
         x = self.conv3(x)
+        x = self.conv3_drop(x)
         x = F.relu(x)
 
         x = self.conv4(x)
         x = F.relu(x)
 
         x = x.view(-1, 32 * 10 * 10)
+        x = self.linear1_drop(x)
         x = self.linear1(x)
         x = F.relu(x)
 
