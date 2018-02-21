@@ -384,19 +384,19 @@ class SimpleSimEnv(gym.Env):
         self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
 
         # Road color multiplier
-        self.roadColor = self._perturb(ROAD_COLOR)
+        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)
 
         # Distance bewteen camera and ground
-        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.05)
+        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
 
         # Angle at which the camera is pitched downwards
-        self.camAngle = self._perturb(CAMERA_ANGLE, 0.12)
+        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
 
         # Field of view angle of the camera
-        self.camFOV = self._perturb(CAMERA_FOV, 0.15)
+        self.camFOV = self._perturb(CAMERA_FOV, 0.2)
 
         # Randomize the starting position
         self.curPos = np.array([
