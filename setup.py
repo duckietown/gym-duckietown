@@ -7,7 +7,7 @@ setup(
     install_requires=[
         'gym>=0.9.0',
         'numpy>=1.10.0',
-        'opencv-python'
+        'scikit-image>=0.13.1',
         'pyzmq>=16.0.0',
         'pyglet'
     ]
