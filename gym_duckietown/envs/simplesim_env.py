@@ -416,7 +416,7 @@ class SimpleSimEnv(gym.Env):
         while True:
             self.curPos = np.array([
                 self.np_random.uniform(-0.5, self.gridWidth - 0.5) * ROAD_TILE_SIZE,
-                self.camHeight,
+                0,
                 self.np_random.uniform(-0.5, self.gridHeight - 0.5) * ROAD_TILE_SIZE,
             ])
 
@@ -429,6 +429,11 @@ class SimpleSimEnv(gym.Env):
             if tile is None:
                 continue
 
+            kind, angle = tile
+
+            if kind != 'linear':
+                continue
+
             # Choose a random direction
             self.curAngle = self.np_random.uniform(0, 2 * math.pi)
 
@@ -439,7 +444,7 @@ class SimpleSimEnv(gym.Env):
             point = bezierPoint(cps, t)
             dist = np.linalg.norm(point - self.curPos)
 
-            if dist >= ROAD_TILE_SIZE * 0.2:
+            if dist >= ROAD_TILE_SIZE * 0.12:
                 continue
 
             # Compute the alignment of the agent direction with the curve tangent
@@ -447,7 +452,7 @@ class SimpleSimEnv(gym.Env):
             tangent = bezierTangent(cps, t)
             dotDir = np.dot(dirVec, tangent)
 
-            if dotDir < 0.75:
+            if dotDir < 0.85:
                 continue
 
             #print(dist)
@@ -579,7 +584,7 @@ class SimpleSimEnv(gym.Env):
         # This will randomize the movement dynamics
         posNoise = self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
         self.curPos += posNoise
-        self.curPos[1] = self.camHeight
+        self.curPos[1] = 0
 
         # Get the current position
         x, y, z = self.curPos
@@ -633,7 +638,7 @@ class SimpleSimEnv(gym.Env):
         #print('t=%.3f' % t)
         #print('dot=%.2f' % dot)
 
-        reward = 1.0 * dot - 3.00 * dist
+        reward = 1.0 * dot - 10.00 * dist
 
         return obs, reward, done, {}
 
@@ -662,7 +667,8 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Set modelview matrix
-        x, y, z = self.curPos
+        x, _, z = self.curPos
+        y = CAMERA_FLOOR_DIST + self.np_random.uniform(low=-0.006, high=0.006)
         dx, dy, dz = self.getDirVec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -671,7 +677,7 @@ class SimpleSimEnv(gym.Env):
         gluLookAt(
             # Eye position
             x,
-            y + self.np_random.uniform(low=-0.006, high=0.006),
+            y,
             z,
             # Target
             x + dx,
