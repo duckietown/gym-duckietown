@@ -351,6 +351,19 @@ class SimpleSimEnv(gym.Env):
     def close(self):
         pass
 
+    def _getGridPos(self, x, z):
+        """
+        Compute the tile indices (i,j) for a given (x,z) world position
+        """
+
+        # Compute the grid position of the agent
+        xR = x / ROAD_TILE_SIZE
+        i = int(xR + (0.5 if xR > 0 else -0.5))
+        zR = z / ROAD_TILE_SIZE
+        j = int(zR + (0.5 if zR > 0 else -0.5))
+
+        return i, j
+
     def _setGrid(self, i, j, tile):
         assert i >= 0 and i < self.gridWidth
         assert j >= 0 and j < self.gridHeight
@@ -398,16 +411,48 @@ class SimpleSimEnv(gym.Env):
         # Field of view angle of the camera
         self.camFOV = self._perturb(CAMERA_FOV, 0.2)
 
-        # Randomize the starting position
-        self.curPos = np.array([
-            self.np_random.uniform(-0.25, 0.25),
-            self.camHeight,
-            0.40
-        ])
+        # Randomize the starting position and angle
+        # Pick a random starting tile and angle, do rejection sampling
+        while True:
+            self.curPos = np.array([
+                self.np_random.uniform(-0.5, self.gridWidth - 0.5) * ROAD_TILE_SIZE,
+                self.camHeight,
+                self.np_random.uniform(-0.5, self.gridHeight - 0.5) * ROAD_TILE_SIZE,
+            ])
 
-        # Starting direction angle
-        # Facing towards (0, 0, 1) vector (positive Z)
-        self.curAngle = self._perturb(math.pi/2, 0.2)
+            i, j = self._getGridPos(self.curPos[0], self.curPos[2])
+            assert i >= 0 and i <= self.gridWidth
+            assert j >= 0 and j <= self.gridHeight
+
+            tile = self._getGrid(i, j)
+
+            if tile is None:
+                continue
+
+            # Choose a random direction
+            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
+
+            cps = self._getCurve(i, j)
+            t = bezierClosest(cps, self.curPos)
+
+            # Compute the distance to the curve
+            point = bezierPoint(cps, t)
+            dist = np.linalg.norm(point - self.curPos)
+
+            if dist >= ROAD_TILE_SIZE * 0.2:
+                continue
+
+            # Compute the alignment of the agent direction with the curve tangent
+            dirVec = self.getDirVec()
+            tangent = bezierTangent(cps, t)
+            dotDir = np.dot(dirVec, tangent)
+
+            if dotDir < 0.75:
+                continue
+
+            #print(dist)
+            #print(dotDir)
+            break
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
@@ -540,10 +585,7 @@ class SimpleSimEnv(gym.Env):
         x, y, z = self.curPos
 
         # Compute the grid position of the agent
-        xR = x / ROAD_TILE_SIZE
-        i = int(xR + (0.5 if xR > 0 else -0.5))
-        zR = z / ROAD_TILE_SIZE
-        j = int(zR + (0.5 if zR > 0 else -0.5))
+        i, j = self._getGridPos(x, z)
 
         # Generate the current camera image
         obs = self._renderObs()
