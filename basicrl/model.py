@@ -80,7 +80,7 @@ class CNNPolicy(FFPolicy):
     def reset_parameters(self):
         self.apply(weights_init)
 
-        relu_gain = nn.init.calculate_gain('relu')
+        relu_gain = nn.init.calculate_gain('leaky_relu')
         tanh_gain = nn.init.calculate_gain('tanh')
         self.conv1.weight.data.mul_(relu_gain)
         self.conv2.weight.data.mul_(relu_gain)
@@ -99,24 +99,24 @@ class CNNPolicy(FFPolicy):
 
     def forward(self, inputs, states, masks):
         x = self.conv1(inputs)
-        x = self.conv1_drop(x)
-        x = F.relu(x)
+        #x = self.conv1_drop(x)
+        x = F.leaky_relu(x)
 
         x = self.conv2(x)
-        x = self.conv2_drop(x)
-        x = F.relu(x)
+        #x = self.conv2_drop(x)
+        x = F.leaky_relu(x)
 
         x = self.conv3(x)
-        x = self.conv3_drop(x)
-        x = F.relu(x)
+        #x = self.conv3_drop(x)
+        x = F.leaky_relu(x)
 
         x = self.conv4(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
 
         x = x.view(-1, 32 * 10 * 10)
         x = self.linear1_drop(x)
         x = self.linear1(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
 
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):
