@@ -351,18 +351,9 @@ class SimpleSimEnv(gym.Env):
     def close(self):
         pass
 
-    def _getGridPos(self, x, z):
-        """
-        Compute the tile indices (i,j) for a given (x,z) world position
-        """
-
-        # Compute the grid position of the agent
-        xR = x / ROAD_TILE_SIZE
-        i = int(xR + (0.5 if xR > 0 else -0.5))
-        zR = z / ROAD_TILE_SIZE
-        j = int(zR + (0.5 if zR > 0 else -0.5))
-
-        return i, j
+    def seed(self, seed=None):
+        self.np_random, _ = seeding.np_random(seed)
+        return [seed]
 
     def _setGrid(self, i, j, tile):
         assert i >= 0 and i < self.gridWidth
@@ -370,8 +361,10 @@ class SimpleSimEnv(gym.Env):
         self.grid[j * self.gridWidth + i] = tile
 
     def _getGrid(self, i, j):
-        assert i >= 0 and i < self.gridWidth
-        assert j >= 0 and j < self.gridHeight
+        if i < 0 or i >= self.gridWidth:
+            return None
+        if j < 0 or j >= self.gridWidth:
+            return None
         return self.grid[j * self.gridWidth + i]
 
     def _perturb(self, val, scale=0.1):
@@ -386,152 +379,18 @@ class SimpleSimEnv(gym.Env):
 
         return val * noise
 
-    def reset(self):
-        # Step count since episode start
-        self.stepCount = 0
-
-        # Horizon color
-        self.horizonColor = self._perturb(HORIZON_COLOR)
-
-        # Ground color
-        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
-
-        # Road color multiplier
-        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
-
-        # Distance between the robot's wheels
-        self.wheelDist = self._perturb(WHEEL_DIST)
-
-        # Distance bewteen camera and ground
-        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
-
-        # Angle at which the camera is pitched downwards
-        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
-
-        # Field of view angle of the camera
-        self.camFOV = self._perturb(CAMERA_FOV, 0.2)
-
-        # Randomize the starting position and angle
-        # Pick a random starting tile and angle, do rejection sampling
-        while True:
-            self.curPos = np.array([
-                self.np_random.uniform(-0.5, self.gridWidth - 0.5) * ROAD_TILE_SIZE,
-                0,
-                self.np_random.uniform(-0.5, self.gridHeight - 0.5) * ROAD_TILE_SIZE,
-            ])
-
-            i, j = self._getGridPos(self.curPos[0], self.curPos[2])
-            assert i >= 0 and i <= self.gridWidth
-            assert j >= 0 and j <= self.gridHeight
-
-            tile = self._getGrid(i, j)
-
-            if tile is None:
-                continue
-
-            kind, angle = tile
-
-            if kind != 'linear':
-                continue
-
-            # Choose a random direction
-            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
-
-            cps = self._getCurve(i, j)
-            t = bezierClosest(cps, self.curPos)
-
-            # Compute the distance to the curve
-            point = bezierPoint(cps, t)
-            dist = np.linalg.norm(point - self.curPos)
-
-            if dist >= ROAD_TILE_SIZE * 0.12:
-                continue
-
-            # Compute the alignment of the agent direction with the curve tangent
-            dirVec = self.getDirVec()
-            tangent = bezierTangent(cps, t)
-            dotDir = np.dot(dirVec, tangent)
-
-            if dotDir < 0.85:
-                continue
-
-            #print(dist)
-            #print(dotDir)
-            break
-
-        # Create the vertex list for the ground/noise triangles
-        # These are distractors, junk on the floor
-        numTris = 12
-        verts = []
-        colors = []
-        for i in range(0, 3 * numTris):
-            p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
-            c = self.np_random.uniform(low=0, high=0.9)
-            c = self._perturb(np.array([c, c, c]), 0.1)
-            verts += [p[0], p[1], p[2]]
-            colors += [c[0], c[1], c[2]]
-        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
-
-        # Get the first camera image
-        obs = self._renderObs()
-
-        # Return first observation
-        return obs
-
-    def seed(self, seed=None):
-        self.np_random, _ = seeding.np_random(seed)
-        return [seed]
-
-    def getDirVec(self):
-        x = math.cos(self.curAngle)
-        z = math.sin(self.curAngle)
-
-        return (x, 0, z)
-
-    def getLeftVec(self):
-        x = math.sin(self.curAngle)
-        z = -math.cos(self.curAngle)
-
-        return (x, 0, z)
-
-    def _updatePos(self, wheelVels, deltaTime):
+    def _getGridPos(self, x, z):
         """
-        Update the position of the robot, simulating differential drive
+        Compute the tile indices (i,j) for a given (x,z) world position
         """
 
-        Vl, Vr = wheelVels
-        l = self.wheelDist
+        # Compute the grid position of the agent
+        xR = x / ROAD_TILE_SIZE
+        i = int(xR + (0.5 if xR > 0 else -0.5))
+        zR = z / ROAD_TILE_SIZE
+        j = int(zR + (0.5 if zR > 0 else -0.5))
 
-        # If the wheel velocities are the same, then there is no rotation
-        if Vl == Vr:
-            dx, dy, dz = self.getDirVec()
-            px, py, pz = self.curPos
-            self.curPos = np.array([
-                px + dx * Vl * deltaTime,
-                py + dy * Vl * deltaTime,
-                pz + dz * Vl * deltaTime
-            ])
-            return
-
-        # Compute the angular rotation velocity about the ICC (center of curvature)
-        w = (Vr - Vl) / l
-
-        # Compute the distance to the center of curvature
-        r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
-
-        # Compute the rotatio angle for this time step
-        rotAngle = w * deltaTime
-
-        # Rotate the robot's position
-        leftVec = self.getLeftVec()
-        px, py, pz = self.curPos
-        cx = px + leftVec[0] * -r
-        cz = pz + leftVec[2] * -r
-        npx, npz = rotatePoint(px, pz, cx, cz, -rotAngle)
-        self.curPos = np.array([npx, py, npz])
-
-        # Update the robot's angle
-        self.curAngle -= rotAngle
+        return i, j
 
     def _getCurve(self, i, j):
         """
@@ -574,6 +433,147 @@ class SimpleSimEnv(gym.Env):
 
         return pts
 
+    def getDirVec(self):
+        x = math.cos(self.curAngle)
+        z = math.sin(self.curAngle)
+        return np.array([x, 0, z])
+
+    def getLeftVec(self):
+        x = math.sin(self.curAngle)
+        z = -math.cos(self.curAngle)
+        return np.array([x, 0, z])
+
+    def getLanePos(self):
+        """
+        Get the position of the agent relative to the center of the right lane
+        """
+
+        x, _, z = self.curPos
+        i, j = self._getGridPos(x, z)
+
+        # Get the closest point along the right lane's Bezier curve
+        cps = self._getCurve(i, j)
+        t = bezierClosest(cps, self.curPos)
+
+        # Compute the distance to the curve
+        point = bezierPoint(cps, t)
+        dist = np.linalg.norm(point - self.curPos)
+
+        # Compute the alignment of the agent direction with the curve tangent
+        dirVec = self.getDirVec()
+        tangent = bezierTangent(cps, t)
+        dotDir = np.dot(dirVec, tangent)
+
+        return dist, dotDir
+
+    def reset(self):
+        # Step count since episode start
+        self.stepCount = 0
+
+        # Horizon color
+        self.horizonColor = self._perturb(HORIZON_COLOR)
+
+        # Ground color
+        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
+
+        # Road color multiplier
+        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
+
+        # Distance between the robot's wheels
+        self.wheelDist = self._perturb(WHEEL_DIST)
+
+        # Distance bewteen camera and ground
+        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
+
+        # Angle at which the camera is pitched downwards
+        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
+
+        # Field of view angle of the camera
+        self.camFOV = self._perturb(CAMERA_FOV, 0.2)
+
+        # Randomize the starting position and angle
+        # Pick a random starting tile and angle, do rejection sampling
+        while True:
+            self.curPos = np.array([
+                self.np_random.uniform(-0.5, self.gridWidth - 0.5) * ROAD_TILE_SIZE,
+                0,
+                self.np_random.uniform(-0.5, self.gridHeight - 0.5) * ROAD_TILE_SIZE,
+            ])
+
+            i, j = self._getGridPos(self.curPos[0], self.curPos[2])
+            tile = self._getGrid(i, j)
+
+            if tile is None:
+                continue
+
+            kind, angle = tile
+
+            if kind != 'linear':
+                continue
+
+            # Choose a random direction
+            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
+
+            dist, dotDir = self.getLanePos()
+            if dist >= ROAD_TILE_SIZE * 0.12:
+                continue
+            if dotDir < 0.85:
+                continue
+
+            break
+
+        # Create the vertex list for the ground/noise triangles
+        # These are distractors, junk on the floor
+        numTris = 12
+        verts = []
+        colors = []
+        for i in range(0, 3 * numTris):
+            p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
+            c = self.np_random.uniform(low=0, high=0.9)
+            c = self._perturb(np.array([c, c, c]), 0.1)
+            verts += [p[0], p[1], p[2]]
+            colors += [c[0], c[1], c[2]]
+        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
+
+        # Get the first camera image
+        obs = self._renderObs()
+
+        # Return first observation
+        return obs
+
+    def _updatePos(self, wheelVels, deltaTime):
+        """
+        Update the position of the robot, simulating differential drive
+        """
+
+        Vl, Vr = wheelVels
+        l = self.wheelDist
+
+        # If the wheel velocities are the same, then there is no rotation
+        if Vl == Vr:
+            self.curPos += deltaTime * Vl * self.getDirVec()
+            return
+
+        # Compute the angular rotation velocity about the ICC (center of curvature)
+        w = (Vr - Vl) / l
+
+        # Compute the distance to the center of curvature
+        r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
+
+        # Compute the rotatio angle for this time step
+        rotAngle = w * deltaTime
+
+        # Rotate the robot's position
+        leftVec = self.getLeftVec()
+        px, py, pz = self.curPos
+        cx = px + leftVec[0] * -r
+        cz = pz + leftVec[2] * -r
+        npx, npz = rotatePoint(px, pz, cx, cz, -rotAngle)
+        self.curPos = np.array([npx, py, npz])
+
+        # Update the robot's angle
+        self.curAngle -= rotAngle
+
     def step(self, action):
         self.stepCount += 1
 
@@ -589,22 +589,15 @@ class SimpleSimEnv(gym.Env):
         # Get the current position
         x, y, z = self.curPos
 
-        # Compute the grid position of the agent
-        i, j = self._getGridPos(x, z)
-
         # Generate the current camera image
         obs = self._renderObs()
 
-        # If the agent is outside of the grid
-        if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
-            reward = -10
-            done = True
-            return obs, reward, done, {}
-
-        cell = self._getGrid(i, j)
+        # Compute the grid position of the agent
+        i, j = self._getGridPos(x, z)
+        tile = self._getGrid(i, j)
 
         # If there is nothing at this grid cell
-        if cell == None:
+        if tile == None:
             reward = -10
             done = True
             return obs, reward, done, {}
@@ -618,27 +611,9 @@ class SimpleSimEnv(gym.Env):
         reward = 0
         done = False
 
-        # Get the closest point along the right lane's Bezier curve
-        cps = self._getCurve(i, j)
-        pos = np.array(self.curPos)
-        t = bezierClosest(cps, pos)
-
-        # Compute the distance to the curve
-        point = bezierPoint(cps, t)
-        dist = np.linalg.norm(point - pos)
-
-        # Compute the alignment of the agent direction with the curve tangent
-        dirVec = self.getDirVec()
-        tangent = bezierTangent(cps, t)
-        dot = np.dot(dirVec, tangent)
-
-        #print(i, j)
-        #print(t)
-        #print('dist=%.2f' % dist)
-        #print('t=%.3f' % t)
-        #print('dot=%.2f' % dot)
-
-        reward = 1.0 * dot - 10.00 * dist
+        # Get the position relative to the right lane tangent
+        dist, dotDir = self.getLanePos()
+        reward = 1.0 * dotDir - 10.00 * dist
 
         return obs, reward, done, {}
 
@@ -735,6 +710,30 @@ class SimpleSimEnv(gym.Env):
 
                 #pts = self._getCurve(i, j)
                 #drawBezier(pts, n = 20)
+
+        """
+        # Code to draw the tangent to the curve
+        dirVec = self.getDirVec()
+        pos = self.curPos + 0.5 * dirVec
+        x, _, z = pos
+
+        # Compute the grid position of the agent
+        i, j = self._getGridPos(x, z)
+        tile = self._getGrid(i, j)
+
+        if tile is not None:
+            cps = self._getCurve(i, j)
+            t = bezierClosest(cps, pos)
+            point = bezierPoint(cps, t)
+            tangent = bezierTangent(cps, t)
+            endPt = point + tangent
+
+            glColor3f(1, 0, 0)
+            glBegin(GL_LINES)
+            glVertex3f(*point)
+            glVertex3f(*endPt)
+            glEnd()
+        """
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
