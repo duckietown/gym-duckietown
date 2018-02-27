@@ -20,20 +20,20 @@ class Model(nn.Module):
         super().__init__()
 
         self.conv1 = nn.Conv2d(3, 32, 8, stride=2)
-        self.conv1_drop = torch.nn.Dropout2d(p=0.2)
+        #self.conv1_drop = torch.nn.Dropout2d(p=0.2)
 
         self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv2_drop = torch.nn.Dropout2d(p=0.2)
+        #self.conv2_drop = torch.nn.Dropout2d(p=0.2)
 
         self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv3_drop = torch.nn.Dropout2d(p=0.2)
+        #self.conv3_drop = torch.nn.Dropout2d(p=0.2)
 
-        self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
+        self.conv4 = nn.Conv2d(32, 32, 4, stride=2)
 
-        self.linear1_drop = nn.Dropout(p=0.5)
-        self.linear1 = nn.Linear(32 * 10 * 10, 256)
+        #self.linear1_drop = nn.Dropout(p=0.5)
+        self.linear1 = nn.Linear(32 * 5 * 5, 512)
 
-        self.linear2 = nn.Linear(256, 1)
+        self.linear2 = nn.Linear(512, 1)
 
         # L1 loss, absolute value of element-wise difference
         self.lossFn = nn.L1Loss()
@@ -76,7 +76,8 @@ class Model(nn.Module):
         x = self.conv4(x)
         x = F.leaky_relu(x)
 
-        x = x.view(-1, 32 * 10 * 10)
+        # View the final convolution output as a flat vector
+        x = x.view(-1, 32 * 5 * 5)
         #x = self.linear1_drop(x)
         x = self.linear1(x)
         x = F.leaky_relu(x)
@@ -105,13 +106,14 @@ class Model(nn.Module):
         return loss.cpu().data[0]
 
 env = SimpleSimEnv()
+env.reset()
 obs_space = env.observation_space
 
 model = Model(obs_space)
 
 def genData():
     image = env.reset().transpose(2, 0, 1)
-    dist, dotDir = env.getLanePos()
+    dist, dotDir, angle = env.getLanePos()
     output = np.array([dist])
     return image, output
 
