@@ -6,6 +6,8 @@ from functools import reduce
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,7 +44,7 @@ class Model(nn.Module):
             momentum=0.4
         )
 
-    def forward(self, image, string):
+    def forward(self, image):
         batch_size = image.size(0)
 
         x = self.conv1(image)
@@ -78,20 +80,20 @@ class Model(nn.Module):
         return class_probs
         """
 
-    def train(self, image, dist):
+    def train(self, image, target):
         """
         Expects image, string and labels to be in tensor form
         """
 
-        image = Variable(torch.from_numpy(image).float())
-        dist = Variable(torch.from_numpy(dist).float())
+        image = Variable(torch.from_numpy(image).float()).unsqueeze(0)
+        target = Variable(torch.from_numpy(target).float()).unsqueeze(0)
 
         # Zero the parameter gradients
         self.optimizer.zero_grad()
 
         # forward + backward + optimize
-        output = self(image, string)
-        loss = self.lossFn(output, dist)
+        output = self(image)
+        loss = self.lossFn(output, target)
         loss.backward()
         self.optimizer.step()
 
@@ -105,9 +107,9 @@ class Model(nn.Module):
 
 env = SimpleSimEnv()
 
-Model = Model(env.observation_space)
+model = Model(env.observation_space)
 
-
+# TODO: build tensors of images and targets
 
 
 
@@ -117,3 +119,8 @@ for i in range(0, 100):
 
     obs = env.reset().transpose(2, 0, 1)
     dist, dotDir = env.getLanePos()
+    output = np.array([dist])
+
+    loss = model.train(obs, output)
+
+    print(loss)
