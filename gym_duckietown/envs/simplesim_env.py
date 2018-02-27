@@ -462,13 +462,20 @@ class SimpleSimEnv(gym.Env):
         dotDir = np.dot(dirVec, tangent)
 
         # Compute the signed distance to the curve
-        # Right of the curve is negative, left of the curve is positive
-        posVec = point - self.curPos
+        # Right of the curve is negative, left is positive
+        posVec = self.curPos - point
         upVec = np.array([0, 1, 0])
-        rightVec = np.cross(upVec, tangent)
+        rightVec = np.cross(tangent, upVec)
         signedDist = np.dot(posVec, rightVec)
 
-        return signedDist, dotDir
+        # Compute the signed angle between the direction and curve tangent
+        # Right of the tangent is negative, left is positive
+        angle = math.acos(dotDir)
+        angle *= 180 / math.pi
+        if np.dot(dirVec, rightVec) < 0:
+            angle *= -1
+
+        return signedDist, dotDir, angle
 
     def reset(self):
         # Step count since episode start
@@ -515,7 +522,7 @@ class SimpleSimEnv(gym.Env):
             # Choose a random direction
             self.curAngle = self.np_random.uniform(0, 2 * math.pi)
 
-            dist, dotDir = self.getLanePos()
+            dist, dotDir, angle = self.getLanePos()
             if dist < -0.2 or dist > 0.07:
                 continue
             if dotDir < 0.85:
@@ -613,7 +620,7 @@ class SimpleSimEnv(gym.Env):
         done = False
 
         # Get the position relative to the right lane tangent
-        dist, dotDir = self.getLanePos()
+        dist, dotDir, angle = self.getLanePos()
         reward = 1.0 * dotDir - 10.00 * abs(dist)
 
         return obs, reward, done, {}
