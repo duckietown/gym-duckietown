@@ -502,6 +502,7 @@ class SimpleSimEnv(gym.Env):
         # Field of view angle of the camera
         self.camFOV = self._perturb(CAMERA_FOV, 0.2)
 
+        """
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
         while True:
@@ -529,6 +530,24 @@ class SimpleSimEnv(gym.Env):
                 continue
 
             break
+        """
+
+        """
+        self.curPos = np.array([
+            #self.np_random.choice([-0.17, 0.17]),
+            self.np_random.uniform(-0.18, 0.18),
+            0.0,
+            0.5
+        ])
+        self.curAngle = math.pi / 2
+        """
+
+        self.curPos = np.array([
+            0.0,
+            0.0,
+            0.5
+        ])
+        self.curAngle = (math.pi/2) + (self.np_random.uniform(-20, 20) * math.pi/180)
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
