@@ -454,17 +454,21 @@ class SimpleSimEnv(gym.Env):
         # Get the closest point along the right lane's Bezier curve
         cps = self._getCurve(i, j)
         t = bezierClosest(cps, self.curPos)
-
-        # Compute the distance to the curve
         point = bezierPoint(cps, t)
-        dist = np.linalg.norm(point - self.curPos)
 
         # Compute the alignment of the agent direction with the curve tangent
         dirVec = self.getDirVec()
         tangent = bezierTangent(cps, t)
         dotDir = np.dot(dirVec, tangent)
 
-        return dist, dotDir
+        # Compute the signed distance to the curve
+        # Right of the curve is negative, left of the curve is positive
+        posVec = point - self.curPos
+        upVec = np.array([0, 1, 0])
+        rightVec = np.cross(upVec, tangent)
+        signedDist = np.dot(posVec, rightVec)
+
+        return signedDist, dotDir
 
     def reset(self):
         # Step count since episode start
@@ -508,14 +512,11 @@ class SimpleSimEnv(gym.Env):
 
             kind, angle = tile
 
-            if kind != 'linear':
-                continue
-
             # Choose a random direction
             self.curAngle = self.np_random.uniform(0, 2 * math.pi)
 
             dist, dotDir = self.getLanePos()
-            if dist >= ROAD_TILE_SIZE * 0.12:
+            if dist < -0.2 or dist > 0.07:
                 continue
             if dotDir < 0.85:
                 continue
@@ -613,7 +614,7 @@ class SimpleSimEnv(gym.Env):
 
         # Get the position relative to the right lane tangent
         dist, dotDir = self.getLanePos()
-        reward = 1.0 * dotDir - 10.00 * dist
+        reward = 1.0 * dotDir - 10.00 * abs(dist)
 
         return obs, reward, done, {}
 

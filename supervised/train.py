@@ -38,11 +38,25 @@ class Model(nn.Module):
         # L1 loss, absolute value of element-wise difference
         self.lossFn = nn.L1Loss()
 
+        """
         self.optimizer = optim.SGD(
             self.parameters(),
             lr=0.001,
-            momentum=0.4
+            momentum=0.4,
+            nesterov=False
         )
+        """
+
+        self.optimizer = optim.Adadelta(
+            self.parameters()
+        )
+
+        """
+        self.optimizer = optim.RMSprop(
+            self.parameters(),
+            #lr=0.001,
+        )
+        """
 
     def forward(self, image):
         batch_size = image.size(0)
@@ -63,7 +77,7 @@ class Model(nn.Module):
         x = F.leaky_relu(x)
 
         x = x.view(-1, 32 * 10 * 10)
-        x = self.linear1_drop(x)
+        #x = self.linear1_drop(x)
         x = self.linear1(x)
         x = F.leaky_relu(x)
 
@@ -71,22 +85,13 @@ class Model(nn.Module):
 
         return x
 
-        """
-        x = torch.cat((rnn_hidden, img_out), 1)
-        x = F.relu(self.fc2(x))
-        class_scores = self.fc3(x)
-        class_probs = F.softmax(class_scores, dim=1)
-
-        return class_probs
-        """
-
     def train(self, image, target):
         """
         Expects image, string and labels to be in tensor form
         """
 
-        image = Variable(torch.from_numpy(image).float()).unsqueeze(0)
-        target = Variable(torch.from_numpy(target).float()).unsqueeze(0)
+        image = Variable(torch.from_numpy(image).float())
+        target = Variable(torch.from_numpy(target).float())
 
         # Zero the parameter gradients
         self.optimizer.zero_grad()
@@ -99,28 +104,48 @@ class Model(nn.Module):
 
         return loss.cpu().data[0]
 
-
-
-
-
-
-
 env = SimpleSimEnv()
+obs_space = env.observation_space
 
-model = Model(env.observation_space)
+model = Model(obs_space)
 
-# TODO: build tensors of images and targets
-
-
-
-
-for i in range(0, 100):
-    print(i)
-
-    obs = env.reset().transpose(2, 0, 1)
+def genData():
+    image = env.reset().transpose(2, 0, 1)
     dist, dotDir = env.getLanePos()
     output = np.array([dist])
+    return image, output
 
-    loss = model.train(obs, output)
+def genBatch(batch_size = 32):
+    images = []
+    outputs = []
 
-    print(loss)
+    for i in range(0, batch_size):
+        img, out = genData()
+        images.append(img)
+        outputs.append(out)
+
+    images = np.stack(images)
+    outputs = np.stack(outputs)
+
+    return images, outputs
+
+avgLoss = None
+
+for epoch in range(1, 100000):
+    startTime = time.time()
+    images, outputs = genBatch()
+    genTime = int(1000 * (time.time() - startTime))
+
+    startTime = time.time()
+    loss = model.train(images, outputs)
+    trainTime = int(1000 * (time.time() - startTime))
+
+    if avgLoss is None:
+        avgLoss = loss
+    else:
+        avgLoss = 0.99 * avgLoss + 0.01 * loss
+
+    print('gen time: %d ms' % genTime)
+    print('train time: %d ms' % trainTime)
+    print('epoch %d, loss=%f' % (epoch, avgLoss))
+    #print(loss)
