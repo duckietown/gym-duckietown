@@ -29,7 +29,7 @@ def initWeights(m):
         m.bias.data.fill_(0)
 
 class Model(nn.Module):
-    def __init__(self, obs_space):
+    def __init__(self):
         super().__init__()
 
         #self.batch_norm = nn.BatchNorm2d(3)
@@ -66,6 +66,11 @@ class Model(nn.Module):
 
         return x
 
+    def getValue(self, image):
+        image = Variable(torch.from_numpy(image).float()).unsqueeze(0)
+        x = self(image)
+        return x.data[0]
+
     def printInfo(self):
         modelSize = 0
         for p in self.parameters():
@@ -74,12 +79,18 @@ class Model(nn.Module):
         print(str(self))
         print('Total model size: %d' % modelSize)
 
+    def save(self, file_name):
+        torch.save(self.state_dict(), file_name)
+
+    def load(self, file_name):
+        self.load_state_dict(torch.load(file_name))
+
 def genData():
     image = env.reset().copy()
     image = image.transpose(2, 0, 1)
 
     dist, dotDir, angle = env.getLanePos()
-    targets = np.array([angle])
+    targets = np.array([dist])
 
     return image, targets
 
@@ -117,34 +128,37 @@ def train(model, optimizer, image, target):
 
     return loss.data[0], error.data[0]
 
-env = SimpleSimEnv()
-env.reset()
-obs_space = env.observation_space
+if __name__ == "__main__":
+    env = SimpleSimEnv()
+    env.reset()
 
-model = Model(obs_space)
-model.printInfo()
-model.cuda()
+    model = Model()
+    model.printInfo()
+    model.cuda()
 
-optimizer = optim.Adam(
-    model.parameters(),
-    lr=0.001
-)
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=0.001
+    )
 
-avg_error = 0
+    avg_error = 0
 
-for epoch in range(1, 1000000):
-    startTime = time.time()
-    images, targets = genBatch()
-    images = Variable(torch.from_numpy(images).float()).cuda()
-    targets = Variable(torch.from_numpy(targets).float()).cuda()
-    genTime = int(1000 * (time.time() - startTime))
+    for epoch in range(1, 1000000):
+        startTime = time.time()
+        images, targets = genBatch()
+        images = Variable(torch.from_numpy(images).float()).cuda()
+        targets = Variable(torch.from_numpy(targets).float()).cuda()
+        genTime = int(1000 * (time.time() - startTime))
 
-    startTime = time.time()
-    loss, error = train(model, optimizer, images, targets)
-    trainTime = int(1000 * (time.time() - startTime))
+        startTime = time.time()
+        loss, error = train(model, optimizer, images, targets)
+        trainTime = int(1000 * (time.time() - startTime))
 
-    avg_error = avg_error * 0.995 + 0.005 * error
+        avg_error = avg_error * 0.995 + 0.005 * error
 
-    print('gen time: %d ms' % genTime)
-    print('train time: %d ms' % trainTime)
-    print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
+        print('gen time: %d ms' % genTime)
+        print('train time: %d ms' % trainTime)
+        print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
+
+        if epoch % 100 == 0:
+            model.save('trained_models/angle_model.pt')
