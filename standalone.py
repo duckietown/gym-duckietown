@@ -8,6 +8,9 @@ import argparse
 import numpy
 import gym
 import gym_duckietown
+
+from supervised.train import Model
+
 import pyglet
 
 parser = argparse.ArgumentParser()
@@ -18,6 +21,10 @@ env = gym.make(args.env_name)
 
 env.reset()
 env.render()
+
+model = Model()
+model.load('trained_models/angle_model.pt')
+model.eval()
 
 @env.window.event
 def on_key_press(symbol, modifiers):
@@ -53,6 +60,11 @@ def on_key_press(symbol, modifiers):
         print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
         env.render()
+
+
+        v = model.getValue(obs.transpose(2,0,1))
+        print('dist=%f' % v)
+
 
         if done:
             print('done!')

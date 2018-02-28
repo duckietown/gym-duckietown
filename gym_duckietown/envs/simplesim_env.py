@@ -523,9 +523,9 @@ class SimpleSimEnv(gym.Env):
             self.curAngle = self.np_random.uniform(0, 2 * math.pi)
 
             dist, dotDir, angle = self.getLanePos()
-            if dist < -0.2 or dist > 0.07:
+            if dist < -0.20 or dist > 0.12:
                 continue
-            if angle < -20 or angle > 20:
+            if angle < -30 or angle > 30:
                 continue
 
             break
