@@ -49,19 +49,19 @@ class Model(nn.Module):
         x = image
 
         x = self.conv1(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
 
         x = self.conv2(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
 
         x = self.conv3(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
 
         #print(x.size())
         x = x.view(x.size(0), -1)
 
         x = self.linear1(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
         x = self.linear2(x)
 
         return x
@@ -111,7 +111,6 @@ def train(model, optimizer, image, target):
 
     loss = (output - target).norm(2).mean()
     loss.backward()
-
     optimizer.step()
 
     error = (output - target).abs().mean()
@@ -124,7 +123,7 @@ obs_space = env.observation_space
 
 model = Model(obs_space)
 model.printInfo()
-#model.cuda()
+model.cuda()
 
 optimizer = optim.Adam(
     model.parameters(),
@@ -136,8 +135,8 @@ avg_error = 0
 for epoch in range(1, 1000000):
     startTime = time.time()
     images, targets = genBatch()
-    images = Variable(torch.from_numpy(images).float())
-    targets = Variable(torch.from_numpy(targets).float())
+    images = Variable(torch.from_numpy(images).float()).cuda()
+    targets = Variable(torch.from_numpy(targets).float()).cuda()
     genTime = int(1000 * (time.time() - startTime))
 
     startTime = time.time()
