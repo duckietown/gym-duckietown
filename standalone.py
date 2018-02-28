@@ -23,7 +23,7 @@ env.reset()
 env.render()
 
 model = Model()
-model.load('trained_models/angle_model.pt')
+model.load('trained_models/dist_model.pt')
 model.eval()
 
 @env.window.event
@@ -56,15 +56,12 @@ def on_key_press(symbol, modifiers):
     if action is not None:
         print('stepping')
         obs, reward, done, info = env.step(action)
-
         print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
         env.render()
 
-
         v = model.getValue(obs.transpose(2,0,1))
         print('dist=%f' % v)
-
 
         if done:
             print('done!')

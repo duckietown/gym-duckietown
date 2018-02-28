@@ -161,4 +161,4 @@ if __name__ == "__main__":
         print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
 
         if epoch % 100 == 0:
-            model.save('trained_models/angle_model.pt')
+            model.save('trained_models/dist_model.pt')
