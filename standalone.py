@@ -9,6 +9,7 @@ import numpy
 import gym
 import gym_duckietown
 
+import numpy as np
 from supervised.train import Model
 
 import pyglet
@@ -60,7 +61,8 @@ def on_key_press(symbol, modifiers):
 
         env.render()
 
-        v = model.getValue(obs.transpose(2,0,1))
+        obs = np.ascontiguousarray(obs.transpose(2,0,1))
+        v = model.getValue(obs)
         print('dist=%f' % v)
 
         if done:
