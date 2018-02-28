@@ -36,7 +36,7 @@ ROAD_COLOR = np.array([0.79, 0.88, 0.53])
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Angle at which the camera is pitched downwards
-CAMERA_ANGLE = 5
+CAMERA_ANGLE = 15
 
 # Camera field of view angle
 CAMERA_FOV = 42
@@ -502,6 +502,7 @@ class SimpleSimEnv(gym.Env):
         # Field of view angle of the camera
         self.camFOV = self._perturb(CAMERA_FOV, 0.2)
 
+
         """
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
@@ -526,29 +527,19 @@ class SimpleSimEnv(gym.Env):
             dist, dotDir, angle = self.getLanePos()
             if dist < -0.2 or dist > 0.07:
                 continue
-            if dotDir < 0.85:
+            if angle < -20 or angle > 20:
                 continue
 
             break
         """
 
-        """
         self.curPos = np.array([
-            #self.np_random.choice([-0.17, 0.17]),
-            self.np_random.uniform(-0.18, 0.18),
+            self.np_random.uniform(-0.20, 0.20),
             0.0,
-            0.5
-        ])
-        self.curAngle = math.pi / 2
-        """
-
-        self.curPos = np.array([
-            #0.0,
-            self.np_random.uniform(-0.18, 0.18),
-            0.0,
-            0.5
+            self.np_random.uniform(0.25, 0.75),
         ])
         self.curAngle = (math.pi/2) + (self.np_random.uniform(-20, 20) * math.pi/180)
+
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor

@@ -41,13 +41,11 @@ class Model(nn.Module):
         self.linear1 = nn.Linear(32 * 6 * 6, 256)
         self.linear2 = nn.Linear(256, 1)
 
-        #self.apply(initWeights)
+        self.apply(initWeights)
 
     def forward(self, image):
         batch_size = image.size(0)
 
-        # Note: batch norm doesn't really seem to affect performance
-        #x = self.batch_norm(image)
         x = image
 
         x = self.conv1(x)
@@ -60,7 +58,7 @@ class Model(nn.Module):
         x = F.relu(x)
 
         #print(x.size())
-        x = x.view(-1, 32 * 6 * 6)
+        x = x.view(x.size(0), -1)
 
         x = self.linear1(x)
         x = F.relu(x)
@@ -77,7 +75,7 @@ class Model(nn.Module):
         print('Total model size: %d' % modelSize)
 
 def genData():
-    image = env.reset()
+    image = env.reset().copy()
     image = image.transpose(2, 0, 1)
 
     dist, dotDir, angle = env.getLanePos()
@@ -85,7 +83,7 @@ def genData():
 
     return image, targets
 
-def genBatch(batch_size = 1):
+def genBatch(batch_size=4):
     images = []
     targets = []
 
@@ -94,7 +92,9 @@ def genBatch(batch_size = 1):
         images.append(img)
         targets.append(out)
 
+    assert len(images) == batch_size
     assert len(images) == len(targets)
+
     images = np.stack(images)
     targets = np.stack(targets)
     assert images.shape[0] == batch_size
@@ -102,15 +102,16 @@ def genBatch(batch_size = 1):
 
     return images, targets
 
-def train(model, lossFn, optimizer, image, target):
+def train(model, optimizer, image, target):
     # Zero the parameter gradients
     optimizer.zero_grad()
 
     # forward + backward + optimize
     output = model(image)
 
-    loss = lossFn(output, target)
+    loss = (output - target).norm(2).mean()
     loss.backward()
+
     optimizer.step()
 
     error = (output - target).abs().mean()
@@ -130,13 +131,9 @@ optimizer = optim.Adam(
     lr=0.001
 )
 
-# L1 loss, absolute value of element-wise difference
-lossFn = nn.L1Loss()
-
 avg_error = 0
 
 for epoch in range(1, 1000000):
-
     startTime = time.time()
     images, targets = genBatch()
     images = Variable(torch.from_numpy(images).float())
@@ -144,11 +141,11 @@ for epoch in range(1, 1000000):
     genTime = int(1000 * (time.time() - startTime))
 
     startTime = time.time()
-    loss, error = train(model, lossFn, optimizer, images, targets)
+    loss, error = train(model, optimizer, images, targets)
     trainTime = int(1000 * (time.time() - startTime))
 
     avg_error = avg_error * 0.995 + 0.005 * error
 
-    #print('gen time: %d ms' % genTime)
-    #print('train time: %d ms' % trainTime)
+    print('gen time: %d ms' % genTime)
+    print('train time: %d ms' % trainTime)
     print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
