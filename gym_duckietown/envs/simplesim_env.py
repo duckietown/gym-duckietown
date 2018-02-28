@@ -543,7 +543,8 @@ class SimpleSimEnv(gym.Env):
         """
 
         self.curPos = np.array([
-            0.0,
+            #0.0,
+            self.np_random.uniform(-0.18, 0.18),
             0.0,
             0.5
         ])

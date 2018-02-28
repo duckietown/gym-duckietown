@@ -34,23 +34,19 @@ class Model(nn.Module):
 
         #self.batch_norm = nn.BatchNorm2d(3)
 
-        self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
+        self.conv1 = nn.Conv2d(3, 32, 6, stride=4)
         self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
-        #self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
-        #self.conv4 = nn.Conv2d(32, 32, 4, stride=2)
+        self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
 
-        self.linear1 = nn.Linear(32 * 7 * 7, 1)
-
-        #self.linear1 = nn.Linear(32 * 5 * 5, 1)
-        #self.linear2 = nn.Linear(512, 256)
-        #self.linear3 = nn.Linear(256, 1)
+        self.linear1 = nn.Linear(32 * 6 * 6, 256)
+        self.linear2 = nn.Linear(256, 1)
 
         #self.apply(initWeights)
 
     def forward(self, image):
         batch_size = image.size(0)
 
-        # Note: this doesn't really seem to affect performance
+        # Note: batch norm doesn't really seem to affect performance
         #x = self.batch_norm(image)
         x = image
 
@@ -60,23 +56,15 @@ class Model(nn.Module):
         x = self.conv2(x)
         x = F.relu(x)
 
-        #x = self.conv3(x)
-        #x = F.relu(x)
-
-        #x = self.conv4(x)
-        #x = F.relu(x)
-
-        # View the final convolution output as a flat vector
-        #x = x.view(-1, 32 * 5 * 5)
+        x = self.conv3(x)
+        x = F.relu(x)
 
         #print(x.size())
-        x = x.view(-1, 32 * 7 * 7)
+        x = x.view(-1, 32 * 6 * 6)
 
         x = self.linear1(x)
-        #x = F.relu(x)
-        #x = self.linear2(x)
-        #x = F.relu(x)
-        #x = self.linear3(x)
+        x = F.relu(x)
+        x = self.linear2(x)
 
         return x
 
@@ -91,12 +79,9 @@ class Model(nn.Module):
 def genData():
     image = env.reset()
     image = image.transpose(2, 0, 1)
-    #image = np.zeros_like(image)
 
     dist, dotDir, angle = env.getLanePos()
     targets = np.array([angle])
-
-    #targets = np.array([env.curPos[0]])
 
     return image, targets
 
@@ -110,10 +95,8 @@ def genBatch(batch_size = 1):
         targets.append(out)
 
     assert len(images) == len(targets)
-
     images = np.stack(images)
     targets = np.stack(targets)
-
     assert images.shape[0] == batch_size
     assert targets.shape[0] == batch_size
 
@@ -148,23 +131,11 @@ optimizer = optim.Adam(
 )
 
 # L1 loss, absolute value of element-wise difference
-#lossFn = nn.L1Loss()
-lossFn = nn.SmoothL1Loss()
+lossFn = nn.L1Loss()
 
+avg_error = 0
 
-
-
-
-
-
-
-
-
-
-
-
-
-for epoch in range(1, 10000):
+for epoch in range(1, 1000000):
 
     startTime = time.time()
     images, targets = genBatch()
@@ -176,7 +147,8 @@ for epoch in range(1, 10000):
     loss, error = train(model, lossFn, optimizer, images, targets)
     trainTime = int(1000 * (time.time() - startTime))
 
+    avg_error = avg_error * 0.995 + 0.005 * error
+
     #print('gen time: %d ms' % genTime)
     #print('train time: %d ms' % trainTime)
-    print('epoch %d, loss=%f, error=%f' % (epoch, loss, error))
-    #print(loss)
+    print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
