@@ -14,9 +14,8 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 from arguments import get_args
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
+from vec_env.dummy_vec_env import DummyVecEnv
+from vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
 from kfac import KFACOptimizer
 from model import CNNPolicy, MLPPolicy
@@ -44,10 +43,6 @@ except OSError:
         os.remove(f)
 
 def main():
-    print("#######")
-    print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
-    print("#######")
-
     os.environ['OMP_NUM_THREADS'] = '1'
 
     if args.vis:
@@ -62,9 +57,6 @@ def main():
         envs = SubprocVecEnv(envs)
     else:
         envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        envs = VecNormalize(envs)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])

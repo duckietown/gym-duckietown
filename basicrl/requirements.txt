@@ -1,5 +1,0 @@
-gym
-matplotlib
-pybullet
-opencv-python
-baselines>=0.1.4
