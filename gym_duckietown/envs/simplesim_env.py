@@ -637,7 +637,6 @@ class SimpleSimEnv(gym.Env):
     def _renderObs(self):
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
-        #pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
         # Bind the multisampled frame buffer
@@ -728,30 +727,6 @@ class SimpleSimEnv(gym.Env):
                 #pts = self._getCurve(i, j)
                 #drawBezier(pts, n = 20)
 
-        """
-        # Code to draw the tangent to the curve
-        dirVec = self.getDirVec()
-        pos = self.curPos + 0.5 * dirVec
-        x, _, z = pos
-
-        # Compute the grid position of the agent
-        i, j = self._getGridPos(x, z)
-        tile = self._getGrid(i, j)
-
-        if tile is not None:
-            cps = self._getCurve(i, j)
-            t = bezierClosest(cps, pos)
-            point = bezierPoint(cps, t)
-            tangent = bezierTangent(cps, t)
-            endPt = point + tangent
-
-            glColor3f(1, 0, 0)
-            glBegin(GL_LINES)
-            glVertex3f(*point)
-            glVertex3f(*endPt)
-            glEnd()
-        """
-
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.finalFBO);
@@ -785,6 +760,101 @@ class SimpleSimEnv(gym.Env):
                 scale=self.imgNoiseScale
             )
             np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
+
+        # Unbind the frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        return self.imgArray
+
+    def _renderSeg(self):
+        # Switch to the default context
+        # This is necessary on Linux nvidia drivers
+        self.shadow_window.switch_to()
+
+        # Bind the multisampled frame buffer
+        glEnable(GL_MULTISAMPLE)
+        glBindFramebuffer(GL_FRAMEBUFFER, self.multiFBO);
+        glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
+
+        glClearColor(0, 0, 0, 1)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        # Set the projection matrix
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(
+            self.camFOV,
+            CAMERA_WIDTH / float(CAMERA_HEIGHT),
+            0.05,
+            100.0
+        )
+
+        # Set modelview matrix
+        x, _, z = self.curPos
+        y = CAMERA_FLOOR_DIST + self.np_random.uniform(low=-0.006, high=0.006)
+        dx, dy, dz = self.getDirVec()
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        glRotatef(self.camAngle, 1, 0, 0)
+        glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+        gluLookAt(
+            # Eye position
+            x,
+            y,
+            z,
+            # Target
+            x + dx,
+            y + dy,
+            z + dz,
+            # Up vector
+            0, 1.0, 0.0
+        )
+
+        # Draw the road quads
+        glDisable(GL_TEXTURE_2D)
+        glColor3f(1, 1, 1, 1)
+
+        # For each grid tile
+        for j in range(self.gridHeight):
+            for i in range(self.gridWidth):
+                # Get the tile type and angle
+                tile = self._getGrid(i, j)
+
+                if tile == None:
+                    continue
+
+                kind, angle = tile
+
+                glPushMatrix()
+                glTranslatef(i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE)
+                glRotatef(angle * 90, 0, 1, 0)
+                self.roadVList.draw(GL_QUADS)
+                glPopMatrix()
+
+        # Resolve the multisampled frame buffer into the final frame buffer
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.finalFBO);
+        glBlitFramebuffer(
+            0, 0,
+            CAMERA_WIDTH, CAMERA_HEIGHT,
+            0, 0,
+            CAMERA_WIDTH, CAMERA_HEIGHT,
+            GL_COLOR_BUFFER_BIT,
+            GL_LINEAR
+        );
+
+        # Copy the frame buffer contents into a numpy array
+        # Note: glReadPixels reads starting from the lower left corner
+        glBindFramebuffer(GL_FRAMEBUFFER, self.finalFBO);
+        glReadPixels(
+            0,
+            0,
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            GL_RGB,
+            GL_FLOAT,
+            self.imgArray.ctypes.data_as(POINTER(GLfloat))
+        )
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
