@@ -74,9 +74,6 @@ class DuckiebotEnv(gym.Env):
         # Environment configuration
         self.maxSteps = 50
 
-        # Array to render the image into
-        self.imgArray = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
-
         # For rendering
         self.window = None
 
@@ -119,11 +116,13 @@ class DuckiebotEnv(gym.Env):
         # Resize the image
         self.img = cv2.resize(
             self.img,
-            (CAMERA_HEIGHT, CAMERA_WIDTH),
+            (CAMERA_WIDTH, CAMERA_HEIGHT),
             interpolation = cv2.INTER_AREA
         )
 
         #print(self.img.shape)
+
+        self.img = (self.img / 255).astype(np.float32)
 
         # BGR to RGB
         self.img = self.img[:, :, ::-1]
@@ -198,13 +197,14 @@ class DuckiebotEnv(gym.Env):
         glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
-        width = self.img.shape[1]
-        height = self.img.shape[0]
+        img = np.uint8(self.img * 255)
+        width = img.shape[1]
+        height = img.shape[0]
         imgData = pyglet.image.ImageData(
             width,
             height,
             'RGB',
-            self.img.tobytes(),
+            img.tobytes(),
             pitch = width * 3,
         )
         imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
