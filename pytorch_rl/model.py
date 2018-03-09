@@ -13,7 +13,6 @@ def weights_init(m):
         if m.bias is not None:
             m.bias.data.fill_(0)
 
-
 class FFPolicy(nn.Module):
     def __init__(self):
         super(FFPolicy, self).__init__()
@@ -51,7 +50,7 @@ class CNNPolicy(FFPolicy):
         self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
 
         self.linear1_drop = nn.Dropout(p=0.5)
-        self.linear1 = nn.Linear(32 * 10 * 10, 256)
+        self.linear1 = nn.Linear(32 * 9 * 14, 256)
 
         if use_gru:
             self.gru = nn.GRUCell(512, 512)
@@ -113,7 +112,7 @@ class CNNPolicy(FFPolicy):
         x = self.conv4(x)
         x = F.leaky_relu(x)
 
-        x = x.view(-1, 32 * 10 * 10)
+        x = x.view(-1, 32 * 9 * 14)
         x = self.linear1_drop(x)
         x = self.linear1(x)
         x = F.leaky_relu(x)

@@ -5,12 +5,9 @@ from __future__ import division, print_function
 import sys
 import argparse
 
-import numpy
+import numpy as np
 import gym
 import gym_duckietown
-
-import numpy as np
-from supervised.train import Model
 
 import pyglet
 
@@ -19,13 +16,22 @@ parser.add_argument('--env-name', default='Duckie-SimpleSim-v0')
 args = parser.parse_args()
 
 env = gym.make(args.env_name)
-
 env.reset()
 env.render()
 
-model = Model()
-model.load('trained_models/dist_model.pt')
-model.eval()
+def save_numpy_img(file_name, img):
+    img = (img * 255).astype(np.uint8)
+    img = np.ascontiguousarray(img)
+    img = np.flip(img, 0)
+
+    from skimage import io
+    io.imsave(file_name, img)
+
+lastImgNo = 0
+def save_img(img):
+    global lastImgNo
+    save_numpy_img('img_%03d.jpg' % lastImgNo, img)
+    lastImgNo += 1
 
 @env.window.event
 def on_key_press(symbol, modifiers):
@@ -34,20 +40,20 @@ def on_key_press(symbol, modifiers):
     action = None
     if symbol == key.LEFT:
         print('left')
-        action = numpy.array([0.00, 0.40])
+        action = np.array([0.00, 0.40])
     elif symbol == key.RIGHT:
         print('right')
-        action = numpy.array([0.40, 0.00])
+        action = np.array([0.40, 0.00])
     elif symbol == key.UP:
         print('forward')
-        action = numpy.array([0.40, 0.40])
+        action = np.array([0.40, 0.40])
     elif symbol == key.SLASH:
         print('RESET')
         action = None
         env.reset()
         env.render()
     elif symbol == key.SPACE:
-        action = numpy.array([0, 0])
+        action = np.array([0, 0])
     elif symbol == key.ESCAPE:
         env.close()
         sys.exit(0)
@@ -61,9 +67,7 @@ def on_key_press(symbol, modifiers):
 
         env.render()
 
-        obs = np.ascontiguousarray(obs.transpose(2,0,1))
-        v = model.getValue(obs)
-        print('dist=%f' % v)
+        save_img(obs)
 
         if done:
             print('done!')
