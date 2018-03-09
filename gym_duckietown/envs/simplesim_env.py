@@ -784,7 +784,7 @@ class SimpleSimEnv(gym.Env):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(
-            self.camFOV,
+            self.camFovY,
             CAMERA_WIDTH / float(CAMERA_HEIGHT),
             0.05,
             100.0
