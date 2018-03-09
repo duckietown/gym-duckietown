@@ -20,22 +20,17 @@ env.reset()
 env.render()
 
 def save_numpy_img(file_name, img):
+    img = (img * 255).astype(np.uint8)
+    img = np.ascontiguousarray(img)
+    img = np.flip(img, 0)
+
     from skimage import io
-    #img = np.transpose(img, (1, 0, 2))
-
-    print(img.shape)
-
-    #img = np.transpose(img, (1, 0, 2))
-
-    #img = np.ascontiguousarray(img)
-
-    #img = np.flip(img, 0)
     io.imsave(file_name, img)
 
 lastImgNo = 0
 def save_img(img):
     global lastImgNo
-    save_numpy_img('img_%03d.png' % lastImgNo, img)
+    save_numpy_img('img_%03d.jpg' % lastImgNo, img)
     lastImgNo += 1
 
 @env.window.event
@@ -72,7 +67,7 @@ def on_key_press(symbol, modifiers):
 
         env.render()
 
-        #save_img(obs)
+        save_img(obs)
 
         if done:
             print('done!')
