@@ -15,8 +15,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from skimage import io
-
 def initWeights(m):
     classname = m.__class__.__name__
     if classname.startswith('Conv'):
@@ -137,6 +135,25 @@ def train(model, optimizer, image, target):
 
     return loss.data[0], error.data[0]
 
+def save_img(file_name, img):
+    from skimage import io
+    img = img[0].clamp(0, 1).transpose(0, 2).transpose(0, 1).data
+    img = np.flip(img, 0)
+    io.imsave(file_name, img)
+
+def load_img(file_name):
+    from skimage import io
+
+    # Drop the alpha channel
+    img = io.imread(file_name)
+    img = img[:,:,0:3] / 255
+
+    img = np.flip(img, 0)
+    img = np.ascontiguousarray(img)
+    img = torch.from_numpy(img).float()
+    img = img.transpose(0, 1).transpose(0, 2)
+    return img.cuda()
+
 if __name__ == "__main__":
     env = SimpleSimEnv()
     env.reset()
@@ -169,20 +186,17 @@ if __name__ == "__main__":
         print('train time: %d ms' % trainTime)
         print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
 
-
-        if epoch % 500 == 0:
+        if epoch % 250 == 0:
             img0 = images[0:1]
             out0 = model(img0)
+            save_img('seg_img.png', img0)
+            save_img('seg_out.png', out0)
 
-            img0 = img0[0].clamp(0, 1).transpose(0, 2).transpose(0, 1).data
-            out0 = out0[0].clamp(0, 1).transpose(0, 2).transpose(0, 1).data
-
-            img0 = np.flip(img0, 0)
-            out0 = np.flip(out0, 0)
-
-            io.imsave('seg_img.png', img0)
-            io.imsave('seg_out.png', out0)
-
+            img = load_img('cam-nofish.png')
+            img = Variable(img.unsqueeze(0))
+            #save_img('save_real.png', img)
+            out = model(img)
+            save_img('cam_seg.png', out)
 
         #if epoch % 100 == 0:
         #    model.save('trained_models/dist_model.pt')
