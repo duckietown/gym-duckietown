@@ -25,7 +25,7 @@ CAMERA_WIDTH = 160
 CAMERA_HEIGHT = 120
 
 # Camera image shape
-IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
+IMG_SHAPE = (CAMERA_HEIGHT, CAMERA_WIDTH, 3)
 
 # Horizon/wall color
 HORIZON_COLOR = np.array([0.64, 0.71, 0.28])
@@ -729,30 +729,6 @@ class SimpleSimEnv(gym.Env):
                 #pts = self._getCurve(i, j)
                 #drawBezier(pts, n = 20)
 
-        """
-        # Code to draw the tangent to the curve
-        dirVec = self.getDirVec()
-        pos = self.curPos + 0.5 * dirVec
-        x, _, z = pos
-
-        # Compute the grid position of the agent
-        i, j = self._getGridPos(x, z)
-        tile = self._getGrid(i, j)
-
-        if tile is not None:
-            cps = self._getCurve(i, j)
-            t = bezierClosest(cps, pos)
-            point = bezierPoint(cps, t)
-            tangent = bezierTangent(cps, t)
-            endPt = point + tangent
-
-            glColor3f(1, 0, 0)
-            glBegin(GL_LINES)
-            glVertex3f(*point)
-            glVertex3f(*endPt)
-            glEnd()
-        """
-
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.finalFBO);
@@ -827,14 +803,14 @@ class SimpleSimEnv(gym.Env):
         glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
-        width = img.shape[0]
-        height = img.shape[1]
+        width = img.shape[1]
+        height = img.shape[0]
         img = np.uint8(img * 255)
         imgData = pyglet.image.ImageData(
             width,
             height,
             'RGB',
-            img.tobytes(),
+            img.ctypes.data_as(POINTER(GLubyte)),
             pitch = width * 3,
         )
         imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)

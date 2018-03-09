@@ -28,7 +28,7 @@ CAMERA_WIDTH = 160
 CAMERA_HEIGHT = 120
 
 # Camera image shape
-IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
+IMG_SHAPE = (3, CAMERA_HEIGHT, CAMERA_WIDTH)
 
 # Port to connect to on the server
 SERVER_PORT = 7777
@@ -198,8 +198,8 @@ class DuckiebotEnv(gym.Env):
         glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
-        width = self.img.shape[0]
-        height = self.img.shape[1]
+        width = self.img.shape[1]
+        height = self.img.shape[0]
         imgData = pyglet.image.ImageData(
             width,
             height,
