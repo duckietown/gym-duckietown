@@ -19,10 +19,24 @@ env = gym.make(args.env_name)
 env.reset()
 env.render()
 
-#from supervised.train import Model
-#model = Model()
-#model.load('trained_models/dist_model.pt')
-#model.eval()
+def save_numpy_img(file_name, img):
+    from skimage import io
+    #img = np.transpose(img, (1, 0, 2))
+
+    print(img.shape)
+
+    #img = np.transpose(img, (1, 0, 2))
+
+    #img = np.ascontiguousarray(img)
+
+    #img = np.flip(img, 0)
+    io.imsave(file_name, img)
+
+lastImgNo = 0
+def save_img(img):
+    global lastImgNo
+    save_numpy_img('img_%03d.png' % lastImgNo, img)
+    lastImgNo += 1
 
 @env.window.event
 def on_key_press(symbol, modifiers):
@@ -58,9 +72,7 @@ def on_key_press(symbol, modifiers):
 
         env.render()
 
-        #obs = np.ascontiguousarray(obs.transpose(2,0,1))
-        #v = model.getValue(obs)
-        #print('dist=%f' % v)
+        #save_img(obs)
 
         if done:
             print('done!')
