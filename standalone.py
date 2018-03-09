@@ -5,12 +5,9 @@ from __future__ import division, print_function
 import sys
 import argparse
 
-import numpy
+import numpy as np
 import gym
 import gym_duckietown
-
-import numpy as np
-from supervised.train import Model
 
 import pyglet
 
@@ -19,13 +16,13 @@ parser.add_argument('--env-name', default='Duckie-SimpleSim-v0')
 args = parser.parse_args()
 
 env = gym.make(args.env_name)
-
 env.reset()
 env.render()
 
-model = Model()
-model.load('trained_models/dist_model.pt')
-model.eval()
+#from supervised.train import Model
+#model = Model()
+#model.load('trained_models/dist_model.pt')
+#model.eval()
 
 @env.window.event
 def on_key_press(symbol, modifiers):
@@ -34,20 +31,20 @@ def on_key_press(symbol, modifiers):
     action = None
     if symbol == key.LEFT:
         print('left')
-        action = numpy.array([0.00, 0.40])
+        action = np.array([0.00, 0.40])
     elif symbol == key.RIGHT:
         print('right')
-        action = numpy.array([0.40, 0.00])
+        action = np.array([0.40, 0.00])
     elif symbol == key.UP:
         print('forward')
-        action = numpy.array([0.40, 0.40])
+        action = np.array([0.40, 0.40])
     elif symbol == key.SLASH:
         print('RESET')
         action = None
         env.reset()
         env.render()
     elif symbol == key.SPACE:
-        action = numpy.array([0, 0])
+        action = np.array([0, 0])
     elif symbol == key.ESCAPE:
         env.close()
         sys.exit(0)
@@ -61,9 +58,9 @@ def on_key_press(symbol, modifiers):
 
         env.render()
 
-        obs = np.ascontiguousarray(obs.transpose(2,0,1))
-        v = model.getValue(obs)
-        print('dist=%f' % v)
+        #obs = np.ascontiguousarray(obs.transpose(2,0,1))
+        #v = model.getValue(obs)
+        #print('dist=%f' % v)
 
         if done:
             print('done!')

@@ -17,11 +17,12 @@ if sys.version_info > (3,):
     buffer = memoryview
 
 # Rendering window size
-WINDOW_SIZE = 800
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
 
 # Camera image size
-CAMERA_WIDTH = 128
-CAMERA_HEIGHT = 128
+CAMERA_WIDTH = 160
+CAMERA_HEIGHT = 120
 
 # Camera image shape
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
@@ -38,8 +39,8 @@ GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 15
 
-# Camera field of view angle
-CAMERA_FOV = 42
+# Camera field of view angle in the Y direction
+CAMERA_FOV_Y = 42
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
@@ -268,7 +269,7 @@ class SimpleSimEnv(gym.Env):
             font_name="Arial",
             font_size=14,
             x = 5,
-            y = WINDOW_SIZE - 19
+            y = WINDOW_HEIGHT - 19
         )
 
         # Load the road textures
@@ -500,7 +501,7 @@ class SimpleSimEnv(gym.Env):
         self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
 
         # Field of view angle of the camera
-        self.camFOV = self._perturb(CAMERA_FOV, 0.2)
+        self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
 
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
@@ -652,7 +653,7 @@ class SimpleSimEnv(gym.Env):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(
-            self.camFOV,
+            self.camFovY,
             CAMERA_WIDTH / float(CAMERA_HEIGHT),
             0.05,
             100.0
@@ -806,15 +807,15 @@ class SimpleSimEnv(gym.Env):
         if self.window is None:
             context = pyglet.gl.get_current_context()
             self.window = pyglet.window.Window(
-                width=WINDOW_SIZE,
-                height=WINDOW_SIZE
+                width=WINDOW_WIDTH,
+                height=WINDOW_HEIGHT
             )
 
         self.window.switch_to()
         self.window.dispatch_events()
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, WINDOW_SIZE, WINDOW_SIZE)
+        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         self.window.clear()
 
@@ -823,7 +824,7 @@ class SimpleSimEnv(gym.Env):
         glLoadIdentity()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glOrtho(0, WINDOW_SIZE, 0, WINDOW_SIZE, 0, 10)
+        glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
         width = img.shape[0]
@@ -836,7 +837,7 @@ class SimpleSimEnv(gym.Env):
             img.tobytes(),
             pitch = width * 3,
         )
-        imgData.blit(0, 0, 0, WINDOW_SIZE, WINDOW_SIZE)
+        imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         # Display position/state information
         pos = self.curPos
