@@ -37,7 +37,7 @@ ROAD_COLOR = np.array([0.79, 0.88, 0.53])
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Angle at which the camera is pitched downwards
-CAMERA_ANGLE = 15
+CAMERA_ANGLE = 5
 
 # Camera field of view angle in the Y direction
 CAMERA_FOV_Y = 42
@@ -229,7 +229,7 @@ class SimpleSimEnv(gym.Env):
 
     def __init__(self,
         maxSteps=600,
-        imgNoiseScale=0
+        imgNoiseScale=0.0
     ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -483,13 +483,13 @@ class SimpleSimEnv(gym.Env):
         self.stepCount = 0
 
         # Horizon color
-        self.horizonColor = self._perturb(HORIZON_COLOR)
+        self.horizonColor = self._perturb(HORIZON_COLOR, 0.25)
 
         # Ground color
         self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
 
         # Road color multiplier
-        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
+        self.roadColor = self._perturb(ROAD_COLOR, 0.25)
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)

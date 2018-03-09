@@ -32,7 +32,9 @@ class Model(nn.Module):
         super().__init__()
 
         self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
+        self.conv1_drop = nn.Dropout2d(p=0.2)
         self.conv2 = nn.Conv2d(32, 32, 4, stride=1)
+        self.conv2_drop = nn.Dropout2d(p=0.2)
         self.conv3 = nn.Conv2d(32, 32, 4, stride=1)
 
         self.deconv1 = nn.ConvTranspose2d(32, 32, 4, stride=1)
@@ -49,11 +51,13 @@ class Model(nn.Module):
         #print(x.size())
 
         x = self.conv1(x)
+        #x = self.conv1_drop(x)
         x = F.leaky_relu(x)
 
         #print(x.size())
 
         x = self.conv2(x)
+        #x = self.conv2_drop(x)
         x = F.leaky_relu(x)
 
         x = self.conv3(x)
@@ -75,13 +79,6 @@ class Model(nn.Module):
         #print(x.size())
 
         return x
-
-    """
-    def getValue(self, image):
-        image = Variable(torch.from_numpy(image).float()).unsqueeze(0)
-        x = self(image)
-        return x.data[0]
-    """
 
     def printInfo(self):
         modelSize = 0
@@ -106,7 +103,7 @@ def genData():
 
     return img, seg
 
-def genBatch(batch_size=1):
+def genBatch(batch_size=2):
     imgs = []
     segs = []
 
@@ -186,17 +183,20 @@ if __name__ == "__main__":
         print('train time: %d ms' % trainTime)
         print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
 
-        if epoch % 250 == 0:
+        if epoch % 500 == 0:
             img0 = images[0:1]
             out0 = model(img0)
             save_img('seg_img.png', img0)
             save_img('seg_out.png', out0)
 
-            img = load_img('cam-nofish.png')
-            img = Variable(img.unsqueeze(0))
-            #save_img('save_real.png', img)
-            out = model(img)
-            save_img('cam_seg.png', out)
+            for i in range(0, 50):
+                try:
+                    img = load_img('real_images/img_%03d.jpg' % i)
+                    img = Variable(img.unsqueeze(0))
+                    out = model(img)
+                    save_img('real_images/img_%03d_seg.png' % i, out)
+                except:
+                    pass
 
         #if epoch % 100 == 0:
         #    model.save('trained_models/dist_model.pt')
