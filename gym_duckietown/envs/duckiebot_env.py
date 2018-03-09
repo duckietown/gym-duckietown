@@ -20,11 +20,12 @@ if sys.version_info > (3,):
     buffer = memoryview
 
 # Rendering window size
-WINDOW_SIZE = 512
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
 
 # Camera image size
-CAMERA_WIDTH = 128
-CAMERA_HEIGHT = 128
+CAMERA_WIDTH = 160
+CAMERA_HEIGHT = 120
 
 # Camera image shape
 IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
@@ -49,9 +50,11 @@ class DuckiebotEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
-    def __init__(self,
-                 serverAddr="akira.local",
-                 serverPort=SERVER_PORT):
+    def __init__(
+        self,
+        serverAddr="akira.local",
+        serverPort=SERVER_PORT
+    ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -85,7 +88,7 @@ class DuckiebotEnv(gym.Env):
             font_name="Arial",
             font_size=14,
             x = 5,
-            y = WINDOW_SIZE - 19
+            y = WINDOW_HEIGHT - 19
         )
 
         # Connect to the Gym bridge ROS node
@@ -108,10 +111,10 @@ class DuckiebotEnv(gym.Env):
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
-        h, w, _ = self.img.shape
-        if w > h:
-            d = (w - h) // 2
-            self.img = self.img[:, d:(w-d), :]
+        #h, w, _ = self.img.shape
+        #if w > h:
+        #    d = (w - h) // 2
+        #    self.img = self.img[:, d:(w-d), :]
 
         # Resize the image
         self.img = cv2.resize(
@@ -175,15 +178,15 @@ class DuckiebotEnv(gym.Env):
         if self.window is None:
             context = pyglet.gl.get_current_context()
             self.window = pyglet.window.Window(
-                width=WINDOW_SIZE,
-                height=WINDOW_SIZE
+                width=WINDOW_WIDTH,
+                height=WINDOW_HEIGHT
             )
 
         self.window.switch_to()
         self.window.dispatch_events()
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, WINDOW_SIZE, WINDOW_SIZE)
+        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         self.window.clear()
 
@@ -192,7 +195,7 @@ class DuckiebotEnv(gym.Env):
         glLoadIdentity()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glOrtho(0, WINDOW_SIZE, 0, WINDOW_SIZE, 0, 10)
+        glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
         width = self.img.shape[0]
@@ -204,7 +207,7 @@ class DuckiebotEnv(gym.Env):
             self.img.tobytes(),
             pitch = width * 3,
         )
-        imgData.blit(0, 0, 0, WINDOW_SIZE, WINDOW_SIZE)
+        imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         if mode == 'human':
             self.window.flip()
