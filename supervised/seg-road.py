@@ -159,9 +159,11 @@ if __name__ == "__main__":
     model.printInfo()
     model.cuda()
 
+    # weight_decay is L2 regularization, helps avoid overfitting
     optimizer = optim.Adam(
         model.parameters(),
-        lr=0.001
+        lr=0.0005,
+        weight_decay=1e-3
     )
 
     avg_error = 0
