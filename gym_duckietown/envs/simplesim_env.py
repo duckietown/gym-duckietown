@@ -478,6 +478,51 @@ class SimpleSimEnv(gym.Env):
 
         return signedDist, dotDir, angle
 
+    def getFollowAngle(self, lookDist):
+        """
+        Compute the angle between the agent's direction and a point some
+        lookahead distance away on the road curve
+        """
+
+        dirVec = self.getDirVec()
+        upVec = np.array([0, 1, 0])
+        rightVec = np.cross(dirVec, upVec)
+        aheadPt = self.curPos + lookDist * self.getDirVec()
+
+        x, _, z = self.curPos
+        i, j = self._getGridPos(x, z)
+
+        # Get the closest point to the lookahead point
+        curvePt = None
+        curveDist = math.inf
+        for di in range(-1, 2):
+            for dj in range(-1, 2):
+                try:
+                    cps = self._getCurve(i+di, j+dj)
+                except:
+                    continue
+                t = bezierClosest(cps, aheadPt)
+                pt = bezierPoint(cps, t)
+                dist = np.linalg.norm(aheadPt - pt)
+                if dist < curveDist:
+                    curvePt = pt
+                    curveDist = dist
+
+        #print('dist=%s' % curveDist)
+
+        # Compute the unit vector going towards the curve point
+        pointVec = (curvePt - self.curPos)
+        norm = np.linalg.norm(pointVec)
+        pointVec /= norm
+
+        # Compute the signed angle between the lookahead vector and direction
+        dotDir = np.dot(dirVec, pointVec)
+        angle = math.acos(dotDir) * (180 / math.pi)
+        if np.dot(pointVec, rightVec) < 0:
+            angle *= -1
+
+        return angle
+
     def reset(self):
         # Step count since episode start
         self.stepCount = 0
