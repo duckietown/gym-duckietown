@@ -37,7 +37,7 @@ ROAD_COLOR = np.array([0.79, 0.88, 0.53])
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Angle at which the camera is pitched downwards
-CAMERA_ANGLE = 5
+CAMERA_ANGLE = 20
 
 # Camera field of view angle in the Y direction
 CAMERA_FOV_Y = 42
