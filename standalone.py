@@ -30,7 +30,7 @@ def save_numpy_img(file_name, img):
 lastImgNo = 0
 def save_img(img):
     global lastImgNo
-    save_numpy_img('real_images_tape/img_%03d.jpg' % lastImgNo, img)
+    save_numpy_img('real_images/img_%03d.png' % lastImgNo, img)
     lastImgNo += 1
 
 @env.window.event

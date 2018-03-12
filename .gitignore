@@ -2,3 +2,5 @@
 *.egg-info
 .idea/
 
+seg*
+real_images/*seg*

@@ -204,10 +204,10 @@ if __name__ == "__main__":
                 try:
                     img = load_img('real_images/img_%03d.jpg' % i)
                     img = Variable(img.unsqueeze(0))
-                    out = model(img)
+                    out, ang = model(img)
                     save_img('real_images/img_%03d_seg.png' % i, out)
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
 
         #if epoch % 100 == 0:
         #    model.save('trained_models/dist_model.pt')
