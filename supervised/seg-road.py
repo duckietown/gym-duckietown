@@ -185,15 +185,15 @@ if __name__ == "__main__":
         print('train time: %d ms' % trainTime)
         print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
 
-        if epoch % 500 == 0:
+        if epoch % 1000 == 0:
             img0 = images[0:1]
             out0 = model(img0)
             save_img('seg_img.png', img0)
             save_img('seg_out.png', out0)
 
-            for i in range(0, 50):
+            for i in range(0, 200):
                 try:
-                    img = load_img('real_images/img_%03d.jpg' % i)
+                    img = load_img('real_images/img_%03d.png' % i)
                     img = Variable(img.unsqueeze(0))
                     out = model(img)
                     save_img('real_images/img_%03d_seg.png' % i, out)
