@@ -21,18 +21,16 @@ env.render()
 model = Model()
 model.load('trained_models/angle_model.pt')
 
+#Define the gains
+kp = 0.01
+
 try:
     while True:
         angle = model.getAngle(obs)
         print('angle=%.2f' % angle)
 
-        if angle > 8:
-            vel = np.array([0.7, 0.4])
-        elif angle < -8:
-            vel = np.array([0.4, 0.7])
-        else:
-            vel = np.array([0.6, 0.6])
-
+        vel = np.array([0.6+kp*angel, 0.6-kp*angle])
+        
         obs, reward, done, info = env.step(vel)
         #print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
