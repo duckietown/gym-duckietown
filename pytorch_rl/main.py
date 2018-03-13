@@ -18,7 +18,7 @@ from vec_env.dummy_vec_env import DummyVecEnv
 from vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
 from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
+from model import CNNPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
 
@@ -63,12 +63,7 @@ def main():
 
     obs_numel = reduce(operator.mul, obs_shape, 1)
 
-    if len(obs_shape) == 3 and obs_numel > 1024:
-        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
-    else:
-        assert not args.recurrent_policy, \
-            "Recurrent policy is not implemented for the MLP controller"
-        actor_critic = MLPPolicy(obs_numel, envs.action_space)
+    actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
 
     modelSize = 0
     for p in actor_critic.parameters():
@@ -86,7 +81,7 @@ def main():
         actor_critic.cuda()
 
     if args.algo == 'a2c':
-        optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
+        optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha, weight_decay=1e-5)
     elif args.algo == 'ppo':
         optimizer = optim.Adam(actor_critic.parameters(), args.lr, eps=args.eps)
     elif args.algo == 'acktr':

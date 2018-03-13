@@ -38,19 +38,15 @@ class CNNPolicy(FFPolicy):
 
         #print('num_inputs=%s' % str(num_inputs))
 
-        self.conv1 = nn.Conv2d(num_inputs, 32, 8, stride=2)
-        self.conv1_drop = torch.nn.Dropout2d(p=0.2)
+        BOTTLENECK_SIZE = 8
 
-        self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv2_drop = torch.nn.Dropout2d(p=0.2)
+        self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
+        self.conv2 = nn.Conv2d(32, 32, 4, stride=1)
+        self.conv3 = nn.Conv2d(32, 32, 4, stride=1)
 
-        self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv3_drop = torch.nn.Dropout2d(p=0.2)
-
-        self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
-
-        self.linear1_drop = nn.Dropout(p=0.5)
         self.linear1 = nn.Linear(32 * 9 * 14, 256)
+        self.linear2 = nn.Linear(256, BOTTLENECK_SIZE)
+        self.linear3 = nn.Linear(BOTTLENECK_SIZE, 256)
 
         if use_gru:
             self.gru = nn.GRUCell(512, 512)
@@ -80,12 +76,9 @@ class CNNPolicy(FFPolicy):
         self.apply(weights_init)
 
         relu_gain = nn.init.calculate_gain('leaky_relu')
-        tanh_gain = nn.init.calculate_gain('tanh')
         self.conv1.weight.data.mul_(relu_gain)
         self.conv2.weight.data.mul_(relu_gain)
         self.conv3.weight.data.mul_(relu_gain)
-        self.conv4.weight.data.mul_(relu_gain)
-        self.linear1.weight.data.mul_(relu_gain)
 
         if hasattr(self, 'gru'):
             orthogonal(self.gru.weight_ih.data)
@@ -96,26 +89,25 @@ class CNNPolicy(FFPolicy):
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
 
-    def forward(self, inputs, states, masks):
-        x = self.conv1(inputs)
-        #x = self.conv1_drop(x)
+    def forward(self, image, states, masks):
+        batch_size = image.size(0)
+
+        x = image
+
+        x = self.conv1(x)
         x = F.leaky_relu(x)
 
         x = self.conv2(x)
-        #x = self.conv2_drop(x)
         x = F.leaky_relu(x)
 
         x = self.conv3(x)
-        #x = self.conv3_drop(x)
-        x = F.leaky_relu(x)
+        conv_out = F.leaky_relu(x)
+        conv_out = conv_out.view(batch_size, -1)
+        #print(x.size())
 
-        x = self.conv4(x)
-        x = F.leaky_relu(x)
-
-        x = x.view(-1, 32 * 9 * 14)
-        x = self.linear1_drop(x)
-        x = self.linear1(x)
-        x = F.leaky_relu(x)
+        x = F.leaky_relu(self.linear1(conv_out))
+        mid = F.leaky_relu(self.linear2(x))
+        x = F.leaky_relu(self.linear3(mid))
 
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):
@@ -131,7 +123,6 @@ class CNNPolicy(FFPolicy):
 
         return self.critic_linear(x), x, states
 
-
 def weights_init_mlp(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
@@ -139,68 +130,3 @@ def weights_init_mlp(m):
         m.weight.data *= 1 / torch.sqrt(m.weight.data.pow(2).sum(1, keepdim=True))
         if m.bias is not None:
             m.bias.data.fill_(0)
-
-
-class MLPPolicy(FFPolicy):
-    def __init__(self, num_inputs, action_space):
-        super(MLPPolicy, self).__init__()
-
-        self.action_space = action_space
-
-        self.a_fc1 = nn.Linear(num_inputs, 64)
-        self.a_fc2 = nn.Linear(64, 64)
-
-        self.v_fc1 = nn.Linear(num_inputs, 64)
-        self.v_fc2 = nn.Linear(64, 64)
-        self.v_fc3 = nn.Linear(64, 1)
-
-        if action_space.__class__.__name__ == "Discrete":
-            num_outputs = action_space.n
-            self.dist = Categorical(64, num_outputs)
-        elif action_space.__class__.__name__ == "Box":
-            num_outputs = action_space.shape[0]
-            self.dist = DiagGaussian(64, num_outputs)
-        else:
-            raise NotImplementedError
-
-        self.train()
-        self.reset_parameters()
-
-    @property
-    def state_size(self):
-        return 1
-
-    def reset_parameters(self):
-        self.apply(weights_init_mlp)
-
-        """
-        tanh_gain = nn.init.calculate_gain('tanh')
-        self.a_fc1.weight.data.mul_(tanh_gain)
-        self.a_fc2.weight.data.mul_(tanh_gain)
-        self.v_fc1.weight.data.mul_(tanh_gain)
-        self.v_fc2.weight.data.mul_(tanh_gain)
-        """
-
-        if self.dist.__class__.__name__ == "DiagGaussian":
-            self.dist.fc_mean.weight.data.mul_(0.01)
-
-    def forward(self, inputs, states, masks):
-        batch_numel = reduce(operator.mul, inputs.size()[1:], 1)
-        inputs = inputs.view(-1, batch_numel)
-
-        x = self.v_fc1(inputs)
-        x = F.tanh(x)
-
-        x = self.v_fc2(x)
-        x = F.tanh(x)
-
-        x = self.v_fc3(x)
-        value = x
-
-        x = self.a_fc1(inputs)
-        x = F.tanh(x)
-
-        x = self.a_fc2(x)
-        x = F.tanh(x)
-
-        return value, x, states
