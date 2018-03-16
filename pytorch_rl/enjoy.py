@@ -6,8 +6,7 @@ import time
 import numpy as np
 import torch
 from torch.autograd import Variable
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
+from pytorch_rl.vec_env.dummy_vec_env import DummyVecEnv
 
 from envs import make_env
 
@@ -32,21 +31,7 @@ env = DummyVecEnv([env])
 
 actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 
-if len(env.observation_space.shape) == 1:
-    env = VecNormalize(env, ret=False)
-    env.ob_rms = ob_rms
-
-    # An ugly hack to remove updates
-    def _obfilt(self, obs):
-        if self.ob_rms:
-            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
-            return obs
-        else:
-            return obs
-    env._obfilt = types.MethodType(_obfilt, env)
-    render_func = env.venv.envs[0].render
-else:
-    render_func = env.envs[0].render
+render_func = env.envs[0].render
 
 obs_shape = env.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])

@@ -8,9 +8,11 @@ Installation
 Requirements:
 - Python 3
 - OpenAI gym
-- numpy
+- NumPy
 - scipy
-- pyglet
+- OpenCV
+- Pyglet
+- PyTorch
 
 Clone this repository and install the dependencies with `pip3`:
 
@@ -22,20 +24,42 @@ pip3 install -e .
 
 Reinforcement learning code forked from [this repository](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr)
 is included under [/pytorch_rl](/pytorch_rl). If you wish to use this code, you
-should install Pytorch as follows as follows:
+should install [PyTorch](http://pytorch.org/) as follows:
 
 ```
 # PyTorch
-conda install pytorch torchvision -c soumith
+conda install pytorch torchvision -c pytorch
 ```
+
+Introduction
+------------
+
+This repository contains 3 different gym environments:
+- `Duckie-SimpleSim-v0`
+- `Duckietown-v0`
+- `Duckiebot-v0`
+
+The `Duckie-SimpleSim-v0` environment is a simple lane-following simulator
+written in OpenGL (Pyglet). The `Duckietown-v0` environment is meant to
+connect to a remote server running ROS/Gazebo which runs a more complete
+simulation (but this simulation is often more buggy, slower, and trickier to
+get working). The `Duckiebot-v0` is meant to connect to software running on
+a real Duckiebot and remote control it. It is a tool to test that policies
+trained in simulation can transfer to the real robot.
+
+If you are interested in controlling your robot remotely with the
+`Duckiebot-v0` environment, you will need to install the software
+found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
+repository on your Duckiebot.
 
 Usage
 -----
 
-To run the standalone UI application, which allows you to control the robot manually:
+To run the standalone UI application, which allows you to control the simulation or real
+robot manually:
 
 ```python3
-./standalone.py
+./standalone.py --env-name Duckie-SimpleSim-v0
 ```
 
 The standalone application will launch the gym environment, receive
@@ -45,7 +69,7 @@ To train a reinforcement learning agent, you can use the code provided under [/p
 A sample command to launch training is:
 
 ```
-python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --num-frames 1000000 --lr 0.0002 --entropy-coef 0.01 --max-grad-norm 0.5
+python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5
 ```
 
 Then, to visualize the result of training, you can run the following command.

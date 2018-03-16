@@ -6,14 +6,8 @@ import numpy as np
 import gym
 from gym.spaces.box import Box
 
-from baselines import bench
-from baselines.common.atari_wrappers import make_atari, wrap_deepmind
-
-try:
-    import gym_duckietown
-    from gym_duckietown.envs import *
-except ImportError:
-    pass
+import gym_duckietown
+from gym_duckietown.envs import *
 
 def make_env(env_id, seed, rank, log_dir, start_container):
     def _thunk():
@@ -37,14 +31,7 @@ def make_env(env_id, seed, rank, log_dir, start_container):
             env = gym.make(env_id)
             env = DiscreteWrapper(env)
 
-        is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        if is_atari:
-            env = make_atari(env_id)
         env.seed(seed + rank)
-        if log_dir is not None:
-            env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
-        if is_atari:
-            env = wrap_deepmind(env)
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
