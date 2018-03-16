@@ -8,7 +8,6 @@ import time
 import numpy
 import zmq
 import cv2
-from skimage.transform import resize
 import pyglet
 from pyglet.image import ImageData
 from pyglet.gl import *
