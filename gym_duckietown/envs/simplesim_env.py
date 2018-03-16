@@ -83,28 +83,59 @@ def createFrameBuffers():
     glGenFramebuffers(1, byref(multiFBO))
     glBindFramebuffer(GL_FRAMEBUFFER, multiFBO)
 
-    # Create a multisampled texture to render into
-    numSamples = 32
-    fbTex = GLuint(0)
-    glGenTextures( 1, byref(fbTex));
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex);
-    glTexImage2DMultisample(
-        GL_TEXTURE_2D_MULTISAMPLE,
-        numSamples,
-        GL_RGBA32F,
-        CAMERA_WIDTH,
-        CAMERA_HEIGHT,
-        True
-    );
-    glFramebufferTexture2D(
-        GL_FRAMEBUFFER,
-        GL_COLOR_ATTACHMENT0,
-        GL_TEXTURE_2D_MULTISAMPLE,
-        fbTex,
-        0
-    );
-    res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    assert res == GL_FRAMEBUFFER_COMPLETE
+    # The try block here is because some OpenGL drivers
+    # (Intel GPU drivers on macbooks in particular) do not
+    # support multisampling on frame buffer objects
+    try:
+        # Create a multisampled texture to render into
+        numSamples = 32
+        fbTex = GLuint(0)
+        glGenTextures( 1, byref(fbTex));
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex);
+        glTexImage2DMultisample(
+            GL_TEXTURE_2D_MULTISAMPLE,
+            numSamples,
+            GL_RGBA32F,
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            True
+        );
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER,
+            GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_2D_MULTISAMPLE,
+            fbTex,
+            0
+        );
+        res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+        assert res == GL_FRAMEBUFFER_COMPLETE
+    except:
+        print('Falling back to non-multisampled frame buffer')
+
+        # Create a plain texture texture to render into
+        fbTex = GLuint(0)
+        glGenTextures( 1, byref(fbTex));
+        glBindTexture(GL_TEXTURE_2D, fbTex);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGBA,
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            0,
+            GL_RGBA,
+            GL_FLOAT,
+            None
+        )
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER,
+            GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_2D,
+            fbTex,
+            0
+        );
+        res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+        assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Create the frame buffer used to resolve the final render
     finalFBO = GLuint(0)
@@ -220,7 +251,11 @@ def drawBezier(cps, n = 20):
     glColor3f(1,1,1)
 
 class SimpleSimEnv(gym.Env):
-    """Simplistic road simulator to test RL training"""
+    """
+    Simple road simulator to test RL training.
+    Draws a road with turns using OpenGL, and simulates
+    basic differential-drive dynamics.
+    """
 
     metadata = {
         'render.modes': ['human', 'rgb_array', 'app'],
