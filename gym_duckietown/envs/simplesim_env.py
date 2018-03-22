@@ -309,6 +309,7 @@ class SimpleSimEnv(gym.Env):
 
         # Load the road textures
         self.roadTex = loadTexture('road_plain.png')
+        self.roadStopTex = loadTexture('road_stop.png')
         self.roadLeftTex = loadTexture('road_left.png')
         self.roadRightTex = loadTexture('road_right.png')
 
@@ -438,7 +439,7 @@ class SimpleSimEnv(gym.Env):
 
         kind, angle = tile
 
-        if kind == 'linear':
+        if kind.startswith('linear'):
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0,-0.25],
@@ -751,12 +752,14 @@ class SimpleSimEnv(gym.Env):
                 # Bind the appropriate texture
                 if kind == 'linear':
                     glBindTexture(self.roadTex.target, self.roadTex.id)
+                elif kind == 'linear_stop':
+                    glBindTexture(self.roadStopTex.target, self.roadStopTex.id)
                 elif kind == 'diag_left':
                     glBindTexture(self.roadLeftTex.target, self.roadLeftTex.id)
                 elif kind == 'diag_right':
                     glBindTexture(self.roadRightTex.target, self.roadRightTex.id)
                 else:
-                    assert False
+                    assert False, kind
 
                 self.roadVList.draw(GL_QUADS)
                 glPopMatrix()
