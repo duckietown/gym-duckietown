@@ -819,10 +819,11 @@ class SimpleSimEnv(gym.Env):
             return img
 
         if self.window is None:
-            context = pyglet.gl.get_current_context()
+            config = pyglet.gl.Config(double_buffer=False)
             self.window = pyglet.window.Window(
                 width=WINDOW_WIDTH,
-                height=WINDOW_HEIGHT
+                height=WINDOW_HEIGHT,
+                config=config
             )
 
         self.window.switch_to()
@@ -858,5 +859,5 @@ class SimpleSimEnv(gym.Env):
         self.textLabel.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
         self.textLabel.draw()
 
-        if mode == 'human':
-            self.window.flip()
+        # Force execution of queued commands
+        glFlush()
