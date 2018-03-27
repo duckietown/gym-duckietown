@@ -823,9 +823,11 @@ class SimpleSimEnv(gym.Env):
             self.window = pyglet.window.Window(
                 width=WINDOW_WIDTH,
                 height=WINDOW_HEIGHT,
+                resizable=False,
                 config=config
             )
 
+        self.window.clear()
         self.window.switch_to()
         self.window.dispatch_events()
 
@@ -848,9 +850,15 @@ class SimpleSimEnv(gym.Env):
             height,
             'RGB',
             img.ctypes.data_as(POINTER(GLubyte)),
-            pitch = width * 3,
+            pitch=width * 3,
         )
-        imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+        imgData.blit(
+            0,
+            0,
+            0,
+            width=WINDOW_WIDTH,
+            height=WINDOW_HEIGHT
+        )
 
         # Display position/state information
         pos = self.curPos
