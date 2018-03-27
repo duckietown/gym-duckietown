@@ -832,7 +832,6 @@ class SimpleSimEnv(gym.Env):
         self.window.dispatch_events()
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         # Setup orghogonal projection
         glMatrixMode(GL_PROJECTION)
