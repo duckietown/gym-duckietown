@@ -79,9 +79,9 @@ def createFrameBuffers():
     """Create the frame buffer objects"""
 
     # Create the multisampled frame buffer (rendering target)
-    multiFBO = GLuint(0)
-    glGenFramebuffers(1, byref(multiFBO))
-    glBindFramebuffer(GL_FRAMEBUFFER, multiFBO)
+    multi_fbo = GLuint(0)
+    glGenFramebuffers(1, byref(multi_fbo))
+    glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
 
     # The try block here is because some OpenGL drivers
     # (Intel GPU drivers on macbooks in particular) do not
@@ -138,9 +138,9 @@ def createFrameBuffers():
         assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Create the frame buffer used to resolve the final render
-    finalFBO = GLuint(0)
-    glGenFramebuffers(1, byref(finalFBO))
-    glBindFramebuffer(GL_FRAMEBUFFER, finalFBO)
+    final_fbo = GLuint(0)
+    glGenFramebuffers(1, byref(final_fbo))
+    glBindFramebuffer(GL_FRAMEBUFFER, final_fbo)
 
     # Create the texture used to resolve the final render
     fbTex = GLuint(0)
@@ -170,7 +170,7 @@ def createFrameBuffers():
     # Unbind the frame buffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-    return multiFBO, finalFBO
+    return multi_fbo, final_fbo
 
 def rotatePoint(px, py, cx, cy, theta):
     dx = px - cx
@@ -249,9 +249,6 @@ def drawBezier(cps, n = 20):
         glVertex3f(*p)
     glEnd()
     glColor3f(1,1,1)
-    glBegin(GL_POINTS)
-    glVertex3f(*pts[-1])
-    glEnd()
 
 class SimpleSimEnv(gym.Env):
     """
@@ -308,7 +305,7 @@ class SimpleSimEnv(gym.Env):
         self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
 
         # For displaying text
-        self.textLabel = pyglet.text.Label(
+        self.text_label = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
             x = 5,
@@ -316,13 +313,14 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Load the road textures
-        self.roadTex = loadTexture('road_plain.png')
-        self.roadStopTex = loadTexture('road_stop.png')
-        self.roadLeftTex = loadTexture('road_left.png')
-        self.roadRightTex = loadTexture('road_right.png')
+        self.road_tex = loadTexture('road_plain.png')
+        self.road_stop_tex = loadTexture('road_stop.png')
+        self.road_left_tex = loadTexture('road_left.png')
+        self.road_right_tex = loadTexture('road_right.png')
+        self.road_3way_left_tex = loadTexture('road_3way_left.png')
 
         # Create a frame buffer object
-        self.multiFBO, self.finalFBO = createFrameBuffers()
+        self.multi_fbo, self.final_fbo = createFrameBuffers()
 
         # Create the vertex list for our road quad
         halfSize = ROAD_TILE_SIZE / 2
@@ -338,7 +336,7 @@ class SimpleSimEnv(gym.Env):
             0.0, 1.0,
             1.0, 1.0
         ]
-        self.roadVList = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
+        self.road_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
 
         # Create the vertex list for the ground quad
         verts = [
@@ -347,47 +345,10 @@ class SimpleSimEnv(gym.Env):
              1, -0.05, -1,
              1, -0.05,  1
         ]
-        self.groundVList = pyglet.graphics.vertex_list(4, ('v3f', verts))
+        self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
-        # Tile grid size
-        self.gridWidth = 6
-        self.gridHeight = 6
-        self.grid = [None] * self.gridWidth * self.gridHeight
-
-        # Assemble the initial grid
-        # Left turn
-        self._setGrid(0, 0, ('diag_left', 3))
-        # First straight
-        self._setGrid(0, 1, ('linear', 0))
-        self._setGrid(0, 2, ('linear', 0))
-        # Left
-        self._setGrid(0, 3, ('diag_left', 0))
-        # Straight, towards the left
-        self._setGrid(1, 3, ('linear', 1))
-        # Right
-        self._setGrid(2, 3, ('diag_right', 1))
-        # Forward towads the back
-        self._setGrid(2, 4, ('linear', 0))
-        # Left turn
-        self._setGrid(2, 5, ('diag_left', 0))
-
-        # Second straight, towards the left
-        self._setGrid(3, 5, ('linear', 1))
-        self._setGrid(4, 5, ('linear', 1))
-        # Third turn
-        self._setGrid(5, 5, ('diag_left', 1))
-        # Third straight
-        self._setGrid(5, 4, ('linear', 2))
-        self._setGrid(5, 3, ('linear', 2))
-        self._setGrid(5, 2, ('linear', 2))
-        self._setGrid(5, 1, ('linear', 2))
-        # Fourth turn
-        self._setGrid(5, 0, ('diag_left', 2))
-        # Last straight
-        self._setGrid(1, 0, ('linear', 3))
-        self._setGrid(2, 0, ('linear', 3))
-        self._setGrid(3, 0, ('linear', 3))
-        self._setGrid(4, 0, ('linear', 3))
+        # Load the map
+        self._load_map()
 
         # Initialize the state
         self.seed()
@@ -400,17 +361,72 @@ class SimpleSimEnv(gym.Env):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
 
-    def _setGrid(self, i, j, tile):
-        assert i >= 0 and i < self.gridWidth
-        assert j >= 0 and j < self.gridHeight
-        self.grid[j * self.gridWidth + i] = tile
+    def _load_map(self):
+        """
+        Load the map layout from a CSV file
+        """
 
-    def _getGrid(self, i, j):
-        if i < 0 or i >= self.gridWidth:
+        # Tile grid size
+        self.grid_width = 6
+        self.grid_height = 6
+        self.grid = [None] * self.grid_width * self.grid_height
+
+        # Assemble the initial grid
+        # Left turn
+        self._set_grid(0, 0, ('diag_left', 3))
+        # First straight
+        self._set_grid(0, 1, ('linear', 0))
+        self._set_grid(0, 2, ('linear', 0))
+        # Left
+        self._set_grid(0, 3, ('diag_left', 0))
+        # Straight, towards the left
+        self._set_grid(1, 3, ('linear', 1))
+        # Right
+        self._set_grid(2, 3, ('diag_right', 1))
+        # Forward towads the back
+        self._set_grid(2, 4, ('linear', 0))
+        # Left turn
+        self._set_grid(2, 5, ('diag_left', 0))
+
+        # Second straight, towards the left
+        self._set_grid(3, 5, ('linear', 1))
+        self._set_grid(4, 5, ('linear', 1))
+        # Third turn
+        self._set_grid(5, 5, ('diag_left', 1))
+        # Third straight
+        self._set_grid(5, 4, ('linear', 2))
+        self._set_grid(5, 3, ('linear', 2))
+        self._set_grid(5, 2, ('linear', 2))
+        self._set_grid(5, 1, ('linear', 2))
+        # Fourth turn
+        self._set_grid(5, 0, ('diag_left', 2))
+        # Last straight
+        self._set_grid(1, 0, ('linear', 3))
+        self._set_grid(2, 0, ('linear', 3))
+        self._set_grid(3, 0, ('linear', 3))
+        self._set_grid(4, 0, ('linear', 3))
+
+
+
+
+
+
+
+
+
+
+
+    def _set_grid(self, i, j, tile):
+        assert i >= 0 and i < self.grid_width
+        assert j >= 0 and j < self.grid_height
+        self.grid[j * self.grid_width + i] = tile
+
+    def _get_grid(self, i, j):
+        if i < 0 or i >= self.grid_width:
             return None
-        if j < 0 or j >= self.gridWidth:
+        if j < 0 or j >= self.grid_width:
             return None
-        return self.grid[j * self.gridWidth + i]
+        return self.grid[j * self.grid_width + i]
 
     def _perturb(self, val, scale=0.1):
         """Add noise to a value"""
@@ -424,7 +440,7 @@ class SimpleSimEnv(gym.Env):
 
         return val * noise
 
-    def _getGridPos(self, x, z):
+    def _get_grid_pos(self, x, z):
         """
         Compute the tile indices (i,j) for a given (x,z) world position
         """
@@ -437,17 +453,17 @@ class SimpleSimEnv(gym.Env):
 
         return i, j
 
-    def _getCurve(self, i, j):
+    def _get_curve(self, i, j):
         """
         Get the Bezier curve control points for a given tile
         """
 
-        tile = self._getGrid(i, j)
+        tile = self._get_grid(i, j)
         assert tile is not None
 
         kind, angle = tile
 
-        if kind.startswith('linear'):
+        if kind.startswith('linear') or kind.startswith('3way'):
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0,-0.25],
@@ -494,10 +510,10 @@ class SimpleSimEnv(gym.Env):
         """
 
         x, _, z = self.curPos
-        i, j = self._getGridPos(x, z)
+        i, j = self._get_grid_pos(x, z)
 
         # Get the closest point along the right lane's Bezier curve
-        cps = self._getCurve(i, j)
+        cps = self._get_curve(i, j)
         t = bezierClosest(cps, self.curPos)
         point = bezierPoint(cps, t)
 
@@ -551,13 +567,13 @@ class SimpleSimEnv(gym.Env):
         # Pick a random starting tile and angle, do rejection sampling
         while True:
             self.curPos = np.array([
-                self.np_random.uniform(-0.5, self.gridWidth - 0.5) * ROAD_TILE_SIZE,
+                self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE,
                 0,
-                self.np_random.uniform(-0.5, self.gridHeight - 0.5) * ROAD_TILE_SIZE,
+                self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE,
             ])
 
-            i, j = self._getGridPos(self.curPos[0], self.curPos[2])
-            tile = self._getGrid(i, j)
+            i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
+            tile = self._get_grid(i, j)
 
             if tile is None:
                 continue
@@ -598,12 +614,12 @@ class SimpleSimEnv(gym.Env):
         self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
 
         # Get the first camera image
-        obs = self._renderObs()
+        obs = self._render_obs()
 
         # Return first observation
         return obs
 
-    def _updatePos(self, wheelVels, deltaTime):
+    def _update_pos(self, wheelVels, deltaTime):
         """
         Update the position of the robot, simulating differential drive
         """
@@ -640,7 +656,7 @@ class SimpleSimEnv(gym.Env):
         self.step_count += 1
 
         # Update the robot's position
-        self._updatePos(action * ROBOT_SPEED * 1, 0.1)
+        self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
         # Add a small amount of noise to the position
         # This will randomize the movement dynamics
@@ -652,11 +668,11 @@ class SimpleSimEnv(gym.Env):
         x, y, z = self.curPos
 
         # Generate the current camera image
-        obs = self._renderObs()
+        obs = self._render_obs()
 
         # Compute the grid position of the agent
-        i, j = self._getGridPos(x, z)
-        tile = self._getGrid(i, j)
+        i, j = self._get_grid_pos(x, z)
+        tile = self._get_grid(i, j)
 
         # If there is nothing at this grid cell
         if tile == None:
@@ -679,7 +695,7 @@ class SimpleSimEnv(gym.Env):
 
         return obs, reward, done, {}
 
-    def _renderObs(self):
+    def _render_obs(self):
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
         #pyglet.gl._shadow_window.switch_to()
@@ -687,7 +703,7 @@ class SimpleSimEnv(gym.Env):
 
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
-        glBindFramebuffer(GL_FRAMEBUFFER, self.multiFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, self.multi_fbo);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
         glClearColor(*self.horizonColor, 1.0)
@@ -729,7 +745,7 @@ class SimpleSimEnv(gym.Env):
         glColor3f(*self.groundColor)
         glPushMatrix()
         glScalef(50, 1, 50)
-        self.groundVList.draw(GL_QUADS)
+        self.ground_vlist.draw(GL_QUADS)
         glPopMatrix()
 
         # Draw the ground/noise triangles
@@ -741,10 +757,10 @@ class SimpleSimEnv(gym.Env):
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         # For each grid tile
-        for j in range(self.gridHeight):
-            for i in range(self.gridWidth):
+        for j in range(self.grid_height):
+            for i in range(self.grid_width):
                 # Get the tile type and angle
-                tile = self._getGrid(i, j)
+                tile = self._get_grid(i, j)
 
                 if tile == None:
                     continue
@@ -759,26 +775,28 @@ class SimpleSimEnv(gym.Env):
 
                 # Bind the appropriate texture
                 if kind == 'linear':
-                    glBindTexture(self.roadTex.target, self.roadTex.id)
+                    glBindTexture(self.road_tex.target, self.road_tex.id)
                 elif kind == 'linear_stop':
-                    glBindTexture(self.roadStopTex.target, self.roadStopTex.id)
+                    glBindTexture(self.road_stop_tex.target, self.road_stop_tex.id)
+                elif kind == '3way_left':
+                    glBindTexture(self.road_3way_left_tex.target, self.road_3way_left_tex.id)
                 elif kind == 'diag_left':
-                    glBindTexture(self.roadLeftTex.target, self.roadLeftTex.id)
+                    glBindTexture(self.road_left_tex.target, self.road_left_tex.id)
                 elif kind == 'diag_right':
-                    glBindTexture(self.roadRightTex.target, self.roadRightTex.id)
+                    glBindTexture(self.road_right_tex.target, self.road_right_tex.id)
                 else:
                     assert False, kind
 
-                self.roadVList.draw(GL_QUADS)
+                self.road_vlist.draw(GL_QUADS)
                 glPopMatrix()
 
                 if self.draw_curve:
-                    pts = self._getCurve(i, j)
+                    pts = self._get_curve(i, j)
                     drawBezier(pts, n = 20)
 
         # Resolve the multisampled frame buffer into the final frame buffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.finalFBO);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multi_fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.final_fbo);
         glBlitFramebuffer(
             0, 0,
             CAMERA_WIDTH, CAMERA_HEIGHT,
@@ -790,7 +808,7 @@ class SimpleSimEnv(gym.Env):
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        glBindFramebuffer(GL_FRAMEBUFFER, self.finalFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, self.final_fbo);
         glReadPixels(
             0,
             0,
@@ -822,7 +840,7 @@ class SimpleSimEnv(gym.Env):
             return
 
         # Render the observation
-        img = self._renderObs()
+        img = self._render_obs()
 
         if mode == 'rgb_array':
             return img
@@ -853,14 +871,14 @@ class SimpleSimEnv(gym.Env):
         width = img.shape[1]
         height = img.shape[0]
         img = np.uint8(img * 255)
-        imgData = pyglet.image.ImageData(
+        img_data = pyglet.image.ImageData(
             width,
             height,
             'RGB',
             img.ctypes.data_as(POINTER(GLubyte)),
             pitch=width * 3,
         )
-        imgData.blit(
+        img_data.blit(
             0,
             0,
             0,
@@ -870,8 +888,8 @@ class SimpleSimEnv(gym.Env):
 
         # Display position/state information
         pos = self.curPos
-        self.textLabel.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
-        self.textLabel.draw()
+        self.text_label.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
+        self.text_label.draw()
 
         # Force execution of queued commands
         glFlush()
