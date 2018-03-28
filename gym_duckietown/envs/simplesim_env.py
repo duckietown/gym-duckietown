@@ -243,12 +243,15 @@ def bezierClosest(cps, p, t_bot=0, t_top=1, n=8):
 
 def drawBezier(cps, n = 20):
     pts = [bezierPoint(cps, i/(n-1)) for i in range(0,n)]
-    glColor3f(1,0,0)
     glBegin(GL_LINE_STRIP)
-    for p in pts:
+    glColor3f(1, 0, 0)
+    for i, p in enumerate(pts):
         glVertex3f(*p)
     glEnd()
     glColor3f(1,1,1)
+    glBegin(GL_POINTS)
+    glVertex3f(*pts[-1])
+    glEnd()
 
 class SimpleSimEnv(gym.Env):
     """
