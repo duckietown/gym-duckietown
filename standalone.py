@@ -5,23 +5,29 @@ from __future__ import division, print_function
 import sys
 import argparse
 
+import pyglet
 import numpy as np
+
 import gym
 import gym_duckietown
-
-import pyglet
+from gym_duckietown.envs import SimpleSimEnv
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--env-name', default='Duckie-SimpleSim-v0')
+parser.add_argument('--env-name', default='SimpleSim-v0')
+parser.add_argument('--draw-curve', action='store_true')
 args = parser.parse_args()
 
-env = gym.make(args.env_name)
+if args.env_name == 'SimpleSim-v0':
+    env = SimpleSimEnv(draw_curve=args.draw_curve)
+else:
+    env = gym.make(args.env_name)
+
 env.reset()
 env.render()
 
 def save_numpy_img(file_name, img):
-    img = (img * 255).astype(np.uint8)
     img = np.ascontiguousarray(img)
+    img = (img * 255).astype(np.uint8)
     img = np.flip(img, 0)
 
     from skimage import io
@@ -63,7 +69,7 @@ def on_key_press(symbol, modifiers):
     if action is not None:
         print('stepping')
         obs, reward, done, info = env.step(action)
-        print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
+        print('step_count = %s, reward=%.3f' % (env.step_count, reward))
 
         env.render()
 

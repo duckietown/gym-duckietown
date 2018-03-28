@@ -262,9 +262,11 @@ class SimpleSimEnv(gym.Env):
         'video.frames_per_second' : 30
     }
 
-    def __init__(self,
-        maxSteps=600,
-        imgNoiseScale=0
+    def __init__(
+        self,
+        max_steps=600,
+        img_noise_scale=0,
+        draw_curve=False
     ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -285,13 +287,16 @@ class SimpleSimEnv(gym.Env):
         self.reward_range = (-1, 1000)
 
         # Maximum number of steps per episode
-        self.maxSteps = maxSteps
+        self.max_steps = max_steps
 
         # Amount of image noise to produce (standard deviation)
-        self.imgNoiseScale = imgNoiseScale
+        self.img_noise_scale = img_noise_scale
+
+        # Flag to draw the road curve
+        self.draw_curve = draw_curve
 
         # Array to render the image into
-        self.imgArray = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
+        self.img_array = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
 
         # Window for displaying the environment to humans
         self.window = None
@@ -516,7 +521,7 @@ class SimpleSimEnv(gym.Env):
 
     def reset(self):
         # Step count since episode start
-        self.stepCount = 0
+        self.step_count = 0
 
         # Horizon color
         self.horizonColor = self._perturb(HORIZON_COLOR)
@@ -629,7 +634,7 @@ class SimpleSimEnv(gym.Env):
         self.curAngle -= rotAngle
 
     def step(self, action):
-        self.stepCount += 1
+        self.step_count += 1
 
         # Update the robot's position
         self._updatePos(action * ROBOT_SPEED * 1, 0.1)
@@ -657,7 +662,7 @@ class SimpleSimEnv(gym.Env):
             return obs, reward, done, {}
 
         # If the maximum time step count is reached
-        if self.stepCount >= self.maxSteps:
+        if self.step_count >= self.max_steps:
             done = True
             reward = 0
             return obs, reward, done, {}
@@ -764,8 +769,9 @@ class SimpleSimEnv(gym.Env):
                 self.roadVList.draw(GL_QUADS)
                 glPopMatrix()
 
-                #pts = self._getCurve(i, j)
-                #drawBezier(pts, n = 20)
+                if self.draw_curve:
+                    pts = self._getCurve(i, j)
+                    drawBezier(pts, n = 20)
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multiFBO);
@@ -789,22 +795,22 @@ class SimpleSimEnv(gym.Env):
             CAMERA_HEIGHT,
             GL_RGB,
             GL_FLOAT,
-            self.imgArray.ctypes.data_as(POINTER(GLfloat))
+            self.img_array.ctypes.data_as(POINTER(GLfloat))
         )
 
         # Add noise to the image
-        if self.imgNoiseScale > 0:
+        if self.img_noise_scale > 0:
             noise = self.np_random.normal(
                 size=IMG_SHAPE,
                 loc=0,
-                scale=self.imgNoiseScale
+                scale=self.img_noise_scale
             )
-            np.clip(self.imgArray + noise, a_min=0, a_max=1, out=self.imgArray)
+            np.clip(self.img_array + noise, a_min=0, a_max=1, out=self.img_array)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        return self.imgArray
+        return self.img_array
 
     def render(self, mode='human', close=False):
         if close:
