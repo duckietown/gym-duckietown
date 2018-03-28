@@ -366,55 +366,34 @@ class SimpleSimEnv(gym.Env):
         Load the map layout from a CSV file
         """
 
-        # Tile grid size
-        self.grid_width = 6
-        self.grid_height = 6
+        import csv
+        csvfile = open('gym_duckietown/envs/map.csv', 'r')
+        reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+        rows = list(reader)
+
+        assert len(rows) > 0
+        assert len(rows[0]) > 0
+
+        # Create the grid
+        self.grid_height = len(rows)
+        self.grid_width = len(rows[0])
         self.grid = [None] * self.grid_width * self.grid_height
 
-        # Assemble the initial grid
-        # Left turn
-        self._set_grid(0, 0, ('diag_left', 3))
-        # First straight
-        self._set_grid(0, 1, ('linear', 0))
-        self._set_grid(0, 2, ('linear', 0))
-        # Left
-        self._set_grid(0, 3, ('diag_left', 0))
-        # Straight, towards the left
-        self._set_grid(1, 3, ('linear', 1))
-        # Right
-        self._set_grid(2, 3, ('diag_right', 1))
-        # Forward towads the back
-        self._set_grid(2, 4, ('linear', 0))
-        # Left turn
-        self._set_grid(2, 5, ('diag_left', 0))
+        for j, row in enumerate(reversed(rows)):
 
-        # Second straight, towards the left
-        self._set_grid(3, 5, ('linear', 1))
-        self._set_grid(4, 5, ('linear', 1))
-        # Third turn
-        self._set_grid(5, 5, ('diag_left', 1))
-        # Third straight
-        self._set_grid(5, 4, ('linear', 2))
-        self._set_grid(5, 3, ('linear', 2))
-        self._set_grid(5, 2, ('linear', 2))
-        self._set_grid(5, 1, ('linear', 2))
-        # Fourth turn
-        self._set_grid(5, 0, ('diag_left', 2))
-        # Last straight
-        self._set_grid(1, 0, ('linear', 3))
-        self._set_grid(2, 0, ('linear', 3))
-        self._set_grid(3, 0, ('linear', 3))
-        self._set_grid(4, 0, ('linear', 3))
+            assert len(row) == self.grid_width
 
+            for i, cell in enumerate(reversed(row)):
+                cell = cell.strip()
 
+                if cell == 'empty':
+                    continue
 
+                # Parse the cell contents
+                kind, angle = cell.split(':')
+                angle = int(angle)
 
-
-
-
-
-
-
+                self._set_grid(i, j, (kind, angle))
 
     def _set_grid(self, i, j, tile):
         assert i >= 0 and i < self.grid_width
@@ -424,7 +403,7 @@ class SimpleSimEnv(gym.Env):
     def _get_grid(self, i, j):
         if i < 0 or i >= self.grid_width:
             return None
-        if j < 0 or j >= self.grid_width:
+        if j < 0 or j >= self.grid_height:
             return None
         return self.grid[j * self.grid_width + i]
 

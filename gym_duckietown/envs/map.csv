@@ -1,0 +1,6 @@
+diag_left:1, linear:1, linear:1, diag_left:0 , empty   , empty
+linear:2   , empty   , empty   , linear:0    , empty   , empty
+linear:2   , empty   , empty   , diag_right:1, linear:1, diag_left:0
+linear:2   , empty   , empty   , empty       , empty   , linear:0
+linear:2   , empty   , empty   , empty       , empty   , linear:0
+diag_left:2, linear:3, linear:3, linear:3    , linear:3, diag_left:3
