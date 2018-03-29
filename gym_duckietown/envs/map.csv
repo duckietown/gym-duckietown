@@ -1,5 +1,5 @@
-diag_left:1, linear:1, 3way_left:1, linear:1, linear:1    , diag_left:0
-linear:2   , empty   , linear:0   , empty   , empty       , linear:0
-3way_left:2, linear:1, 3way_left:0, empty   , empty       , linear:0
-linear:2   , empty   , linear:0   , empty   , diag_right:0, diag_left:3
-diag_left:2, linear:3, 3way_left:3, linear:3, diag_left:3 , empty
+diag_left:1  , linear:1          , 3way_left:1       , linear_stop:1     , linear:1    , diag_left:0
+linear:2     , black             , linear_stop_both:0, black             , black       , linear:0
+3way_left:2  , linear_stop_both:1, 3way_left:0       , black             , black       , linear:0
+linear_stop:2, black             , linear_stop_both:0, black             , diag_right:0, diag_left:3
+diag_left:2  , linear_stop:3     , 3way_left:3       , linear_stop_left:3, diag_left:3 , empty

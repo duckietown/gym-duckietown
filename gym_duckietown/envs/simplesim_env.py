@@ -57,7 +57,7 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.45
 
-def loadTexture(texName):
+def load_texture(texName):
     # Assemble the absolute path to the texture
     absPathModule = os.path.realpath(__file__)
     moduleDir, _ = os.path.split(absPathModule)
@@ -75,7 +75,7 @@ def loadTexture(texName):
 
     return tex
 
-def createFrameBuffers():
+def create_frame_buffers():
     """Create the frame buffer objects"""
 
     # Create the multisampled frame buffer (rendering target)
@@ -172,7 +172,7 @@ def createFrameBuffers():
 
     return multi_fbo, final_fbo
 
-def rotatePoint(px, py, cx, cy, theta):
+def rotate_point(px, py, cx, cy, theta):
     dx = px - cx
     dy = py - cy
 
@@ -181,7 +181,7 @@ def rotatePoint(px, py, cx, cy, theta):
 
     return cx + dx, cy + dy
 
-def rotMatrix(axis, angle):
+def gen_rot_matrix(axis, angle):
     """
     Rotation matrix for a counterclockwise rotation around the given axis
     """
@@ -313,14 +313,17 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Load the road textures
-        self.road_tex = loadTexture('road_plain.png')
-        self.road_stop_tex = loadTexture('road_stop.png')
-        self.road_left_tex = loadTexture('road_left.png')
-        self.road_right_tex = loadTexture('road_right.png')
-        self.road_3way_left_tex = loadTexture('road_3way_left.png')
+        self.road_tex = load_texture('road_plain.png')
+        self.road_stop_tex = load_texture('road_stop.png')
+        self.road_stop_left_tex = load_texture('road_stop_left.png')
+        self.road_stop_both_tex = load_texture('road_stop_both.png')
+        self.road_left_tex = load_texture('road_left.png')
+        self.road_right_tex = load_texture('road_right.png')
+        self.road_3way_left_tex = load_texture('road_3way_left.png')
+        self.black_tile_tex = load_texture('black_tile.png')
 
         # Create a frame buffer object
-        self.multi_fbo, self.final_fbo = createFrameBuffers()
+        self.multi_fbo, self.final_fbo = create_frame_buffers()
 
         # Create the vertex list for our road quad
         halfSize = ROAD_TILE_SIZE / 2
@@ -389,9 +392,12 @@ class SimpleSimEnv(gym.Env):
                 if cell == 'empty':
                     continue
 
-                # Parse the cell contents
-                kind, angle = cell.split(':')
-                angle = int(angle)
+                if ':' in cell:
+                    kind, angle = cell.split(':')
+                    angle = int(angle)
+                else:
+                    kind = cell
+                    angle = 0
 
                 self._set_grid(i, j, (kind, angle))
 
@@ -466,7 +472,7 @@ class SimpleSimEnv(gym.Env):
         else:
             assert False, kind
 
-        mat = rotMatrix(np.array([0, 1, 0]), angle * math.pi / 2)
+        mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
 
         pts = np.matmul(pts, mat)
         pts += np.array([i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE])
@@ -559,6 +565,9 @@ class SimpleSimEnv(gym.Env):
 
             kind, angle = tile
 
+            if kind == 'black':
+                continue
+
             # Choose a random direction
             self.curAngle = self.np_random.uniform(0, 2 * math.pi)
 
@@ -625,7 +634,7 @@ class SimpleSimEnv(gym.Env):
         px, py, pz = self.curPos
         cx = px + leftVec[0] * -r
         cz = pz + leftVec[2] * -r
-        npx, npz = rotatePoint(px, pz, cx, cz, -rotAngle)
+        npx, npz = rotate_point(px, pz, cx, cz, -rotAngle)
         self.curPos = np.array([npx, py, npz])
 
         # Update the robot's angle
@@ -653,8 +662,8 @@ class SimpleSimEnv(gym.Env):
         i, j = self._get_grid_pos(x, z)
         tile = self._get_grid(i, j)
 
-        # If there is nothing at this grid cell
-        if tile == None:
+        # If there is no road at this grid cell
+        if tile == None or tile[0] == 'black':
             reward = -10
             done = True
             return obs, reward, done, {}
@@ -757,12 +766,18 @@ class SimpleSimEnv(gym.Env):
                     glBindTexture(self.road_tex.target, self.road_tex.id)
                 elif kind == 'linear_stop':
                     glBindTexture(self.road_stop_tex.target, self.road_stop_tex.id)
+                elif kind == 'linear_stop_left':
+                    glBindTexture(self.road_stop_left_tex.target, self.road_stop_left_tex.id)
+                elif kind == 'linear_stop_both':
+                    glBindTexture(self.road_stop_both_tex.target, self.road_stop_both_tex.id)
                 elif kind == '3way_left':
                     glBindTexture(self.road_3way_left_tex.target, self.road_3way_left_tex.id)
                 elif kind == 'diag_left':
                     glBindTexture(self.road_left_tex.target, self.road_left_tex.id)
                 elif kind == 'diag_right':
                     glBindTexture(self.road_right_tex.target, self.road_right_tex.id)
+                elif kind == 'black':
+                    glBindTexture(self.black_tile_tex.target, self.black_tile_tex.id)
                 else:
                     assert False, kind
 
