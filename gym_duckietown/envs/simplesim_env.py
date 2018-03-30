@@ -196,7 +196,7 @@ def gen_rot_matrix(axis, angle):
         [2*(b*d-a*c), 2*(c*d+a*b), a*a+d*d-b*b-c*c]
     ])
 
-def bezierPoint(cps, t):
+def bezier_point(cps, t):
     """
     Cubic Bezier curve interpolation
     B(t) = (1-t)^3 * P0 + 3t(1-t)^2 * P1 + 3t^2(1-t) * P2 + t^3 * P3
@@ -209,7 +209,7 @@ def bezierPoint(cps, t):
 
     return p
 
-def bezierTangent(cps, t):
+def bezier_tangent(cps, t):
     """
     Tangent of a cubic Bezier curve (first order derivative)
     B'(t) = 3(1-t)^2(P1-P0) + 6(1-t)t(P2-P1) + 3t^2(P3-P2)
@@ -224,25 +224,25 @@ def bezierTangent(cps, t):
 
     return p
 
-def bezierClosest(cps, p, t_bot=0, t_top=1, n=8):
+def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
     mid = (t_bot + t_top) * 0.5
 
     if n == 0:
         return mid
 
-    p_bot = bezierPoint(cps, t_bot)
-    p_top = bezierPoint(cps, t_top)
+    p_bot = bezier_point(cps, t_bot)
+    p_top = bezier_point(cps, t_top)
 
     d_bot = np.linalg.norm(p_bot - p)
     d_top = np.linalg.norm(p_top - p)
 
     if d_bot < d_top:
-        return bezierClosest(cps, p, t_bot, mid, n-1)
+        return bezier_closest(cps, p, t_bot, mid, n-1)
 
-    return bezierClosest(cps, p, mid, t_top, n-1)
+    return bezier_closest(cps, p, mid, t_top, n-1)
 
-def drawBezier(cps, n = 20):
-    pts = [bezierPoint(cps, i/(n-1)) for i in range(0,n)]
+def bezier_draw(cps, n = 20):
+    pts = [bezier_point(cps, i/(n-1)) for i in range(0,n)]
     glBegin(GL_LINE_STRIP)
     glColor3f(1, 0, 0)
     for i, p in enumerate(pts):
@@ -499,12 +499,12 @@ class SimpleSimEnv(gym.Env):
 
         # Get the closest point along the right lane's Bezier curve
         cps = self._get_curve(i, j)
-        t = bezierClosest(cps, self.curPos)
-        point = bezierPoint(cps, t)
+        t = bezier_closest(cps, self.curPos)
+        point = bezier_point(cps, t)
 
         # Compute the alignment of the agent direction with the curve tangent
         dirVec = self.getDirVec()
-        tangent = bezierTangent(cps, t)
+        tangent = bezier_tangent(cps, t)
         dotDir = np.dot(dirVec, tangent)
 
         # Compute the signed distance to the curve
@@ -784,9 +784,9 @@ class SimpleSimEnv(gym.Env):
                 self.road_vlist.draw(GL_QUADS)
                 glPopMatrix()
 
-                if self.draw_curve:
+                if self.draw_curve and kind != "black":
                     pts = self._get_curve(i, j)
-                    drawBezier(pts, n = 20)
+                    bezier_draw(pts, n = 20)
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multi_fbo);
