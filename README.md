@@ -49,7 +49,7 @@ Clone this repository and install the dependencies with `pip3`:
 
 ```python3
 git clone https://github.com/duckietown/gym-duckietown.git
-cd gym
+cd gym-duckietown
 pip3 install -e .
 ```
 
