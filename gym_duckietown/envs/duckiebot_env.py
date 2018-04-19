@@ -131,7 +131,7 @@ class DuckiebotEnv(gym.Env):
 
     def reset(self):
         # Step count since episode start
-        self.stepCount = 0
+        self.step_count = 0
 
         self.socket.send_json({
             "command":"reset"
@@ -148,9 +148,10 @@ class DuckiebotEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        # we don't care about this reward since we're not training..
+        self.step_count += 1
+
+        # we don't care about rewards or episodes since we're not training
         reward = 0
-        # don't worry about episodes blah blah blah we will just shut down the robot when we're done
         done = False
 
         # Send the action to the server
