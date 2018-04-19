@@ -2,6 +2,19 @@
 
 [Duckietown](http://duckietown.mit.edu/) self-driving car simulator environment for OpenAI Gym.
 
+Please use this bibtex if you want to cite this repository in your publications:
+
+```
+@misc{gym_minigrid,
+  author = {Maxime Chevalier-Boisvert, Florian Golemo, Yanjun Cao, Liam Paull},
+  title = {Duckietown Environments for OpenAI Gym},
+  year = {2018},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/maximecb/gym-minigrid}},
+}
+```
+
 Introduction
 ------------
 
