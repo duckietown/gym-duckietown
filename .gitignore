@@ -2,3 +2,4 @@
 *.egg-info
 .idea/
 representation_analysis/data/
+representation_analysis/.logs/
