@@ -1,6 +1,6 @@
 import numpy as np
 from multiprocessing import Process, Pipe
-from vec_env import VecEnv, CloudpickleWrapper
+from pytorch_rl.vec_env import VecEnv, CloudpickleWrapper
 
 def worker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
