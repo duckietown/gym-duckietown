@@ -3,8 +3,8 @@ from functools import reduce
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from distributions import Categorical, DiagGaussian
-from utils import orthogonal
+from pytorch_rl.distributions import Categorical, DiagGaussian
+from pytorch_rl.utils import orthogonal
 
 def weights_init(m):
     classname = m.__class__.__name__
