@@ -82,7 +82,7 @@ To run the standalone UI application, which allows you to control the simulation
 robot manually:
 
 ```python3
-./standalone.py --env-name Duckie-SimpleSim-v0
+./standalone.py --env-name SimpleSim-v0
 ```
 
 The `standalone.py` application will launch the Gym environment, display
