@@ -273,7 +273,6 @@ class SimpleSimEnv(gym.Env):
             low=-1,
             high=1,
             shape=(2,),
-            dtype=np.float32
         )
 
         # We observe an RGB image with pixels in [0, 255]
@@ -281,7 +280,6 @@ class SimpleSimEnv(gym.Env):
             low=0,
             high=1,
             shape=IMG_SHAPE,
-            dtype=np.float32
         )
 
         self.reward_range = (-1, 1000)
