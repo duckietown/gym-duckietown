@@ -19,11 +19,11 @@ Introduction
 ------------
 
 This repository contains 3 different gym environments:
-- `Duckie-SimpleSim-v0`
+- `SimpleSim-v0`
 - `Duckietown-v0`
 - `Duckiebot-v0`
 
-The `Duckie-SimpleSim-v0` environment is a simple lane-following simulator
+The `SimpleSim-v0` environment is a simple lane-following simulator
 written in OpenGL (Pyglet). It draws a loop of road with left and right turns,
 along with obstacles in the background. It implements various forms of
 [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
@@ -42,7 +42,7 @@ install the software found in the [duck-remote-iface](https://github.com/maximec
 repository on your Duckiebot.
 
 If you simply want to experiment with lane-following, I would strongly
-recommend that you start with the `Duckie-SimpleSim-v0` environment, because
+recommend that you start with the `SimpleSim-v0` environment, because
 it is fast, relatively easy to install, and we know for a fact that
 reinforcement learning policies can be successfully trained on it.
 
