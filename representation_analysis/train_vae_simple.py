@@ -30,7 +30,7 @@ parser.add_argument('--seed', type=int, default=7691, metavar='S',
                     help='Random seed (default: 7691)')
 parser.add_argument('--output_folder', type=str, default='beta-vae', metavar='O',
                     help='Output folder (default beta-vae)')
-parser.add_argument('--save_every', type=int, default=1, metavar='K',
+parser.add_argument('--save_every', type=int, default=100, metavar='K',
                     help='Save after this many steps (default: 100)')
 
 args = parser.parse_args()

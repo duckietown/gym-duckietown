@@ -3,8 +3,6 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset
 
-env = SimpleSimEnv(draw_curve=False)
-
 #num_samples = 10
 #for i in range(num_samples):
 #    obs = env.reset()
@@ -23,5 +21,6 @@ class DuckieDataset(Dataset):
         return self.len
 
     def __getitem__(self, idx):
+        env = SimpleSimEnv(draw_curve=False)
         obs = env.reset()
         return obs.transpose((2, 0, 1))
