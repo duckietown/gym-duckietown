@@ -29,10 +29,6 @@ parser.add_argument('--softmax', type=float, default=0.0,
                     help='Sum of the betas (default: 0)')
 parser.add_argument('--entropy', action='store_true', default=False,
                     help='Add a penalty on the entropy')
-parser.add_argument('--obs', type=str, default='normal',
-                    help='Type of the observation model (in [normal, bernoulli], '
-                         'default: normal)')
-
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='Enables CUDA training')
 parser.add_argument('--seed', type=int, default=7691, metavar='S',
@@ -169,7 +165,10 @@ fixed_grid = torchvision.utils.make_grid(fixed_x, normalize=True, scale_each=Tru
 writer.add_image('vae/original', fixed_grid, 0)
 fixed_x = to_var(fixed_x)
 
-for epoch in range(50):
+total_losses = []
+reconst_losses = []
+kl_divergences = []
+for epoch in range(20):
     for i, (images, _) in enumerate(data_loader):
 
         images = to_var(images)
@@ -177,13 +176,8 @@ for epoch in range(50):
 
         # Compute reconstruction loss and kl divergence
         # For kl_divergence, see Appendix B in the paper or http://yunjey47.tistory.com/43
-        if args.obs == 'normal':
-            # QKFIX: We assume here that the image is in B&W
-            reconst_loss = F.mse_loss(F.sigmoid(logits), images, size_average=False)
-        elif args.obs == 'bernoulli':
-            reconst_loss = F.binary_cross_entropy_with_logits(logits, images, size_average=False)
-        else:
-            raise ValueError('Argument `obs` must be in [normal, bernoulli]')
+        # QKFIX: We assume here that the image is in B&W
+        reconst_loss = F.mse_loss(F.sigmoid(logits), images, size_average=False)
 
         if args.beta == 'learned':
             if args.softmax:
@@ -209,32 +203,35 @@ for epoch in range(50):
         writer.add_scalar('loss', total_loss.data[0], epoch * iter_per_epoch + i)
         if args.beta == 'learned':
             writer.add_histogram('beta', beta.data, epoch * iter_per_epoch + i)
-
         if i % 100 == 0:
             print ("Epoch[%d/%d], Step [%d/%d], Total Loss: %.4f, "
                    "Reconst Loss: %.4f, KL Div: %.7f"
                    %(epoch + 1, 50, i + 1, iter_per_epoch, total_loss.data[0],
                      reconst_loss.data[0], kl_divergence.data[0]))
 
-    # Save the reconstructed images
-    reconst_logits, _, _ = vae(fixed_x)
-    reconst_grid = torchvision.utils.make_grid(F.sigmoid(reconst_logits).data,
-        normalize=True, scale_each=True)
-    writer.add_image('vae/reconstruction', reconst_grid, epoch)
+        # Save the reconstructed images
+        reconst_logits, _, _ = vae(fixed_x)
+        reconst_grid = torchvision.utils.make_grid(F.sigmoid(reconst_logits).data,
+            normalize=True, scale_each=True)
+        writer.add_image('vae/reconstruction', reconst_grid, epoch)
 
-    # Save the checkpoint
-    state = {
-        'epoch': epoch + 1,
-        'model': vae.state_dict(),
-        'optimizer': optimizer.state_dict(),
-        'loss': {
-            'total': total_loss.data[0],
-            'reconstruction': reconst_loss.data[0],
-            'kl_divergence': kl_divergence.data[0]
-        },
-        'args': args,
-        'beta': beta.data if args.beta == 'learned' else int(beta)
-    }
-    if not os.path.exists('./.saves/{0}'.format(output_folder)):
-        os.makedirs('./.saves/{0}'.format(output_folder))
-    torch.save(state, './.saves/{0}/beta-vae_{1:d}.ckpt'.format(output_folder, epoch + 1))
+        total_losses.append(total_loss.data[0])
+        reconst_losses.append(reconst_loss.data[0])
+        kl_divergences.append(kl_divergence.data[0])
+
+        # Save the checkpoint
+        state = {
+            'epoch': epoch + 1,
+            'model': vae.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'loss': {
+                'total': total_losses,
+                'reconstruction': reconst_losses,
+                'kl_divergence': kl_divergences
+            },
+            'args': args,
+            'beta': beta.data if args.beta == 'learned' else int(beta)
+        }
+        if not os.path.exists('./.saves/{0}'.format(output_folder)):
+            os.makedirs('./.saves/{0}'.format(output_folder))
+        torch.save(state, './.saves/{0}/beta-vae_{1:d}.ckpt'.format(output_folder, epoch + 1))
