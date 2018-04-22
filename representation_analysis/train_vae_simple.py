@@ -52,16 +52,22 @@ if args.saved_model:
     model = loaded_state['model']
     vae = VAE(use_cuda=args.cuda)
     vae.load_state_dict(model)
+    optimizer_states = loaded_state['optimizer']
 
-    optimizer = loaded_state['optimizer']
     total_losses = loaded_state['loss']['total']
-    reconstruction_losses = loaded_state['loss']['reconstruction']
-    kl_divergence_losses = loaded_state['loss']['kl_divergence']
+    reconst_losses = loaded_state['loss']['reconstruction']
+    kl_divergences = loaded_state['loss']['kl_divergence']
     args = loaded_state['args']
     beta = loaded_state['beta']
     fixed_x = loaded_state['fixed_x']
 
     parameters = list(vae.parameters())
+    if args.cuda:
+        vae.cuda()
+
+    optimizer = torch.optim.Adam(parameters, lr=0.001)
+    optimizer.load_state_dict(optimizer_states)
+
     print('model found and loaded successfully...')
 
 else:
