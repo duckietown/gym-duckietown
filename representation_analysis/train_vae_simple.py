@@ -2,7 +2,7 @@ import argparse
 import math
 import os
 
-from torch.utils.data import DataLoader
+#from torch.utils.data import DataLoader
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -16,6 +16,7 @@ def log_sum_exp(value):
     m = torch.max(value)
     sum_exp = torch.sum(torch.exp(value - m))
     return m + torch.log(sum_exp)
+
 
 parser = argparse.ArgumentParser(description='VAE')
 parser.add_argument('--batch_size', type=int, default=128, metavar='N',
@@ -32,9 +33,11 @@ parser.add_argument('--output_folder', type=str, default='beta-vae', metavar='O'
                     help='Output folder (default beta-vae)')
 parser.add_argument('--save_every', type=int, default=100, metavar='K',
                     help='Save after this many steps (default: 100)')
+parser.add_argument('--state_size', type=int, default=100,
+                    help='Size of latent code (default: 100)')
 parser.add_argument('--saved_model', type=str, help='Save file to use')
 
-#'representation_analysis/saves/beta-vae/beta-vae_300.ckpt'
+#'--saved_model representation_analysis/saves/beta-vae/beta-vae_300.ckpt'
 
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -47,32 +50,36 @@ train_dataset = DuckieDataset(args.num_steps, args.batch_size)
 #data_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
 
 if args.saved_model:
-    loaded_state = torch.load(args.saved_model)
-    step = loaded_state['step']
-    model = loaded_state['model']
-    vae = VAE(use_cuda=args.cuda)
-    vae.load_state_dict(model)
-    optimizer_states = loaded_state['optimizer']
+    try:
+        loaded_state = torch.load(args.saved_model)
+        step = loaded_state['step']
+        model = loaded_state['model']
+        vae = VAE(z_dim=args.state_size, use_cuda=args.cuda)
+        vae.load_state_dict(model)
+        optimizer_states = loaded_state['optimizer']
 
-    total_losses = loaded_state['loss']['total']
-    reconst_losses = loaded_state['loss']['reconstruction']
-    kl_divergences = loaded_state['loss']['kl_divergence']
-    args = loaded_state['args']
-    beta = loaded_state['beta']
-    fixed_x = loaded_state['fixed_x']
+        total_losses = loaded_state['loss']['total']
+        reconst_losses = loaded_state['loss']['reconstruction']
+        kl_divergences = loaded_state['loss']['kl_divergence']
+        args = loaded_state['args']
+        beta = loaded_state['beta']
+        fixed_x = loaded_state['fixed_x']
 
-    parameters = list(vae.parameters())
-    if args.cuda:
-        vae.cuda()
+        parameters = list(vae.parameters())
+        if args.cuda:
+            vae.cuda()
 
-    optimizer = torch.optim.Adam(parameters, lr=0.001)
-    optimizer.load_state_dict(optimizer_states)
+        optimizer = torch.optim.Adam(parameters, lr=0.001)
+        optimizer.load_state_dict(optimizer_states)
 
-    print('model found and loaded successfully...')
+        print('model found and loaded successfully... resuming training from step {}'.format(step))
+    except:
+        print('problem loading model! Check model file!')
+        exit(1)
 
 else:
     print('creating new model ...')
-    vae = VAE(use_cuda=args.cuda)
+    vae = VAE(z_dim=args.state_size, use_cuda=args.cuda)
     if args.cuda:
         vae.cuda()
 
@@ -85,7 +92,7 @@ else:
             beta = Variable(torch.FloatTensor(vae.z_dim).uniform_(-1., 1.).cuda(), requires_grad=True)
         parameters.append(beta_)
 
-    optimizer = torch.optim.Adam(parameters, lr=0.001)
+    optimizer = torch.optim.Adam(parameters, lr=5e-4)
 
     total_losses = []
     reconst_losses = []
@@ -101,9 +108,10 @@ else:
         fixed_x = Variable(fixed_x.cuda())
     torchvision.utils.save_image(fixed_grid, 'representation_analysis/reconstructions/{0}/original.jpg'
                                  .format(args.output_folder))
+    step = 0
 
 #  train
-for i, images in enumerate(train_dataset):
+for i, images in enumerate(train_dataset, start=step):
     try:
         if not args.cuda:
             images = Variable(images)
@@ -206,3 +214,4 @@ for i, images in enumerate(train_dataset):
             os.makedirs('representation_analysis/reconstructions/{0}'.format(args.output_folder))
         torchvision.utils.save_image(reconst_grid, 'representation_analysis/reconstructions/{0}/{1}.jpg'
                                      .format(args.output_folder, i))
+        break
