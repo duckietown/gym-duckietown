@@ -7,8 +7,9 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 import torchvision
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
-from representation_analysis.DuckieDataset import DuckieDataset
 from representation_analysis.models import VAE
 
 
@@ -21,8 +22,8 @@ def log_sum_exp(value):
 parser = argparse.ArgumentParser(description='VAE')
 parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='Input batch size for training (default: 128)')
-parser.add_argument('--num_steps', type=int, default=1000, metavar='M',
-                    help='Number of steps to train (default: 1000)')
+parser.add_argument('--num_steps', type=int, default=1718, metavar='M',
+                    help='Number of steps to train (default: 1718)')
 parser.add_argument('--beta', type=str, default='15',
                     help='Value for beta (default: 1)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -46,8 +47,14 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-train_dataset = DuckieDataset(args.num_steps, args.batch_size)
-#data_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
+# Dataset
+data_transform = transforms.Compose([transforms.ToTensor()])
+                                     #transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))])
+
+train_dataset = datasets.ImageFolder(root=os.path.join(os.getcwd(), 'representation_analysis/data/'),
+                                     transform=data_transform)
+
+data_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
 
 if args.saved_model:
     try:
@@ -99,7 +106,7 @@ else:
     kl_divergences = []
 
     # fixed inputs for debugging
-    fixed_x = train_dataset[0]
+    fixed_x, _ = next(iter(data_loader))
     # fixed_x = next(iter(data_loader))
     fixed_grid = torchvision.utils.make_grid(fixed_x)
     if not args.cuda:
@@ -111,7 +118,7 @@ else:
     step = 0
 
 #  train
-for i, images in enumerate(train_dataset, start=step):
+for i, (images, _) in enumerate(data_loader, start=step):
     try:
         if not args.cuda:
             images = Variable(images)
@@ -122,7 +129,6 @@ for i, images in enumerate(train_dataset, start=step):
 
         # Compute reconstruction loss and kl divergence
         # For kl_divergence, see Appendix B in the paper or http://yunjey47.tistory.com/43
-        # QKFIX: We assume here that the image is in B&W
         reconst_loss = F.mse_loss(F.sigmoid(logits), images, size_average=False)
         reconst_loss /= args.batch_size
 

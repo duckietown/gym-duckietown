@@ -44,6 +44,7 @@ for i in range(num_samples):
     img = Image.fromarray((np.flipud(np.moveaxis(obs[0], [0, 1, 2], [2, 0, 1])) * 255).astype('uint8'))
     img.save(fp='representation_analysis/data/trajectories/{}.jpg'.format(i))
     if i+1 % 1000 == 0:
-        print('got to sample {}'.format(i))
+        print('got to sample {}'.format(i), flush=True)
 
 print('done?')
+
