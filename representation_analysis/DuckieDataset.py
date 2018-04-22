@@ -2,6 +2,7 @@ from gym_duckietown.envs import SimpleSimEnv
 from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset
+import torch
 
 #num_samples = 10
 #for i in range(num_samples):
@@ -14,13 +15,17 @@ from torch.utils.data import Dataset
 
 
 class DuckieDataset(Dataset):
-    def __init__(self, len):
+    def __init__(self, len, batch_size):
         self.len = len
+        self.batch_size = batch_size
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, idx):
         env = SimpleSimEnv(draw_curve=False)
-        obs = env.reset()
-        return obs.transpose((2, 0, 1))
+        observs = torch.zeros(self.batch_size, 3, 120, 160)
+        for i in range(self.batch_size):
+            obs = env.reset()
+            observs[i,:,:,:] = torch.FloatTensor(obs.transpose((2, 0, 1)))
+        return observs
