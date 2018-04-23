@@ -177,7 +177,6 @@ for i, (images, _) in enumerate(data_loader, start=step):
             #print('KL divergence: {:.4f}'.format(kl_divergence.data[0]))
 
             TC = compute_total_correlation(len(data_loader)*args.batch_size, mu, log_var, z)
-            rest = kl_divergence - TC
 
             #dim_wise_KL = compute_dim_wise_KL(len(data_loader)*args.batch_size, mu, log_var, z)
             #index_code_MI = kl_divergence - TC - dim_wise_KL
