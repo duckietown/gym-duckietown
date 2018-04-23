@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from representation_analysis.models import VAE
-from representation_analysis.helpers import compute_total_correlation, compute_dim_wise_KL
+from representation_analysis.helpers import compute_total_correlation, save_curve
 
 sys.path.append(os.getcwd())
 
@@ -27,7 +27,7 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='Input batch size for training (default: 128)')
 parser.add_argument('--num_steps', type=int, default=1718, metavar='M',
                     help='Number of steps to train (default: 1718)')
-parser.add_argument('--beta', type=str, default='15',
+parser.add_argument('--beta', type=str, default='5',
                     help='Value for beta (default: 1)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='Enables CUDA training')
@@ -76,7 +76,7 @@ if args.saved_model:
         args = loaded_state['args']
         beta = loaded_state['beta']
         fixed_x = loaded_state['fixed_x']
-
+        # save_curve(total_losses, TC_losses)
         parameters = list(vae.parameters())
         if args.cuda:
             vae.cuda()
@@ -205,7 +205,8 @@ for i, (images, _) in enumerate(data_loader, start=step):
                 'loss': {
                     'total': total_losses,
                     'reconstruction': reconst_losses,
-                    'kl_divergence': kl_divergences
+                    'kl_divergence': kl_divergences,
+                    'TC_losses': TC_losses
                 },
                 'args': args,
                 'beta': beta.data if args.beta == 'learned' else int(beta),

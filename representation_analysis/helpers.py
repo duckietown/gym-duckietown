@@ -33,7 +33,7 @@ def compute_cross_entropy_minibatch_IS(N, mu, log_var, z):
 def compute_total_correlation(N, mu, log_var, z):
     entropy_q = minibatch_importance_sample(N, mu, log_var, z)
     cross_entropy_q_factorized = compute_cross_entropy_minibatch_IS(N, mu, log_var, z)
-    return cross_entropy_q_factorized - entropy_q
+    return (cross_entropy_q_factorized - entropy_q)/z.shape[0]
 
 
 def compute_dim_wise_entropy(N, mu, log_var, z):
@@ -81,3 +81,9 @@ def compute_dim_wise_ce(N, z):
 def compute_dim_wise_KL(N, mu, log_var, z):
     estimate = compute_dim_wise_entropy(N, mu, log_var, z) - compute_dim_wise_ce(N, z)
     return estimate
+
+def save_curve(total_losses, TC_losses):
+    from matplotlib import pyplot as plt
+    plt.plot(total_losses, color='red', label='Total Loss')
+    plt.plot(TC_losses, color='green', label='TC Loss')
+    plt.savefig('representation_analysis/results/training_curve')
