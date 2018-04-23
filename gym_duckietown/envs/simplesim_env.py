@@ -506,6 +506,7 @@ class SimpleSimEnv(gym.Env):
         dirVec = self.getDirVec()
         tangent = bezier_tangent(cps, t)
         dotDir = np.dot(dirVec, tangent)
+        dotDir = max(-1, min(1, dotDir))
 
         # Compute the signed distance to the curve
         # Right of the curve is negative, left is positive
