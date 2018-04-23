@@ -1,6 +1,7 @@
 import argparse
 import math
 import os
+import sys
 
 #from torch.utils.data import DataLoader
 import torch
@@ -11,7 +12,9 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from representation_analysis.models import VAE
+from representation_analysis.helpers import compute_total_correlation, compute_dim_wise_KL
 
+sys.path.append(os.getcwd())
 
 def log_sum_exp(value):
     m = torch.max(value)
@@ -37,6 +40,7 @@ parser.add_argument('--save_every', type=int, default=100, metavar='K',
 parser.add_argument('--state_size', type=int, default=100,
                     help='Size of latent code (default: 100)')
 parser.add_argument('--saved_model', type=str, help='Save file to use')
+parser.add_argument('--model_type', type=str, help='Model to train (beta-tcvae or vae)', default='beta-tcvae')
 
 #'--saved_model representation_analysis/saves/beta-vae/beta-vae_300.ckpt'
 
@@ -68,6 +72,7 @@ if args.saved_model:
         total_losses = loaded_state['loss']['total']
         reconst_losses = loaded_state['loss']['reconstruction']
         kl_divergences = loaded_state['loss']['kl_divergence']
+        TC_losses = loaded_state['loss']['TC_losses']
         args = loaded_state['args']
         beta = loaded_state['beta']
         fixed_x = loaded_state['fixed_x']
@@ -104,6 +109,7 @@ else:
     total_losses = []
     reconst_losses = []
     kl_divergences = []
+    TC_losses = []
 
     # fixed inputs for debugging
     fixed_x, _ = next(iter(data_loader))
@@ -125,44 +131,70 @@ for i, (images, _) in enumerate(data_loader, start=step):
         else:
             images = Variable(images.cuda())
 
-        logits, mu, log_var = vae(images)
+        logits, mu, log_var, z = vae(images)
 
         # Compute reconstruction loss and kl divergence
         # For kl_divergence, see Appendix B in the paper or http://yunjey47.tistory.com/43
         reconst_loss = F.mse_loss(F.sigmoid(logits), images, size_average=False)
         reconst_loss /= args.batch_size
 
-        if args.beta == 'learned':
-            if args.softmax:
-                beta_norm_ = F.softmax(beta_)
-                beta = args.softmax * vae.z_dim * beta_norm_
+        if args.model_type == 'vae':
+            if args.beta == 'learned':
+                if args.softmax:
+                    beta_norm_ = F.softmax(beta_)
+                    beta = args.softmax * vae.z_dim * beta_norm_
+                else:
+                    beta = 1. + F.softplus(beta_)
+                kl_divergence = torch.sum(0.5 * torch.matmul((mu ** 2 + torch.exp(log_var) - log_var - 1),
+                                                             beta.unsqueeze(1)))
             else:
-                beta = 1. + F.softplus(beta_)
-            kl_divergence = torch.sum(0.5 * torch.matmul((mu ** 2 + torch.exp(log_var) - log_var - 1),
-                                                         beta.unsqueeze(1)))
-        else:
+                beta = int(args.beta)
+                kl_divergence = torch.sum(0.5 * beta * (mu ** 2 + torch.exp(log_var) - log_var - 1))
+
+            kl_divergence /= args.batch_size
+
+            # Backprop + Optimize
+            total_loss = reconst_loss + kl_divergence
+            if args.beta == 'learned' and args.softmax and args.entropy:
+                entropy = - torch.sum(beta_ * beta_norm_) + log_sum_exp(beta_)
+                total_loss += math.log(vae.z_dim) - entropy
+            optimizer.zero_grad()
+            total_loss.backward()
+            optimizer.step()
+
+            total_losses.append(total_loss.data[0])
+            reconst_losses.append(reconst_loss.data[0])
+            kl_divergences.append(kl_divergence.data[0])
+
+            print("Step {}/{}, Total Loss: {:.4f}, "
+                  "Reconst Loss: {:.4f}, KL Div: {:.7f}"
+                  .format(i + 1, args.num_steps, total_loss.data[0],
+                          reconst_loss.data[0], kl_divergence.data[0]))
+
+        if args.model_type == 'beta-tcvae':
+            kl_divergence = torch.sum(0.5 * 1 * (mu ** 2 + torch.exp(log_var) - log_var - 1))
+            kl_divergence /= args.batch_size
+            #print('KL divergence: {:.4f}'.format(kl_divergence.data[0]))
+
+            TC = compute_total_correlation(len(data_loader)*args.batch_size, mu, log_var, z)
+            rest = kl_divergence - TC
+
+            #dim_wise_KL = compute_dim_wise_KL(len(data_loader)*args.batch_size, mu, log_var, z)
+            #index_code_MI = kl_divergence - TC - dim_wise_KL
+            #print('TC={:.4f} dim_wise_KL={:.4f} index_code_MI={:.4f}'.format(TC.data[0], dim_wise_KL.data[0], index_code_MI.data[0]))
+
+            # Backprop + Optimize
             beta = int(args.beta)
-            kl_divergence = torch.sum(0.5 * beta * (mu ** 2 + torch.exp(log_var) - log_var - 1))
+            total_loss = reconst_loss + beta*TC + rest
+            print('TC={:.4f} rest={:.4f}'.format(TC.data[0], rest.data[0]))
+            optimizer.zero_grad()
+            total_loss.backward()
+            optimizer.step()
 
-        kl_divergence /= args.batch_size
-
-        # Backprop + Optimize
-        total_loss = reconst_loss + kl_divergence
-        if args.beta == 'learned' and args.softmax and args.entropy:
-            entropy = - torch.sum(beta_ * beta_norm_) + log_sum_exp(beta_)
-            total_loss += math.log(vae.z_dim) - entropy
-        optimizer.zero_grad()
-        total_loss.backward()
-        optimizer.step()
-
-        total_losses.append(total_loss.data[0])
-        reconst_losses.append(reconst_loss.data[0])
-        kl_divergences.append(kl_divergence.data[0])
-
-        print("Step {}/{}, Total Loss: {:.4f}, "
-              "Reconst Loss: {:.4f}, KL Div: {:.7f}"
-              .format(i + 1, args.num_steps, total_loss.data[0],
-                      reconst_loss.data[0], kl_divergence.data[0]))
+            total_losses.append(total_loss.data[0])
+            reconst_losses.append(reconst_loss.data[0])
+            kl_divergences.append(kl_divergence.data[0])
+            TC_losses.append(TC.data[0])
 
         if (i+1) % args.save_every == 0:
             # Save the checkpoint
@@ -185,7 +217,7 @@ for i, (images, _) in enumerate(data_loader, start=step):
             print('Got to step {}. Checkpoint saved!'.format(i))
 
             # Save the reconstructed images
-            reconst_logits, _, _ = vae(fixed_x)
+            reconst_logits, _, _, _ = vae(fixed_x)
             reconst_grid = torchvision.utils.make_grid(F.sigmoid(reconst_logits).data)
             if not os.path.exists('representation_analysis/reconstructions/{0}'.format(args.output_folder)):
                 os.makedirs('representation_analysis/reconstructions/{0}'.format(args.output_folder))
@@ -202,7 +234,8 @@ for i, (images, _) in enumerate(data_loader, start=step):
             'loss': {
                 'total': total_losses,
                 'reconstruction': reconst_losses,
-                'kl_divergence': kl_divergences
+                'kl_divergence': kl_divergences,
+                'TC_losses': TC_losses
             },
             'args': args,
             'beta': beta.data if args.beta == 'learned' else int(beta),
@@ -214,7 +247,7 @@ for i, (images, _) in enumerate(data_loader, start=step):
         print('Got to step {}. Checkpoint saved!'.format(i))
 
         # Save the reconstructed images
-        reconst_logits, _, _ = vae(fixed_x)
+        reconst_logits, _, _, _ = vae(fixed_x)
         reconst_grid = torchvision.utils.make_grid(F.sigmoid(reconst_logits).data)
         if not os.path.exists('representation_analysis/reconstructions/{0}'.format(args.output_folder)):
             os.makedirs('representation_analysis/reconstructions/{0}'.format(args.output_folder))

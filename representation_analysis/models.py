@@ -81,7 +81,7 @@ class VAE(nn.Module):
         z = self.reparametrize(mu, log_var)
         z = z.view(z.size(0), self.z_dim, 1, 1)
         logits = self.decode(z)
-        return logits, mu, log_var
+        return logits, mu, log_var, z.squeeze()
 
     def sample(self, z):
         return self.decode(z)
