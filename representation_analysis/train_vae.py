@@ -185,8 +185,9 @@ for i, (images, _) in enumerate(data_loader, start=step):
 
             # Backprop + Optimize
             beta = int(args.beta)
-            total_loss = reconst_loss + beta*TC + rest
-            print('TC={:.4f} rest={:.4f}'.format(TC.data[0], rest.data[0]))
+            total_loss = reconst_loss + (beta-1)*TC
+            print('Total Loss={:.4f} TC={:.4f} Reconstruction Loss={:.4f}'
+                  .format(total_loss.data[0], TC.data[0], reconst_loss.data[0]))
             optimizer.zero_grad()
             total_loss.backward()
             optimizer.step()
