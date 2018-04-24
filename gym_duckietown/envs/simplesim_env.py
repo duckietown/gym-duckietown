@@ -264,10 +264,14 @@ class SimpleSimEnv(gym.Env):
 
     def __init__(
         self,
+        map_file=None,
         max_steps=600,
         img_noise_scale=0,
         draw_curve=False
     ):
+        if map_file is None:
+            map_file = 'gym_duckietown/maps/map1.csv'
+
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -351,7 +355,7 @@ class SimpleSimEnv(gym.Env):
         self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
         # Load the map
-        self._load_map()
+        self._load_map(map_file)
 
         # Initialize the state
         self.seed()
@@ -364,13 +368,13 @@ class SimpleSimEnv(gym.Env):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
 
-    def _load_map(self):
+    def _load_map(self, map_file):
         """
         Load the map layout from a CSV file
         """
 
         import csv
-        csvfile = open('gym_duckietown/envs/map.csv', 'r')
+        csvfile = open(map_file, 'r')
         reader = csv.reader(csvfile, delimiter=',', quotechar='"')
         rows = list(reader)
 
