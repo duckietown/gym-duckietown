@@ -1,6 +1,10 @@
 import torch
 from torch import distributions
 import numpy as np
+import pyro.distributions as dist
+#import pyro
+#from torch.autograd import Variable
+
 
 def log_sum_exp(value):
     m = torch.max(value)
@@ -8,33 +12,50 @@ def log_sum_exp(value):
     return m + torch.log(sum_exp)
 
 
-def minibatch_importance_sample(N, mu, log_var, z):
-    M = z.shape[0]
-    q_z = distributions.Normal(mean=mu, std=torch.exp(0.5*log_var))
-    estimate = 0
-    for i in range(M):
-        q_z_given_x = q_z.log_prob(z[i]).sum(1)
-        q_z_given_x = log_sum_exp(q_z_given_x) - np.log(M * N)
-        estimate += q_z_given_x
-    return estimate/M
+def logsumexp(inputs, dim=None, keepdim=False):
+    """Numerically stable logsumexp.
 
+    Args:
+        inputs: A Variable with any shape.
+        dim: An integer.
+        keepdim: A boolean.
 
-def compute_cross_entropy_minibatch_IS(N, mu, log_var, z):
-    M = z.shape[0]
-    q_z = distributions.Normal(mean=mu, std=torch.exp(0.5*log_var))
-    estimate = 0
-    for i in range(M):
-        q_z_given_x = q_z.log_prob(z[i]).sum(0)
-        q_z_given_x = log_sum_exp(q_z_given_x) - np.log(M * N)
-        estimate += q_z_given_x
-    return - estimate/M
+    Returns:
+        Equivalent of log(sum(exp(inputs), dim=dim, keepdim=keepdim)).
+    """
+    # For a 1-D array x (any array along a single dimension),
+    # log sum exp(x) = s + log sum exp(x - s)
+    # with s = max(x) being a common choice.
+    # taken from somewhere
+    if dim is None:
+        inputs = inputs.view(-1)
+        dim = 0
+    s, _ = torch.max(inputs, dim=dim, keepdim=True)
+    outputs = s + (inputs - s).exp().sum(dim=dim, keepdim=True).log()
+    if not keepdim:
+        outputs = outputs.squeeze(dim)
+    return outputs
+
 
 
 def compute_total_correlation(N, mu, log_var, z):
-    entropy_q = minibatch_importance_sample(N, mu, log_var, z)
-    cross_entropy_q_factorized = compute_cross_entropy_minibatch_IS(N, mu, log_var, z)
-    return (cross_entropy_q_factorized - entropy_q)/z.shape[0]
+    M = z.shape[0]
+    sample = []
+    for i in range(M):
+        sample.append(dist.MultivariateNormal(loc=mu[i], covariance_matrix=torch.exp(0.5 * log_var)[i].diag()).sample())
+    sample = torch.stack(sample, dim=0)[:, -1, :]
+    q_z = distributions.Normal(mean=mu, std=torch.exp(0.5*log_var))
+    total_array = []
+    for i in range(M):
+        total_array.append(q_z.log_prob(sample[i]))
+    q_mat = torch.stack(total_array, dim=0)
 
+    H = - (logsumexp(q_mat.sum(dim=2), dim=0) - np.log(N * M)).mean()
+    CE = - (logsumexp(q_mat, dim=1).sum(dim=1) - np.log(N * M)).mean()
+    #print('entropy: {}'.format(H.data[0]))
+    #print('cross entropy: {}'.format(CE.data[0]))
+    #print('log_var: {}'.format(log_var.data[0]))
+    return - (CE - H)
 
 def compute_dim_wise_entropy(N, mu, log_var, z):
     #M = z.shape[0]
