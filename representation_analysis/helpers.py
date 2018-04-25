@@ -2,8 +2,8 @@ import torch
 from torch import distributions
 import numpy as np
 import pyro.distributions as dist
-import pyro
-from torch.autograd import Variable
+#import pyro
+#from torch.autograd import Variable
 
 
 def log_sum_exp(value):
