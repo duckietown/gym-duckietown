@@ -29,10 +29,11 @@ along with obstacles in the background. It implements various forms of
 [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
 and basic differential-drive physics (without acceleration).
 
-The `Duckietown-v0` environment is meant to connect to a remote server runnin
-ROS/Gazebo which runs a more complete Duckietown simulation. This simulation is
-often more buggy, slower, and trickier to get working, but it has a more accurate
-physics model and prettier graphics, but no domain-randomization.
+The `Duckietown-v0` environment is meant to connect to a [remote server running
+ROS/Gazebo](https://github.com/duckietown/duckietown-sim-server) which runs a more
+complete Duckietown simulation. This simulation is often more buggy, slower, and
+trickier to get working, but it has a more accurate physics model and prettier
+graphics, but no domain-randomization.
 
 The `Duckiebot-v0` environment is meant to connect to software running on
 a real Duckiebot and remotely control the robot. It is a tool to test that policies
@@ -81,7 +82,7 @@ Usage
 To run the standalone UI application, which allows you to control the simulation or real
 robot manually:
 
-```python3
+```
 ./standalone.py --env-name SimpleSim-v0
 ```
 
