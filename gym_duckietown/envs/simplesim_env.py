@@ -61,7 +61,7 @@ def load_texture(texName):
     # Assemble the absolute path to the texture
     absPathModule = os.path.realpath(__file__)
     moduleDir, _ = os.path.split(absPathModule)
-    texPath = os.path.join(moduleDir, texName)
+    texPath = os.path.join(moduleDir, '../textures', texName)
 
     img = pyglet.image.load(texPath)
     tex = img.get_texture()
