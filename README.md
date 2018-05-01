@@ -15,6 +15,8 @@ Please use this bibtex if you want to cite this repository in your publications:
 }
 ```
 
+This simulator was created as part of work done at the [MILA](https://mila.quebec/).
+
 Introduction
 ------------
 
@@ -51,17 +53,25 @@ Installation
 ------------
 
 Requirements:
-- Python 3
+- Python 3.5+
 - OpenAI gym
 - NumPy
-- scipy
+- SciPy
 - OpenCV
 - Pyglet
 - PyTorch
 
-Clone this repository and install the dependencies with `pip3`:
+You can install all the dependencies, including PyTorch, using Conda as follows. If you are at MILA, this is the way to go:
 
-```python3
+```
+git clone https://github.com/duckietown/gym-duckietown.git
+cd gym-duckietown
+conda env create -f environment.yaml
+```
+
+Alternatively, you can install all the dependencies except PyTorch with `pip3`:
+
+```
 git clone https://github.com/duckietown/gym-duckietown.git
 cd gym-duckietown
 pip3 install -e .
@@ -101,6 +111,29 @@ Then, to visualize the results of training, you can run the following command. N
 
 ```
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
+```
+
+Running Headless
+----------------
+
+The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. There is a `headless.sh` script in this repository which will create a virtual display for the simulator.
+
+The following illustrates how this can be used:
+
+```
+# Reserve a Debian 9 machine with 12GB ram, 2 cores and a GPU
+# Note: this is specific to MILA users
+sinter --reservation=res_stretch --mem=12000 -c2 --gres=gpu
+
+# Activate the gym-duckietown Conda environment
+source activate gym-duckietown
+
+cd gym-duckietown
+
+# Start a virtual display
+source ./headless.sh
+
+# You are now ready to train
 ```
 
 Reinforcement Learning Notes
