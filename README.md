@@ -82,7 +82,6 @@ is included under [/pytorch_rl](/pytorch_rl). If you wish to use this code, you
 should install [PyTorch](http://pytorch.org/) as follows:
 
 ```
-# PyTorch
 conda install pytorch torchvision -c pytorch
 ```
 
