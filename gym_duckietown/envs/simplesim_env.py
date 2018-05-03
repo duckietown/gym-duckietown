@@ -80,7 +80,7 @@ class SimpleSimEnv(gym.Env):
         draw_curve=False
     ):
         if map_file is None:
-            map_file = 'gym_duckietown/maps/map1.csv'
+            map_file = 'gym_duckietown/maps/udem1.csv'
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(

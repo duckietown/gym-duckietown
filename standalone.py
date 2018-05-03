@@ -14,11 +14,15 @@ from gym_duckietown.envs import SimpleSimEnv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
+parser.add_argument('--map-file', default=None)
 parser.add_argument('--draw-curve', action='store_true')
 args = parser.parse_args()
 
 if args.env_name == 'SimpleSim-v0':
-    env = SimpleSimEnv(draw_curve=args.draw_curve)
+    env = SimpleSimEnv(
+        map_file = args.map_file,
+        draw_curve=args.draw_curve
+    )
 else:
     env = gym.make(args.env_name)
 
