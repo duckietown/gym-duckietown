@@ -104,7 +104,7 @@ To train a reinforcement learning agent, you can use the code provided under [/p
 A sample command to launch training is:
 
 ```
-python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5
+python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --num-steps 20 
 ```
 
 Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running:
