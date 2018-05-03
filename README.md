@@ -104,7 +104,7 @@ To train a reinforcement learning agent, you can use the code provided under [/p
 A sample command to launch training is:
 
 ```
-python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --num-steps 20 
+python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --num-steps 20
 ```
 
 Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running:
@@ -142,8 +142,8 @@ Reinforcement Learning Notes
 Reinforcement learning algorithms are extremely sensitive to hyperparameters. Choosing the
 wrong set of parameters could prevent convergence completely, or lead to unstable performance over
 training. You will likely want to experiment. A learning rate that is too low can lead to no
-learning happening. A learning rate that is too high can lead to an unstable or suboptimal
-fixed-point.
+learning happening. A learning rate that is too high can lead unstable performance throughout
+training or a suboptimal result.
 
 The reward values are currently rescaled into the [0,1] range, because the RL code in
 `pytorch_rl` doesn't do reward clipping, and deals poorly with large reward values. Also
