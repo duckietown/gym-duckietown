@@ -7,7 +7,6 @@ import math
 import time
 import numpy
 import zmq
-import cv2
 import pyglet
 from pyglet.image import ImageData
 from pyglet.gl import *
@@ -113,6 +112,7 @@ class DuckiebotEnv(gym.Env):
         #    self.img = self.img[:, d:(w-d), :]
 
         # Resize the image
+        import cv2
         self.img = cv2.resize(
             self.img,
             (CAMERA_WIDTH, CAMERA_HEIGHT),

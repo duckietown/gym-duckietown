@@ -62,10 +62,12 @@ def on_key_press(symbol, modifiers):
 
 try:
     while True:
-        value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
-                                                    Variable(states, volatile=True),
-                                                    Variable(masks, volatile=True),
-                                                    deterministic=True)
+        value, action, _, states = actor_critic.act(
+            Variable(current_obs),
+            Variable(states),
+            Variable(masks),
+            deterministic=True
+        )
         states = states.data
         cpu_actions = action.data.squeeze(1).cpu().numpy()
 
