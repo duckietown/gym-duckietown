@@ -61,15 +61,7 @@ Requirements:
 - Pyglet
 - PyTorch
 
-You can install all the dependencies, including PyTorch, using Conda as follows. If you are at MILA, this is the way to go:
-
-```
-git clone https://github.com/duckietown/gym-duckietown.git
-cd gym-duckietown
-conda env create -f environment.yaml
-```
-
-Alternatively, you can install all the dependencies except PyTorch with `pip3`:
+You can install all the dependencies except PyTorch with `pip3`:
 
 ```
 git clone https://github.com/duckietown/gym-duckietown.git
@@ -85,28 +77,39 @@ should install [PyTorch](http://pytorch.org/) as follows:
 conda install pytorch torchvision -c pytorch
 ```
 
+Alternatively, you can install all the dependencies, including PyTorch, using Conda as follows. For those trying to use this package on MILA machines, this is the way to go:
+
+```
+git clone https://github.com/duckietown/gym-duckietown.git
+cd gym-duckietown
+conda env create -f environment.yaml
+```
+
+Please note that if you use Conda to install this package instead of pip, you will need to activate your Conda environment and add the package to your Python path before you can use it:
+
+```
+source activate gym-duckietown
+export PYTHONPATH="${PYTHONPATH}:`pwd`"
+```
+
 Usage
 -----
 
-To run the standalone UI application, which allows you to control the simulation or real
-robot manually:
+To run the standalone UI application, which allows you to control the simulation or real robot manually:
 
 ```
 ./standalone.py --env-name SimpleSim-v0
 ```
 
-The `standalone.py` application will launch the Gym environment, display
-camera images and send actions (keyboard commands) back to the simulator or robot.
+The `standalone.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot.
 
-To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR implementations.
-
-A sample command to launch training is:
+To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR algorithms. A sample command to launch training is:
 
 ```
 python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --num-steps 20
 ```
 
-Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running:
+Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running. Also note that if you are running this through SSH, you will need to enable X forwarding to get a display:
 
 ```
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
@@ -115,13 +118,10 @@ python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 
 Running Headless
 ----------------
 
-The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. There is a `headless.sh` script in this repository which will create a virtual display for the simulator.
-
-The following illustrates how this can be used:
+The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. You can create a virtual display using [Xvfb](https://en.wikipedia.org/wiki/Xvfb). The instructions shown below illustrate this. Note, however, that these instructions are specific to MILA, and may need to be adapted:
 
 ```
-# Reserve a Debian 9 machine with 12GB ram, 2 cores and a GPU
-# Note: this is specific to MILA users
+# Reserve a Debian 9 machine with 12GB ram, 2 cores and a GPU on the cluster
 sinter --reservation=res_stretch --mem=12000 -c2 --gres=gpu
 
 # Activate the gym-duckietown Conda environment
@@ -129,8 +129,16 @@ source activate gym-duckietown
 
 cd gym-duckietown
 
-# Start a virtual display
-source ./headless.sh
+# Add the gym_duckietown package to your Python path
+export PYTHONPATH="${PYTHONPATH}:`pwd`"
+
+# Load the GLX library
+# This has to be done before starting Xvfb
+export LD_LIBRARY_PATH=/Tmp/glx:$LD_LIBRARY_PATH
+
+# Create a virtual display with OpenGL support
+Xvfb :$SLURM_JOB_ID -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
+export DISPLAY=:$SLURM_JOB_ID
 
 # You are now ready to train
 ```
