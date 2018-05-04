@@ -77,6 +77,8 @@ should install [PyTorch](http://pytorch.org/) as follows:
 conda install pytorch torchvision -c pytorch
 ```
 
+### Installation Using Conda (Alternative Method)
+
 Alternatively, you can install all the dependencies, including PyTorch, using Conda as follows. For those trying to use this package on MILA machines, this is the way to go:
 
 ```
