@@ -57,7 +57,7 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.UP:
         print('forward')
         action = np.array([0.40, 0.40])
-    elif symbol == key.SLASH:
+    elif symbol == key.BACKSPACE or symbol == key.SLASH:
         print('RESET')
         action = None
         env.reset()

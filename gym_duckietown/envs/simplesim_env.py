@@ -160,10 +160,10 @@ class SimpleSimEnv(gym.Env):
 
         # Create the vertex list for the ground quad
         verts = [
-            -1, -0.05,  1,
-            -1, -0.05, -1,
-             1, -0.05, -1,
-             1, -0.05,  1
+            -1, -0.8,  1,
+            -1, -0.8, -1,
+             1, -0.8, -1,
+             1, -0.8,  1
         ]
         self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
@@ -397,15 +397,6 @@ class SimpleSimEnv(gym.Env):
 
             break
 
-        """
-        self.curPos = np.array([
-            self.np_random.uniform(-0.20, 0.20),
-            0.0,
-            self.np_random.uniform(0.25, 0.75),
-        ])
-        self.curAngle = (math.pi/2) + (self.np_random.uniform(-20, 20) * math.pi/180)
-        """
-
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
         numTris = 12
@@ -513,6 +504,7 @@ class SimpleSimEnv(gym.Env):
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
         glClearColor(*self.horizonColor, 1.0)
+        glClearDepth(1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         # Set the projection matrix

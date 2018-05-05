@@ -7,11 +7,11 @@ import pyglet
 from pyglet.gl import *
 from ctypes import byref, POINTER
 
-def load_texture(texName):
+def load_texture(tex_name):
     # Assemble the absolute path to the texture
     absPathModule = os.path.realpath(__file__)
     moduleDir, _ = os.path.split(absPathModule)
-    texPath = os.path.join(moduleDir, 'textures', texName)
+    texPath = os.path.join(moduleDir, 'textures', tex_name)
 
     img = pyglet.image.load(texPath)
     tex = img.get_texture()
@@ -28,7 +28,7 @@ def load_texture(texName):
 def create_frame_buffers(width, height):
     """Create the frame buffer objects"""
 
-    # Create the multisampled frame buffer (rendering target)
+    # Create a frame buffer (rendering target)
     multi_fbo = GLuint(0)
     glGenFramebuffers(1, byref(multi_fbo))
     glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
@@ -57,8 +57,14 @@ def create_frame_buffers(width, height):
             fbTex,
             0
         );
-        res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-        assert res == GL_FRAMEBUFFER_COMPLETE
+
+        # Attach a multisampled depth buffer to the FBO
+        depth_rb = GLuint(0)
+        glGenRenderbuffers(1, byref(depth_rb))
+        glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, numSamples, GL_DEPTH_COMPONENT, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+
     except:
         print('Falling back to non-multisampled frame buffer')
 
@@ -84,8 +90,17 @@ def create_frame_buffers(width, height):
             fbTex,
             0
         );
-        res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-        assert res == GL_FRAMEBUFFER_COMPLETE
+
+        # Attach depth buffer to FBO
+        depth_rb = GLuint(0)
+        glGenRenderbuffers(1, byref(depth_rb))
+        glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height)
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+
+    # Sanity check
+    res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+    assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Create the frame buffer used to resolve the final render
     final_fbo = GLuint(0)
