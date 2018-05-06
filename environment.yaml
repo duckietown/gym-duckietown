@@ -8,6 +8,7 @@ dependencies:
     - torchvision
     - pyzmq
     - numpy
+    - pyyaml=3.12
     - pip:
         - gym
         - pyglet

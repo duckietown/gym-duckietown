@@ -59,6 +59,7 @@ Requirements:
 - SciPy
 - OpenCV
 - Pyglet
+- PyYAML
 - PyTorch
 
 You can install all the dependencies except PyTorch with `pip3`:
