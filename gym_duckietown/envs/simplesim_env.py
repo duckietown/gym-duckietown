@@ -143,6 +143,8 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Create the vertex list for our road quad
+        # Note: the vertices are centered around the origin so we can easily
+        # rotate the tiles about their center
         halfSize = ROAD_TILE_SIZE / 2
         verts = [
             -halfSize, 0.0, -halfSize,
@@ -174,12 +176,80 @@ class SimpleSimEnv(gym.Env):
         self.seed()
         self.reset()
 
-    def close(self):
-        pass
+    def reset(self):
+        # Step count since episode start
+        self.step_count = 0
 
-    def seed(self, seed=None):
-        self.np_random, _ = seeding.np_random(seed)
-        return [seed]
+        # Horizon color
+        self.horizonColor = self._perturb(HORIZON_COLOR)
+
+        # Ground color
+        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
+
+        # Road color multiplier
+        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
+
+        # Distance between the robot's wheels
+        self.wheelDist = self._perturb(WHEEL_DIST)
+
+        # Distance bewteen camera and ground
+        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
+
+        # Angle at which the camera is pitched downwards
+        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
+
+        # Field of view angle of the camera
+        self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
+
+        # Create the vertex list for the ground/noise triangles
+        # These are distractors, junk on the floor
+        numTris = 12
+        verts = []
+        colors = []
+        for i in range(0, 3 * numTris):
+            p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
+            c = self.np_random.uniform(low=0, high=0.9)
+            c = self._perturb(np.array([c, c, c]), 0.1)
+            verts += [p[0], p[1], p[2]]
+            colors += [c[0], c[1], c[2]]
+        self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
+
+        # Randomize the starting position and angle
+        # Pick a random starting tile and angle, do rejection sampling
+        while True:
+            self.curPos = np.array([
+                self.np_random.uniform(0, self.grid_width) * ROAD_TILE_SIZE,
+                0,
+                self.np_random.uniform(0, self.grid_height) * ROAD_TILE_SIZE,
+            ])
+
+            i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
+            tile = self._get_grid(i, j)
+
+            if tile is None:
+                continue
+
+            kind, angle = tile
+
+            if kind == 'black':
+                continue
+
+            # Choose a random direction
+            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
+
+            dist, dotDir, angle = self.getLanePos()
+            if dist < -0.20 or dist > 0.12:
+                continue
+            if angle < -30 or angle > 30:
+                continue
+
+            break
+
+        # Get the first camera image
+        obs = self._render_obs()
+
+        # Return first observation
+        return obs
 
     def _load_map(self, map_file):
         """
@@ -199,11 +269,11 @@ class SimpleSimEnv(gym.Env):
         self.grid_width = len(rows[0])
         self.grid = [None] * self.grid_width * self.grid_height
 
-        for j, row in enumerate(reversed(rows)):
+        for j, row in enumerate(rows):
 
             assert len(row) == self.grid_width
 
-            for i, cell in enumerate(reversed(row)):
+            for i, cell in enumerate(row):
                 cell = cell.strip()
 
                 if cell == 'empty':
@@ -217,6 +287,13 @@ class SimpleSimEnv(gym.Env):
                     angle = 0
 
                 self._set_grid(i, j, (kind, angle))
+
+    def close(self):
+        pass
+
+    def seed(self, seed=None):
+        self.np_random, _ = seeding.np_random(seed)
+        return [seed]
 
     def _set_grid(self, i, j, tile):
         assert i >= 0 and i < self.grid_width
@@ -245,13 +322,16 @@ class SimpleSimEnv(gym.Env):
     def _get_grid_pos(self, x, z):
         """
         Compute the tile indices (i,j) for a given (x,z) world position
+
+        x-axis maps to increasing i indices
+        z-axis maps to increasing j indices
+
+        Note: may return coordinates outside of the grid if the
+        position entered is outside of the grid.
         """
 
-        # Compute the grid position of the agent
-        xR = x / ROAD_TILE_SIZE
-        i = int(xR + (0.5 if xR > 0 else -0.5))
-        zR = z / ROAD_TILE_SIZE
-        j = int(zR + (0.5 if zR > 0 else -0.5))
+        i = math.floor(x / ROAD_TILE_SIZE)
+        j = math.floor(z / ROAD_TILE_SIZE)
 
         return i, j
 
@@ -292,7 +372,7 @@ class SimpleSimEnv(gym.Env):
         mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
 
         pts = np.matmul(pts, mat)
-        pts += np.array([i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE])
+        pts += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
 
         return pts
 
@@ -340,81 +420,6 @@ class SimpleSimEnv(gym.Env):
             angle *= -1
 
         return signedDist, dotDir, angle
-
-    def reset(self):
-        # Step count since episode start
-        self.step_count = 0
-
-        # Horizon color
-        self.horizonColor = self._perturb(HORIZON_COLOR)
-
-        # Ground color
-        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
-
-        # Road color multiplier
-        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
-
-        # Distance between the robot's wheels
-        self.wheelDist = self._perturb(WHEEL_DIST)
-
-        # Distance bewteen camera and ground
-        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
-
-        # Angle at which the camera is pitched downwards
-        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
-
-        # Field of view angle of the camera
-        self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
-
-        # Randomize the starting position and angle
-        # Pick a random starting tile and angle, do rejection sampling
-        while True:
-            self.curPos = np.array([
-                self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE,
-                0,
-                self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE,
-            ])
-
-            i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
-            tile = self._get_grid(i, j)
-
-            if tile is None:
-                continue
-
-            kind, angle = tile
-
-            if kind == 'black':
-                continue
-
-            # Choose a random direction
-            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
-
-            dist, dotDir, angle = self.getLanePos()
-            if dist < -0.20 or dist > 0.12:
-                continue
-            if angle < -30 or angle > 30:
-                continue
-
-            break
-
-        # Create the vertex list for the ground/noise triangles
-        # These are distractors, junk on the floor
-        numTris = 12
-        verts = []
-        colors = []
-        for i in range(0, 3 * numTris):
-            p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
-            c = self.np_random.uniform(low=0, high=0.9)
-            c = self._perturb(np.array([c, c, c]), 0.1)
-            verts += [p[0], p[1], p[2]]
-            colors += [c[0], c[1], c[2]]
-        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
-
-        # Get the first camera image
-        obs = self._render_obs()
-
-        # Return first observation
-        return obs
 
     def _update_pos(self, wheelVels, deltaTime):
         """
@@ -470,6 +475,7 @@ class SimpleSimEnv(gym.Env):
         # Compute the grid position of the agent
         i, j = self._get_grid_pos(x, z)
         tile = self._get_grid(i, j)
+        #print('i=%d, j=%d' % (i, j))
 
         # If there is no road at this grid cell
         if tile == None or tile[0] == 'black':
@@ -547,7 +553,7 @@ class SimpleSimEnv(gym.Env):
         glPopMatrix()
 
         # Draw the ground/noise triangles
-        self.triVList.draw(GL_TRIANGLES)
+        self.tri_vlist.draw(GL_TRIANGLES)
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
@@ -568,7 +574,7 @@ class SimpleSimEnv(gym.Env):
                 glColor3f(*self.roadColor)
 
                 glPushMatrix()
-                glTranslatef(i * ROAD_TILE_SIZE, 0, j * ROAD_TILE_SIZE)
+                glTranslatef((i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE)
                 glRotatef(angle * 90, 0, 1, 0)
 
                 # Bind the appropriate texture

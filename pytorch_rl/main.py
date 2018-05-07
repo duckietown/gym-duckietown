@@ -267,9 +267,9 @@ def main():
                     total_num_steps,
                     int(total_num_steps / (end - start)),
                     reward_avg,
-                    dist_entropy.item(),
-                    value_loss.item(),
-                    action_loss.item()
+                    dist_entropy.data[0],
+                    value_loss.data[0],
+                    action_loss.data[0]
                 )
             )
 

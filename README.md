@@ -20,22 +20,15 @@ This simulator was created as part of work done at the [MILA](https://mila.quebe
 Introduction
 ------------
 
-This repository contains 3 different gym environments:
+This repository contains two gym environments:
 - `SimpleSim-v0`
-- `Duckietown-v0`
 - `Duckiebot-v0`
 
 The `SimpleSim-v0` environment is a simple lane-following simulator
-written in OpenGL (Pyglet). It draws a loop of road with left and right turns,
-along with obstacles in the background. It implements various forms of
+written in Python/OpenGL (Pyglet). It draws a loop of road with left and right turns,
+along with objects in the background. It implements various forms of
 [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
 and basic differential-drive physics (without acceleration).
-
-The `Duckietown-v0` environment is meant to connect to a [remote server running
-ROS/Gazebo](https://github.com/duckietown/duckietown-sim-server) which runs a more
-complete Duckietown simulation. This simulation is often more buggy, slower, and
-trickier to get working, but it has a more accurate physics model and prettier
-graphics, but no domain-randomization.
 
 The `Duckiebot-v0` environment is meant to connect to software running on
 a real Duckiebot and remotely control the robot. It is a tool to test that policies
@@ -43,11 +36,6 @@ trained in simulation can transfer to the real robot. If you want to
 control your robot remotely with the `Duckiebot-v0` environment, you will need to
 install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
 repository on your Duckiebot.
-
-If you simply want to experiment with lane-following, I would strongly
-recommend that you start with the `SimpleSim-v0` environment, because
-it is fast, relatively easy to install, and we know for a fact that
-reinforcement learning policies can be successfully trained on it.
 
 Installation
 ------------
