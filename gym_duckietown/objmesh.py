@@ -84,7 +84,7 @@ class ObjMesh:
         print('num_faces=%d' % self.num_faces)
 
         # Create numpy arrays to store the vertex data
-        list_verts = np.zeros(shape=3 * 3 * self.num_faces, dtype=np.float32)
+        list_verts = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
         list_texcs = np.zeros(shape=3 * 2 * self.num_faces, dtype=np.float32)
         list_norms = np.zeros(shape=3 * 3 * self.num_faces, dtype=np.float32)
 
@@ -101,16 +101,27 @@ class ObjMesh:
                 texc = texs[t_idx-1]
                 normal = normals[n_idx-1]
 
-                list_verts[3*cur_vert_idx:3*(cur_vert_idx+1)] = vert
+                list_verts[cur_vert_idx, :] = vert
                 list_texcs[2*cur_vert_idx:2*(cur_vert_idx+1)] = texc
                 list_norms[3*cur_vert_idx:3*cur_vert_idx+3] = normal
 
                 cur_vert_idx += 1
 
+        # Re-center the object so that y=0 is at the base,
+        # and the object is centered in x and z
+        x_coords = list_verts[:, 0]
+        z_coords = list_verts[:, 2]
+        min_y = list_verts[:, 1].min()
+        mean_x = (x_coords.min() + x_coords.max()) / 2
+        mean_z = (z_coords.min() + z_coords.max()) / 2
+        list_verts[:, 1] -= min_y
+        list_verts[:, 0] -= mean_x
+        list_verts[:, 2] -= mean_z
+
         # Create a vertex list to be used for rendering
         self.vlist = pyglet.graphics.vertex_list(
             3 * self.num_faces,
-            ('v3f', list_verts),
+            ('v3f', list_verts.reshape(-1)),
             ('t2f', list_texcs),
             ('n3f', list_norms)
         )

@@ -643,7 +643,7 @@ class SimpleSimEnv(gym.Env):
             glPushMatrix()
             glTranslatef(*obj['pos'])
             glScalef(scale, scale, scale)
-            glRotatef(y_rot * 90, 0, 1, 0)
+            glRotatef(y_rot, 0, 1, 0)
             mesh.render()
             glPopMatrix()
 

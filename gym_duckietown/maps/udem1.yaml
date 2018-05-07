@@ -15,9 +15,14 @@ objects:
 - mesh_file: "duckie.obj"
   pos: [1.1, 1.9]
   scale: 0.04
-  rotate: 90
+  rotate: 180
 
 - mesh_file: "house.obj"
-  pos: [3.6, 1.6]
+  pos: [3.8, 1.6]
   scale: 0.1
   rotate: 0
+
+- mesh_file: "truck.obj"
+  pos: [3.3, 2.8]
+  scale: 0.04
+  rotate: -90
