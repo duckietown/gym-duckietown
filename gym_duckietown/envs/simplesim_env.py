@@ -2,6 +2,7 @@ import os
 import math
 import time
 import numpy as np
+import yaml
 
 import pyglet
 from pyglet.gl import *
@@ -10,11 +11,6 @@ from ctypes import byref, POINTER
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
-
-# For Python 3 compatibility
-import sys
-if sys.version_info > (3,):
-    buffer = memoryview
 
 # Graphics utility code
 from ..graphics import *
@@ -80,7 +76,7 @@ class SimpleSimEnv(gym.Env):
         draw_curve=False
     ):
         if map_file is None:
-            map_file = 'gym_duckietown/maps/udem1.csv'
+            map_file = 'gym_duckietown/maps/udem1.yaml'
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -251,39 +247,41 @@ class SimpleSimEnv(gym.Env):
         # Return first observation
         return obs
 
-    def _load_map(self, map_file):
+    def _load_map(self, file_path):
         """
         Load the map layout from a CSV file
         """
 
-        import csv
-        csvfile = open(map_file, 'r')
-        reader = csv.reader(csvfile, delimiter=',', quotechar='"')
-        rows = list(reader)
+        print('loading')
 
-        assert len(rows) > 0
-        assert len(rows[0]) > 0
+        with open(file_path, 'r') as f:
+            data = yaml.load(f)
+
+        grid = data['tiles']
+        assert len(grid) > 0
+        assert len(grid[0]) > 0
 
         # Create the grid
-        self.grid_height = len(rows)
-        self.grid_width = len(rows[0])
+        self.grid_height = len(grid)
+        self.grid_width = len(grid[0])
         self.grid = [None] * self.grid_width * self.grid_height
 
-        for j, row in enumerate(rows):
-
+        # For each row in the grid
+        for j, row in enumerate(grid):
             assert len(row) == self.grid_width
 
-            for i, cell in enumerate(row):
-                cell = cell.strip()
+            # For each tile in this row
+            for i, tile in enumerate(row):
+                tile = tile.strip()
 
-                if cell == 'empty':
+                if tile == 'empty':
                     continue
 
-                if ':' in cell:
-                    kind, angle = cell.split(':')
+                if '/' in tile:
+                    kind, angle = tile.split('/')
                     angle = int(angle)
                 else:
-                    kind = cell
+                    kind = tile
                     angle = 0
 
                 self._set_grid(i, j, (kind, angle))

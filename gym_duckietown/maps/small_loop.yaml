@@ -1,0 +1,4 @@
+tiles:
+- [diag_left/3  , linear/3, diag_left/2]
+- [linear/0     , black   , linear/2]
+- [diag_left/0  , linear/1, diag_left/1]
