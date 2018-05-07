@@ -14,6 +14,7 @@ from gym.utils import seeding
 
 # Graphics utility code
 from ..graphics import *
+from ..objmesh import *
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -252,12 +253,12 @@ class SimpleSimEnv(gym.Env):
         Load the map layout from a CSV file
         """
 
-        print('loading')
+        print('loading map file "%s"' % file_path)
 
         with open(file_path, 'r') as f:
-            data = yaml.load(f)
+            map_data = yaml.load(f)
 
-        grid = data['tiles']
+        grid = map_data['tiles']
         assert len(grid) > 0
         assert len(grid[0]) > 0
 
@@ -289,6 +290,33 @@ class SimpleSimEnv(gym.Env):
                     kind = 'ground'
 
                 self._set_grid(i, j, (kind, angle))
+
+        # Create the objects array
+        self.objects = []
+
+        if not 'objects' in map_data:
+            return
+
+        # For each object
+        for desc in map_data['objects']:
+            mesh_file = desc['mesh_file']
+            pos = desc['pos']
+            scale = desc['scale']
+            rotate = desc['rotate']
+
+            mesh = ObjMesh(mesh_file)
+
+            pos = pos
+            pos = ROAD_TILE_SIZE * np.array((pos[0], 0, pos[1]))
+
+            obj = {
+                'mesh': mesh,
+                'pos': pos,
+                'scale': scale,
+                'y_rot': rotate
+            }
+
+            self.objects.append(obj)
 
     def close(self):
         pass
@@ -511,6 +539,7 @@ class SimpleSimEnv(gym.Env):
         glBindFramebuffer(GL_FRAMEBUFFER, self.multi_fbo);
         glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
 
+        # Clear the color and depth buffers
         glClearColor(*self.horizonColor, 1.0)
         glClearDepth(1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -521,7 +550,7 @@ class SimpleSimEnv(gym.Env):
         gluPerspective(
             self.camFovY,
             CAMERA_WIDTH / float(CAMERA_HEIGHT),
-            0.05,
+            0.04,
             100.0
         )
 
@@ -605,6 +634,18 @@ class SimpleSimEnv(gym.Env):
                 if self.draw_curve and kind != "black":
                     pts = self._get_curve(i, j)
                     bezier_draw(pts, n = 20)
+
+        # For each object
+        for obj in self.objects:
+            scale = obj['scale']
+            y_rot = obj['y_rot']
+            mesh = obj['mesh']
+            glPushMatrix()
+            glTranslatef(*obj['pos'])
+            glScalef(scale, scale, scale)
+            glRotatef(y_rot * 90, 0, 1, 0)
+            mesh.render()
+            glPopMatrix()
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multi_fbo);

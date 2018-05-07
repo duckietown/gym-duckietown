@@ -4,3 +4,14 @@ tiles:
 - [3way_left/0  , linear_stop_both/3, 3way_left/2       , asphalt           , asphalt     , linear/2]
 - [linear_stop/0, asphalt           , linear_stop_both/2, asphalt           , diag_right/2, diag_left/1]
 - [diag_left/0  , linear_stop/1     , 3way_left/1       , linear_stop_left/1, diag_left/1 , empty]
+
+objects:
+- mesh_file: "duckie.obj"
+  pos: [1.1, 1.9]
+  scale: 0.04
+  rotate: 90
+
+- mesh_file: "house.obj"
+  pos: [3.6, 1.6]
+  scale: 0.1
+  rotate: 0

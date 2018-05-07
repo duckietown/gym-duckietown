@@ -132,6 +132,9 @@ def create_frame_buffers(width, height):
     res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     assert res == GL_FRAMEBUFFER_COMPLETE
 
+    # Enable depth testing
+    glEnable(GL_DEPTH_TEST)
+
     # Unbind the frame buffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
