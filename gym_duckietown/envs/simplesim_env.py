@@ -130,7 +130,7 @@ class SimpleSimEnv(gym.Env):
         self.road_left_tex = load_texture('road_left.png')
         self.road_right_tex = load_texture('road_right.png')
         self.road_3way_left_tex = load_texture('road_3way_left.png')
-        self.black_tile_tex = load_texture('black_tile.png')
+        self.asphalt_tex = load_texture('asphalt.png')
 
         # Create a frame buffer object
         self.multi_fbo, self.final_fbo = create_frame_buffers(
@@ -227,7 +227,7 @@ class SimpleSimEnv(gym.Env):
 
             kind, angle = tile
 
-            if kind == 'black':
+            if kind == 'ground':
                 continue
 
             # Choose a random direction
@@ -283,6 +283,10 @@ class SimpleSimEnv(gym.Env):
                 else:
                     kind = tile
                     angle = 0
+
+                # TODO: add support for grass tile
+                if kind == 'asphalt':
+                    kind = 'ground'
 
                 self._set_grid(i, j, (kind, angle))
 
@@ -476,7 +480,7 @@ class SimpleSimEnv(gym.Env):
         #print('i=%d, j=%d' % (i, j))
 
         # If there is no road at this grid cell
-        if tile == None or tile[0] == 'black':
+        if tile == None or tile[0] == 'ground':
             reward = -10
             done = True
             return obs, reward, done, {}
@@ -590,8 +594,8 @@ class SimpleSimEnv(gym.Env):
                     glBindTexture(self.road_left_tex.target, self.road_left_tex.id)
                 elif kind == 'diag_right':
                     glBindTexture(self.road_right_tex.target, self.road_right_tex.id)
-                elif kind == 'black':
-                    glBindTexture(self.black_tile_tex.target, self.black_tile_tex.id)
+                elif kind == 'ground':
+                    glBindTexture(self.asphalt_tex.target, self.asphalt_tex.id)
                 else:
                     assert False, kind
 
