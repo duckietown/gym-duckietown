@@ -365,7 +365,6 @@ class SimpleSimEnv(gym.Env):
         assert scale < 1
 
         if not self.domain_rand:
-            print('returning val unchanged')
             return val
 
         if isinstance(val, np.ndarray):
