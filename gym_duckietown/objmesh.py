@@ -118,6 +118,12 @@ class ObjMesh:
         list_verts[:, 0] -= mean_x
         list_verts[:, 2] -= mean_z
 
+        # Compute the object extents after centering
+        x_coords = list_verts[:, 0]
+        y_coords = list_verts[:, 1]
+        z_coords = list_verts[:, 2]
+        self.y_max = y_coords.max()
+
         # Create a vertex list to be used for rendering
         self.vlist = pyglet.graphics.vertex_list(
             3 * self.num_faces,
@@ -131,7 +137,6 @@ class ObjMesh:
 
     def render(self):
         glEnable(GL_TEXTURE_2D)
-        glColor4f(1, 1, 1, 1)
 
         glBindTexture(self.texture.target, self.texture.id)
 

@@ -211,6 +211,11 @@ class SimpleSimEnv(gym.Env):
             colors += [c[0], c[1], c[2]]
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
 
+        # Randomize object parameters
+        for obj in self.objects:
+            # Randomize the object color
+            obj['color'] = self.np_random.uniform(low=0.7, high=1.0, size=(3,))
+
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
         while True:
@@ -301,13 +306,19 @@ class SimpleSimEnv(gym.Env):
         for desc in map_data['objects']:
             mesh_file = desc['mesh_file']
             pos = desc['pos']
-            scale = desc['scale']
             rotate = desc['rotate']
-
-            mesh = ObjMesh(mesh_file)
 
             pos = pos
             pos = ROAD_TILE_SIZE * np.array((pos[0], 0, pos[1]))
+
+            # Load the mesh
+            mesh = ObjMesh(mesh_file)
+
+            if 'height' in desc:
+                scale = desc['height'] / mesh.y_max
+            else:
+                scale = desc['scale']
+            assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
             obj = {
                 'mesh': mesh,
@@ -644,6 +655,7 @@ class SimpleSimEnv(gym.Env):
             glTranslatef(*obj['pos'])
             glScalef(scale, scale, scale)
             glRotatef(y_rot, 0, 1, 0)
+            glColor3f(*obj['color'])
             mesh.render()
             glPopMatrix()
 

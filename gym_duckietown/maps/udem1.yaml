@@ -11,18 +11,25 @@ tiles:
 
 # Object positions are scaled according to the tile size, so that (1.5, 2.5)
 # would be exactly in the middle of tile (1, 2)
+# Objects can be scaled according to their real-world height in meters
+# Duckietown tiles are 61cm, or 0.61 meter
 objects:
 - mesh_file: "duckie.obj"
   pos: [1.1, 1.9]
-  scale: 0.04
+  height: 0.08
   rotate: 180
 
 - mesh_file: "house.obj"
   pos: [3.8, 1.6]
-  scale: 0.1
+  height: 0.5
   rotate: 0
 
 - mesh_file: "truck.obj"
-  pos: [3.3, 2.8]
-  scale: 0.04
+  pos: [1.5, 3.8]
+  height: 0.2
+  rotate: 0
+
+- mesh_file: "bus.obj"
+  pos: [3.25, 3.3]
+  height: 0.18
   rotate: -90
