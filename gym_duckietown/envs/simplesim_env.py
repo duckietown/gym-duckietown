@@ -74,7 +74,8 @@ class SimpleSimEnv(gym.Env):
         map_file=None,
         max_steps=600,
         img_noise_scale=0,
-        draw_curve=False
+        draw_curve=False,
+        domain_rand=True
     ):
         if map_file is None:
             map_file = 'gym_duckietown/maps/udem1.yaml'
@@ -105,6 +106,9 @@ class SimpleSimEnv(gym.Env):
 
         # Flag to draw the road curve
         self.draw_curve = draw_curve
+
+        # Flag to enable/disable domain randomization
+        self.domain_rand = domain_rand
 
         # Array to render the image into
         self.img_array = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
@@ -188,7 +192,7 @@ class SimpleSimEnv(gym.Env):
         self.horizonColor = self._perturb(HORIZON_COLOR)
 
         # Ground color
-        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
+        self.groundColor = self._perturb(GROUND_COLOR, 0.3)
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)
@@ -222,7 +226,7 @@ class SimpleSimEnv(gym.Env):
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
-            obj['color'] = self.np_random.uniform(low=0.7, high=1.0, size=(3,))
+            obj['color'] = self._perturb(np.array([1, 1, 1]), 0.3)
 
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
@@ -359,6 +363,10 @@ class SimpleSimEnv(gym.Env):
         """Add noise to a value"""
         assert scale >= 0
         assert scale < 1
+
+        if not self.domain_rand:
+            print('returning val unchanged')
+            return val
 
         if isinstance(val, np.ndarray):
             noise = self.np_random.uniform(low=1-scale, high=1+scale, size=val.shape)
