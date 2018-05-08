@@ -3,33 +3,44 @@
 # The first coordinate corresponds to the column index, second to the row index
 # Each tile contains a string with the kind of tile and its orientation
 tiles:
-- [diag_left/3  , linear/3          , 3way_left/3       , linear_stop/3     , linear/3    , diag_left/2]
-- [linear/0     , asphalt           , linear_stop_both/2, asphalt           , asphalt     , linear/2]
-- [3way_left/0  , linear_stop_both/3, 3way_left/2       , asphalt           , asphalt     , linear/2]
-- [linear_stop/0, asphalt           , linear_stop_both/2, asphalt           , diag_right/2, diag_left/1]
-- [diag_left/0  , linear_stop/1     , 3way_left/1       , linear_stop_left/1, diag_left/1 , empty]
+- [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
+- [floor        , diag_left/3  , linear/3          , 3way_left/3       , linear_stop/3      , linear/3      , diag_left/2   , floor]
+- [floor        , linear/0     , grass             , linear_stop_both/2, asphalt            , asphalt       , linear/2      , floor]
+- [floor        , 3way_left/0  , linear_stop_both/3, 3way_left/2       , asphalt            , asphalt       , linear/2      , floor]
+- [floor        , linear_stop/0, asphalt           , linear_stop_both/2, asphalt            , diag_right/2  , diag_left/1   , floor]
+- [floor        , diag_left/0  , linear_stop/1     , 3way_left/1       , linear_stop_left/1 , diag_left/1   , floor         , floor]
+- [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
 
 # Object positions are scaled according to the tile size, so that (1.5, 2.5)
 # would be exactly in the middle of tile (1, 2)
 # Objects can be scaled according to their real-world height in meters
 # Duckietown tiles are 61cm, or 0.61 meter
 objects:
+
 - mesh_file: "duckie.obj"
-  pos: [1.1, 1.9]
+  pos: [2.1, 2.9]
   height: 0.08
   rotate: 180
 
 - mesh_file: "house.obj"
-  pos: [3.8, 1.6]
+  pos: [4.8, 2.6]
   height: 0.5
   rotate: 0
 
 - mesh_file: "truck.obj"
-  pos: [1.5, 3.8]
+  pos: [2.5, 4.8]
   height: 0.2
   rotate: 0
 
 - mesh_file: "bus.obj"
-  pos: [3.25, 3.3]
+  pos: [2.0, 0.5]
   height: 0.18
-  rotate: -90
+  rotate: 0
+- mesh_file: "bus.obj"
+  pos: [4, 0.5]
+  height: 0.18
+  rotate: 0
+- mesh_file: "bus.obj"
+  pos: [6.0, 0.5]
+  height: 0.18
+  rotate: 0

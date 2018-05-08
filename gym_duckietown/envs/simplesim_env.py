@@ -132,6 +132,8 @@ class SimpleSimEnv(gym.Env):
         self.road_right_tex = load_texture('road_right.png')
         self.road_3way_left_tex = load_texture('road_3way_left.png')
         self.asphalt_tex = load_texture('asphalt.png')
+        self.grass_tex = load_texture('grass_1.png')
+        self.floor_tex = load_texture('floor_tiles_green.png')
 
         # Create a frame buffer object
         self.multi_fbo, self.final_fbo = create_frame_buffers(
@@ -174,6 +176,11 @@ class SimpleSimEnv(gym.Env):
         self.reset()
 
     def reset(self):
+        """
+        Reset the simulation at the start of a new episode
+        This also randomizes many environment parameters (domain randomization)
+        """
+
         # Step count since episode start
         self.step_count = 0
 
@@ -182,9 +189,6 @@ class SimpleSimEnv(gym.Env):
 
         # Ground color
         self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
-
-        # Road color multiplier
-        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
 
         # Distance between the robot's wheels
         self.wheelDist = self._perturb(WHEEL_DIST)
@@ -211,6 +215,10 @@ class SimpleSimEnv(gym.Env):
             colors += [c[0], c[1], c[2]]
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
 
+        # Randomize tile parameters
+        for tile in self.grid:
+            tile['color'] = self._perturb(ROAD_COLOR, 0.2)
+
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
@@ -228,12 +236,7 @@ class SimpleSimEnv(gym.Env):
             i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
             tile = self._get_grid(i, j)
 
-            if tile is None:
-                continue
-
-            kind, angle = tile
-
-            if kind == 'ground':
+            if tile is None or not tile['drivable']:
                 continue
 
             # Choose a random direction
@@ -286,15 +289,19 @@ class SimpleSimEnv(gym.Env):
                 if '/' in tile:
                     kind, angle = tile.split('/')
                     angle = int(angle)
+                    drivable = True
                 else:
                     kind = tile
                     angle = 0
+                    drivable = False
 
-                # TODO: add support for grass tile
-                if kind == 'asphalt':
-                    kind = 'ground'
+                tile = {
+                    'kind': kind,
+                    'angle': angle,
+                    'drivable': drivable
+                }
 
-                self._set_grid(i, j, (kind, angle))
+                self._set_grid(i, j, tile)
 
         # Create the objects array
         self.objects = []
@@ -384,7 +391,8 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_grid(i, j)
         assert tile is not None
 
-        kind, angle = tile
+        kind = tile['kind']
+        angle = tile['angle']
 
         if kind.startswith('linear') or kind.startswith('3way'):
             pts = np.array([
@@ -519,7 +527,7 @@ class SimpleSimEnv(gym.Env):
         #print('i=%d, j=%d' % (i, j))
 
         # If there is no road at this grid cell
-        if tile == None or tile[0] == 'ground':
+        if tile == None or not tile['drivable']:
             reward = -10
             done = True
             return obs, reward, done, {}
@@ -611,9 +619,11 @@ class SimpleSimEnv(gym.Env):
                 if tile == None:
                     continue
 
-                kind, angle = tile
+                kind = tile['kind']
+                angle = tile['angle']
+                color = tile['color']
 
-                glColor3f(*self.roadColor)
+                glColor3f(*color)
 
                 glPushMatrix()
                 glTranslatef((i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE)
@@ -634,15 +644,19 @@ class SimpleSimEnv(gym.Env):
                     glBindTexture(self.road_left_tex.target, self.road_left_tex.id)
                 elif kind == 'diag_right':
                     glBindTexture(self.road_right_tex.target, self.road_right_tex.id)
-                elif kind == 'ground':
+                elif kind == 'asphalt':
                     glBindTexture(self.asphalt_tex.target, self.asphalt_tex.id)
+                elif kind == 'grass':
+                    glBindTexture(self.grass_tex.target, self.grass_tex.id)
+                elif kind == 'floor':
+                    glBindTexture(self.floor_tex.target, self.floor_tex.id)
                 else:
                     assert False, kind
 
                 self.road_vlist.draw(GL_QUADS)
                 glPopMatrix()
 
-                if self.draw_curve and kind != "black":
+                if self.draw_curve and tile['drivable']:
                     pts = self._get_curve(i, j)
                     bezier_draw(pts, n = 20)
 
