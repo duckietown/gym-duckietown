@@ -14,16 +14,19 @@ from gym_duckietown.envs import SimpleSimEnv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
-parser.add_argument('--map-file', default=None)
+parser.add_argument('--map-file', default='gym_duckietown/maps/udem1.yaml')
 parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
 parser.add_argument('--no-random', action='store_true', help='disable domain randomization')
+parser.add_argument('--full-res', action='store_true', help='render at full window resolution')
+
 args = parser.parse_args()
 
 if args.env_name == 'SimpleSim-v0':
     env = SimpleSimEnv(
         map_file = args.map_file,
         draw_curve = args.draw_curve,
-        domain_rand = not args.no_random
+        domain_rand = not args.no_random,
+        full_res = args.full_res
     )
 else:
     env = gym.make(args.env_name)

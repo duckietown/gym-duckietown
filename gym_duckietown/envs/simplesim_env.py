@@ -24,9 +24,6 @@ WINDOW_HEIGHT = 600
 CAMERA_WIDTH = 160
 CAMERA_HEIGHT = 120
 
-# Camera image shape
-IMG_SHAPE = (CAMERA_HEIGHT, CAMERA_WIDTH, 3)
-
 # Horizon/wall color
 HORIZON_COLOR = np.array([0.64, 0.71, 0.28])
 
@@ -71,14 +68,25 @@ class SimpleSimEnv(gym.Env):
 
     def __init__(
         self,
-        map_file=None,
+        map_file='gym_duckietown/maps/udem1.yaml',
         max_steps=600,
-        img_noise_scale=0,
+        full_res=False,
         draw_curve=False,
         domain_rand=True
     ):
-        if map_file is None:
-            map_file = 'gym_duckietown/maps/udem1.yaml'
+        # Output image resolution
+        self.img_height = WINDOW_HEIGHT if full_res else CAMERA_HEIGHT
+        self.img_width = WINDOW_WIDTH if full_res else CAMERA_WIDTH
+        self.img_shape = (self.img_height, self.img_width, 3)
+
+        # Maximum number of steps per episode
+        self.max_steps = max_steps
+
+        # Flag to draw the road curve
+        self.draw_curve = draw_curve
+
+        # Flag to enable/disable domain randomization
+        self.domain_rand = domain_rand
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -92,26 +100,14 @@ class SimpleSimEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=1,
-            shape=IMG_SHAPE,
+            shape=self.img_shape,
             dtype=np.float32
         )
 
         self.reward_range = (-1, 1000)
 
-        # Maximum number of steps per episode
-        self.max_steps = max_steps
-
-        # Amount of image noise to produce (standard deviation)
-        self.img_noise_scale = img_noise_scale
-
-        # Flag to draw the road curve
-        self.draw_curve = draw_curve
-
-        # Flag to enable/disable domain randomization
-        self.domain_rand = domain_rand
-
         # Array to render the image into
-        self.img_array = np.zeros(shape=IMG_SHAPE, dtype=np.float32)
+        self.img_array = np.zeros(shape=self.img_shape, dtype=np.float32)
 
         # Window for displaying the environment to humans
         self.window = None
@@ -141,8 +137,8 @@ class SimpleSimEnv(gym.Env):
 
         # Create a frame buffer object
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT
+            self.img_width,
+            self.img_height
         )
 
         # Create the vertex list for our road quad
@@ -559,7 +555,7 @@ class SimpleSimEnv(gym.Env):
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
         glBindFramebuffer(GL_FRAMEBUFFER, self.multi_fbo);
-        glViewport(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT)
+        glViewport(0, 0, self.img_width, self.img_height)
 
         # Clear the color and depth buffers
         glClearColor(*self.horizonColor, 1.0)
@@ -571,7 +567,7 @@ class SimpleSimEnv(gym.Env):
         glLoadIdentity()
         gluPerspective(
             self.camFovY,
-            CAMERA_WIDTH / float(CAMERA_HEIGHT),
+            self.img_width / float(self.img_height),
             0.04,
             100.0
         )
@@ -683,9 +679,9 @@ class SimpleSimEnv(gym.Env):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.final_fbo);
         glBlitFramebuffer(
             0, 0,
-            CAMERA_WIDTH, CAMERA_HEIGHT,
+            self.img_width, self.img_height,
             0, 0,
-            CAMERA_WIDTH, CAMERA_HEIGHT,
+            self.img_width, self.img_height,
             GL_COLOR_BUFFER_BIT,
             GL_LINEAR
         );
@@ -696,21 +692,12 @@ class SimpleSimEnv(gym.Env):
         glReadPixels(
             0,
             0,
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
+            self.img_width,
+            self.img_height,
             GL_RGB,
             GL_FLOAT,
             self.img_array.ctypes.data_as(POINTER(GLfloat))
         )
-
-        # Add noise to the image
-        if self.img_noise_scale > 0:
-            noise = self.np_random.normal(
-                size=IMG_SHAPE,
-                loc=0,
-                scale=self.img_noise_scale
-            )
-            np.clip(self.img_array + noise, a_min=0, a_max=1, out=self.img_array)
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
