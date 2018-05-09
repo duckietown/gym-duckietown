@@ -20,15 +20,23 @@ This simulator was created as part of work done at the [MILA](https://mila.quebe
 Introduction
 ------------
 
-This repository contains two gym environments:
-- `SimpleSim-v0`
-- `Duckiebot-v0`
+This repository contains two gym environments: `SimpleSim-v0` and `Duckiebot-v0`.
+
+<p align="center">
+<img src="media/simplesim_1.png" width="200px"><br>
+SimpleSim-v0
+</p>
 
 The `SimpleSim-v0` environment is a simple lane-following simulator
 written in Python/OpenGL (Pyglet). It draws a loop of road with left and right turns,
 along with objects in the background. It implements various forms of
 [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
 and basic differential-drive physics (without acceleration).
+
+<p align="center">
+<img src="media/duckiebot_1.png" width="200px"><br>
+Duckiebot-v0
+</p>
 
 The `Duckiebot-v0` environment is meant to connect to software running on
 a real Duckiebot and remotely control the robot. It is a tool to test that policies
