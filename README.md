@@ -23,7 +23,7 @@ Introduction
 This repository contains two gym environments: `SimpleSim-v0` and `Duckiebot-v0`.
 
 <p align="center">
-<img src="media/simplesim_1.png" width="200px"><br>
+<img src="media/simplesim_1.png" width="300px"><br>
 SimpleSim-v0
 </p>
 
@@ -34,7 +34,7 @@ along with objects in the background. It implements various forms of
 and basic differential-drive physics (without acceleration).
 
 <p align="center">
-<img src="media/duckiebot_1.png" width="200px"><br>
+<img src="media/duckiebot_1.png" width="300px"><br>
 Duckiebot-v0
 </p>
 
