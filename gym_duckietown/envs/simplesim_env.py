@@ -360,7 +360,9 @@ class SimpleSimEnv(gym.Env):
         return self.grid[j * self.grid_width + i]
 
     def _perturb(self, val, scale=0.1):
-        """Add noise to a value"""
+        """
+        Add noise to a value. This is used for domain randomization.
+        """
         assert scale >= 0
         assert scale < 1
 
@@ -516,12 +518,6 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's position
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
-        # Add a small amount of noise to the position
-        # This will randomize the movement dynamics
-        posNoise = self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
-        self.curPos += posNoise
-        self.curPos[1] = 0
-
         # Get the current position
         x, y, z = self.curPos
 
@@ -581,8 +577,10 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Set modelview matrix
-        x, _, z = self.curPos
-        y = CAMERA_FLOOR_DIST + self.np_random.uniform(low=-0.006, high=0.006)
+        # Note: we add a bit of noise to the camera position for data augmentation
+        pos_noise = self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
+        x, y, z = self.curPos + pos_noise
+        y += CAMERA_FLOOR_DIST
         dx, dy, dz = self.getDirVec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
