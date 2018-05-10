@@ -38,6 +38,6 @@ frame_time = 1000 * dt / num_frames
 print()
 print('load time: %d ms' % int(load_time))
 print('frame time: %.1f ms' % frame_time)
-print('frame rate: %.1f fps' % fps)
+print('frame rate: %.1f FPS' % fps)
 
 env.close()

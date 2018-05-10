@@ -97,17 +97,19 @@ class SimpleSimEnv(gym.Env):
         )
 
         # We observe an RGB image with pixels in [0, 255]
+        # Note: the pixels are in uint8 format because this is more compact
+        # than float32 if sent over the network or stored in a dataset
         self.observation_space = spaces.Box(
             low=0,
-            high=1,
+            high=255,
             shape=self.img_shape,
-            dtype=np.float32
+            dtype=np.uint8
         )
 
         self.reward_range = (-1, 1000)
 
         # Array to render the image into
-        self.img_array = np.zeros(shape=self.img_shape, dtype=np.float32)
+        self.img_array = np.zeros(shape=self.img_shape, dtype=np.uint8)
 
         # Window for displaying the environment to humans
         self.window = None
@@ -695,8 +697,8 @@ class SimpleSimEnv(gym.Env):
             self.img_width,
             self.img_height,
             GL_RGB,
-            GL_FLOAT,
-            self.img_array.ctypes.data_as(POINTER(GLfloat))
+            GL_UNSIGNED_BYTE,
+            self.img_array.ctypes.data_as(POINTER(GLubyte))
         )
 
         # Unbind the frame buffer
@@ -729,6 +731,7 @@ class SimpleSimEnv(gym.Env):
         self.window.switch_to()
         self.window.dispatch_events()
 
+        # Bind the default frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         # Setup orghogonal projection
@@ -741,7 +744,6 @@ class SimpleSimEnv(gym.Env):
         # Draw the image to the rendering window
         width = img.shape[1]
         height = img.shape[0]
-        img = np.uint8(img * 255)
         img_data = pyglet.image.ImageData(
             width,
             height,
