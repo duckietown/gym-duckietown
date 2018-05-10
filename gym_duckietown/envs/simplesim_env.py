@@ -45,7 +45,7 @@ CAMERA_FLOOR_DIST = 0.108
 # Forward distance between camera and center of rotation (6.6cm)
 CAMERA_FORWARD_DIST = 0.066
 
-# Distance betwen robot wheels (10.2cm)
+# Distance (diameter) between robot wheels (10.2cm)
 WHEEL_DIST = 0.102
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
@@ -229,22 +229,21 @@ class SimpleSimEnv(gym.Env):
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
         while True:
-            self.curPos = np.array([
+            # Choose a random position on the grid
+            self.cur_pos = np.array([
                 self.np_random.uniform(0, self.grid_width) * ROAD_TILE_SIZE,
                 0,
                 self.np_random.uniform(0, self.grid_height) * ROAD_TILE_SIZE,
             ])
 
-            i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
-            tile = self._get_grid(i, j)
+            # Choose a random direction
+            self.cur_angle = self.np_random.uniform(0, 2 * math.pi)
 
-            if tile is None or not tile['drivable']:
+            # If this is not a valid pose (on drivable tiles), skip it
+            if not self._valid_pose():
                 continue
 
-            # Choose a random direction
-            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
-
-            dist, dotDir, angle = self.getLanePos()
+            dist, dotDir, angle = self.get_lane_pos()
             if dist < -0.20 or dist > 0.12:
                 continue
             if angle < -30 or angle > 30:
@@ -289,8 +288,10 @@ class SimpleSimEnv(gym.Env):
                     continue
 
                 if '/' in tile:
-                    kind, angle = tile.split('/')
-                    angle = int(angle)
+                    kind, orient = tile.split('/')
+                    kind = kind.strip(' ')
+                    orient = orient.strip(' ')
+                    angle = ['S', 'E', 'N', 'W'].index(orient)
                     drivable = True
                 else:
                     kind = tile
@@ -303,7 +304,7 @@ class SimpleSimEnv(gym.Env):
                     'drivable': drivable
                 }
 
-                self._set_grid(i, j, tile)
+                self._set_tile(i, j, tile)
 
         # Create the objects array
         self.objects = []
@@ -345,12 +346,12 @@ class SimpleSimEnv(gym.Env):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
 
-    def _set_grid(self, i, j, tile):
+    def _set_tile(self, i, j, tile):
         assert i >= 0 and i < self.grid_width
         assert j >= 0 and j < self.grid_height
         self.grid[j * self.grid_width + i] = tile
 
-    def _get_grid(self, i, j):
+    def _get_tile(self, i, j):
         if i < 0 or i >= self.grid_width:
             return None
         if j < 0 or j >= self.grid_height:
@@ -374,9 +375,9 @@ class SimpleSimEnv(gym.Env):
 
         return val * noise
 
-    def _get_grid_pos(self, x, z):
+    def _get_grid_coords(self, abs_pos):
         """
-        Compute the tile indices (i,j) for a given (x,z) world position
+        Compute the tile indices (i,j) for a given (x,_,z) world position
 
         x-axis maps to increasing i indices
         z-axis maps to increasing j indices
@@ -385,6 +386,7 @@ class SimpleSimEnv(gym.Env):
         position entered is outside of the grid.
         """
 
+        x, _, z = abs_pos
         i = math.floor(x / ROAD_TILE_SIZE)
         j = math.floor(z / ROAD_TILE_SIZE)
 
@@ -395,7 +397,7 @@ class SimpleSimEnv(gym.Env):
         Get the Bezier curve control points for a given tile
         """
 
-        tile = self._get_grid(i, j)
+        tile = self._get_tile(i, j)
         assert tile is not None
 
         kind = tile['kind']
@@ -432,38 +434,37 @@ class SimpleSimEnv(gym.Env):
 
         return pts
 
-    def getDirVec(self):
-        x = math.cos(self.curAngle)
-        z = math.sin(self.curAngle)
+    def get_dir_vec(self):
+        x = math.cos(self.cur_angle)
+        z = math.sin(self.cur_angle)
         return np.array([x, 0, z])
 
-    def getLeftVec(self):
-        x = math.sin(self.curAngle)
-        z = -math.cos(self.curAngle)
+    def get_left_vec(self):
+        x = math.sin(self.cur_angle)
+        z = -math.cos(self.cur_angle)
         return np.array([x, 0, z])
 
-    def getLanePos(self):
+    def get_lane_pos(self):
         """
         Get the position of the agent relative to the center of the right lane
         """
 
-        x, _, z = self.curPos
-        i, j = self._get_grid_pos(x, z)
+        i, j = self._get_grid_coords(self.cur_pos)
 
         # Get the closest point along the right lane's Bezier curve
         cps = self._get_curve(i, j)
-        t = bezier_closest(cps, self.curPos)
+        t = bezier_closest(cps, self.cur_pos)
         point = bezier_point(cps, t)
 
         # Compute the alignment of the agent direction with the curve tangent
-        dirVec = self.getDirVec()
+        dirVec = self.get_dir_vec()
         tangent = bezier_tangent(cps, t)
         dotDir = np.dot(dirVec, tangent)
         dotDir = max(-1, min(1, dotDir))
 
         # Compute the signed distance to the curve
         # Right of the curve is negative, left is positive
-        posVec = self.curPos - point
+        posVec = self.cur_pos - point
         upVec = np.array([0, 1, 0])
         rightVec = np.cross(tangent, upVec)
         signedDist = np.dot(posVec, rightVec)
@@ -487,7 +488,7 @@ class SimpleSimEnv(gym.Env):
 
         # If the wheel velocities are the same, then there is no rotation
         if Vl == Vr:
-            self.curPos += deltaTime * Vl * self.getDirVec()
+            self.cur_pos += deltaTime * Vl * self.get_dir_vec()
             return
 
         # Compute the angular rotation velocity about the ICC (center of curvature)
@@ -500,15 +501,42 @@ class SimpleSimEnv(gym.Env):
         rotAngle = w * deltaTime
 
         # Rotate the robot's position
-        leftVec = self.getLeftVec()
-        px, py, pz = self.curPos
+        leftVec = self.get_left_vec()
+        px, py, pz = self.cur_pos
         cx = px + leftVec[0] * -r
         cz = pz + leftVec[2] * -r
         npx, npz = rotate_point(px, pz, cx, cz, -rotAngle)
-        self.curPos = np.array([npx, py, npz])
+        self.cur_pos = np.array([npx, py, npz])
 
         # Update the robot's angle
-        self.curAngle -= rotAngle
+        self.cur_angle -= rotAngle
+
+    def _drivable_pos(self, pos):
+        """
+        Check that the current (x,y,z) position is on a drivable tile
+        """
+
+        coords = self._get_grid_coords(pos)
+        tile = self._get_tile(*coords)
+        return tile != None and tile['drivable']
+
+    def _valid_pose(self):
+        """
+        Check that the agent is in a valid pose
+        """
+
+        # Compute the coordinates of the base of both wheels
+        l_vec = self.get_left_vec()
+        l_pos = self.cur_pos + 0.5 * WHEEL_DIST * l_vec
+        r_pos = self.cur_pos - 0.5 * WHEEL_DIST * l_vec
+
+        # Check that the center position and
+        # both wheels are on drivable tiles
+        return (
+            self._drivable_pos(self.cur_pos) and
+            self._drivable_pos(l_pos) and
+            self._drivable_pos(r_pos)
+        )
 
     def step(self, action):
         self.step_count += 1
@@ -516,19 +544,11 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's position
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
-        # Get the current position
-        x, y, z = self.curPos
-
         # Generate the current camera image
         obs = self._render_obs()
 
-        # Compute the grid position of the agent
-        i, j = self._get_grid_pos(x, z)
-        tile = self._get_grid(i, j)
-        #print('i=%d, j=%d' % (i, j))
-
-        # If there is no road at this grid cell
-        if tile == None or not tile['drivable']:
+        # If the agent is not in a valid pose (on drivable tiles)
+        if not self._valid_pose():
             reward = -10
             done = True
             return obs, reward, done, {}
@@ -543,7 +563,7 @@ class SimpleSimEnv(gym.Env):
         done = False
 
         # Get the position relative to the right lane tangent
-        dist, dotDir, angle = self.getLanePos()
+        dist, dotDir, angle = self.get_lane_pos()
         reward = 1.0 * dotDir - 10.00 * abs(dist)
 
         return obs, reward, done, {}
@@ -577,9 +597,9 @@ class SimpleSimEnv(gym.Env):
         # Set modelview matrix
         # Note: we add a bit of noise to the camera position for data augmentation
         pos_noise = self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
-        x, y, z = self.curPos + pos_noise
+        x, y, z = self.cur_pos + pos_noise
         y += CAMERA_FLOOR_DIST
-        dx, dy, dz = self.getDirVec()
+        dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         glRotatef(self.camAngle, 1, 0, 0)
@@ -617,7 +637,7 @@ class SimpleSimEnv(gym.Env):
         for j in range(self.grid_height):
             for i in range(self.grid_width):
                 # Get the tile type and angle
-                tile = self._get_grid(i, j)
+                tile = self._get_tile(i, j)
 
                 if tile == None:
                     continue
@@ -760,7 +780,7 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Display position/state information
-        pos = self.curPos
+        pos = self.cur_pos
         self.text_label.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
         self.text_label.draw()
 

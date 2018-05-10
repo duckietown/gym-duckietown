@@ -1,14 +1,15 @@
-# Each row is an array of tiles
+# Each row is an array of tiles.
 # The top-left tile in this file maps to coordinates (0, 0) in the world
-# The first coordinate corresponds to the column index, second to the row index
-# Each tile contains a string with the kind of tile and its orientation
+# Each tile contains a string with the kind of tile and its orientation.
+# The orientations are North, South, East, West. This is the direction in
+# which the agent is expected to drive when going onto this tile.
 tiles:
 - [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
-- [floor        , diag_left/3  , linear/3          , 3way_left/3       , linear_stop/3      , linear/3      , diag_left/2   , floor]
-- [floor        , linear/0     , grass             , linear_stop_both/2, asphalt            , asphalt       , linear/2      , floor]
-- [floor        , 3way_left/0  , linear_stop_both/3, 3way_left/2       , asphalt            , asphalt       , linear/2      , floor]
-- [floor        , linear_stop/0, asphalt           , linear_stop_both/2, asphalt            , diag_right/2  , diag_left/1   , floor]
-- [floor        , diag_left/0  , linear_stop/1     , 3way_left/1       , linear_stop_left/1 , diag_left/1   , floor         , floor]
+- [floor        , diag_left/W  , linear/W          , 3way_left/W       , linear_stop/W      , linear/W      , diag_left/N   , floor]
+- [floor        , linear/S     , grass             , linear_stop_both/N, asphalt            , asphalt       , linear/N      , floor]
+- [floor        , 3way_left/S  , linear_stop_both/W, 3way_left/N       , asphalt            , asphalt       , linear/N      , floor]
+- [floor        , linear_stop/S, asphalt           , linear_stop_both/N, asphalt            , diag_right/N  , diag_left/E   , floor]
+- [floor        , diag_left/S  , linear_stop/E     , 3way_left/E       , linear_stop_left/E , diag_left/E   , floor         , floor]
 - [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
 
 # Object positions are scaled according to the tile size, so that (1.5, 2.5)
