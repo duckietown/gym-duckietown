@@ -780,8 +780,9 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Display position/state information
-        pos = self.cur_pos
-        self.text_label.text = "(%.2f, %.2f, %.2f)" % (pos[0], pos[1], pos[2])
+        x, y, z = self.cur_pos
+        a = int(self.cur_angle * 180 / math.pi)
+        self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d" % (x, y, z, a)
         self.text_label.draw()
 
         # Force execution of queued commands
