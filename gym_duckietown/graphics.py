@@ -141,6 +141,10 @@ def create_frame_buffers(width, height):
     return multi_fbo, final_fbo
 
 def rotate_point(px, py, cx, cy, theta):
+    """
+    Rotate a 2D point around a center
+    """
+
     dx = px - cx
     dy = py - cy
 

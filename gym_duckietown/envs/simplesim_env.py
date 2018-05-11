@@ -48,8 +48,10 @@ CAMERA_FORWARD_DIST = 0.066
 # Distance (diameter) between the center of the robot wheels (10.2cm)
 WHEEL_DIST = 0.102
 
-# Total robot width at wheel base (13cm)
-ROBOT_WIDTH = 0.13
+# Total robot width at wheel base, used for collision detection
+# Note: the actual robot width is 13cm, but we add a litte bit of buffer
+#       to faciliate sim-to-real transfer.
+ROBOT_WIDTH = 0.13 + 0.02
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
@@ -438,13 +440,21 @@ class SimpleSimEnv(gym.Env):
         return pts
 
     def get_dir_vec(self):
+        """
+        Vector pointing in the direction the agent is looking
+        """
+
         x = math.cos(self.cur_angle)
-        z = math.sin(self.cur_angle)
+        z = -math.sin(self.cur_angle)
         return np.array([x, 0, z])
 
-    def get_left_vec(self):
+    def get_right_vec(self):
+        """
+        Vector pointing to the right of the agent
+        """
+
         x = math.sin(self.cur_angle)
-        z = -math.cos(self.cur_angle)
+        z = math.cos(self.cur_angle)
         return np.array([x, 0, z])
 
     def get_lane_pos(self):
@@ -503,16 +513,16 @@ class SimpleSimEnv(gym.Env):
         # Compute the rotatio angle for this time step
         rotAngle = w * deltaTime
 
-        # Rotate the robot's position
-        leftVec = self.get_left_vec()
+        # Rotate the robot's position around the center of rotation
+        r_vec = self.get_right_vec()
         px, py, pz = self.cur_pos
-        cx = px + leftVec[0] * -r
-        cz = pz + leftVec[2] * -r
+        cx = px + r * r_vec[0]
+        cz = pz + r * r_vec[2]
         npx, npz = rotate_point(px, pz, cx, cz, -rotAngle)
         self.cur_pos = np.array([npx, py, npz])
 
-        # Update the robot's angle
-        self.cur_angle -= rotAngle
+        # Update the robot's direction angle
+        self.cur_angle += rotAngle
 
     def _drivable_pos(self, pos):
         """
@@ -530,9 +540,9 @@ class SimpleSimEnv(gym.Env):
 
         # Compute the coordinates of the base of both wheels
         f_vec = self.get_dir_vec()
-        l_vec = self.get_left_vec()
-        l_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * l_vec
-        r_pos = self.cur_pos - 0.5 * ROBOT_WIDTH * l_vec
+        r_vec = self.get_right_vec()
+        l_pos = self.cur_pos - 0.5 * ROBOT_WIDTH * r_vec
+        r_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * r_vec
         f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
         # Check that the center position and

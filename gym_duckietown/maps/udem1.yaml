@@ -1,4 +1,6 @@
-# Each row is an array of tiles.
+# The following section defines the grid layout.
+#
+# Each row is an array of tiles descriptions.
 # The top-left tile in this file maps to coordinates (0, 0) in the world
 # Each tile contains a string with the kind of tile and its orientation.
 # The orientations are North, South, East, West. This is the direction in
@@ -8,14 +10,19 @@ tiles:
 - [floor        , diag_left/W  , linear/W          , 3way_left/W       , linear_stop/W      , linear/W      , diag_left/N   , floor]
 - [floor        , linear/S     , grass             , linear_stop_both/N, asphalt            , asphalt       , linear/N      , floor]
 - [floor        , 3way_left/S  , linear_stop_both/W, 3way_left/N       , asphalt            , asphalt       , linear/N      , floor]
-- [floor        , linear_stop/S, asphalt           , linear_stop_both/N, asphalt            , diag_right/N  , diag_left/E   , floor]
+- [floor        , linear_stop/S, grass             , linear_stop_both/N, asphalt            , diag_right/N  , diag_left/E   , floor]
 - [floor        , diag_left/S  , linear_stop/E     , 3way_left/E       , linear_stop_left/E , diag_left/E   , floor         , floor]
 - [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
 
-# Object positions are scaled according to the tile size, so that (1.5, 2.5)
-# would be exactly in the middle of tile (1, 2)
-# Objects can be scaled according to their real-world height in meters
-# Duckietown tiles are 61cm, or 0.61 meter
+# The following is a listing of 3D objects placed on the map
+#
+# pos: object positions are scaled according to the tile size, so
+#      that (1.5, 2.5) would be exactly in the middle of tile (1, 2)
+# height: Objects can be scaled according to their real-world height in meters
+#         Duckietown tiles are 61cm, or 0.61 meter
+# rotate: the rotation angle determine the object's orientation
+#         a positive rotation angle corresponds to a counter-clockwise
+#         (leftward) rotation. The angles are in degrees.
 objects:
 
 - mesh_file: "duckie.obj"
@@ -29,7 +36,7 @@ objects:
   rotate: 0
 
 - mesh_file: "truck.obj"
-  pos: [2.5, 4.8]
+  pos: [1.6, 6.3]
   height: 0.2
   rotate: 0
 
