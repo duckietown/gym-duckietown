@@ -45,8 +45,11 @@ CAMERA_FLOOR_DIST = 0.108
 # Forward distance between camera and center of rotation (6.6cm)
 CAMERA_FORWARD_DIST = 0.066
 
-# Distance (diameter) between robot wheels (10.2cm)
+# Distance (diameter) between the center of the robot wheels (10.2cm)
 WHEEL_DIST = 0.102
+
+# Total robot width at wheel base (13cm)
+ROBOT_WIDTH = 0.13
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
@@ -526,16 +529,19 @@ class SimpleSimEnv(gym.Env):
         """
 
         # Compute the coordinates of the base of both wheels
+        f_vec = self.get_dir_vec()
         l_vec = self.get_left_vec()
-        l_pos = self.cur_pos + 0.5 * WHEEL_DIST * l_vec
-        r_pos = self.cur_pos - 0.5 * WHEEL_DIST * l_vec
+        l_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * l_vec
+        r_pos = self.cur_pos - 0.5 * ROBOT_WIDTH * l_vec
+        f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
         # Check that the center position and
         # both wheels are on drivable tiles
         return (
             self._drivable_pos(self.cur_pos) and
             self._drivable_pos(l_pos) and
-            self._drivable_pos(r_pos)
+            self._drivable_pos(r_pos) and
+            self._drivable_pos(f_pos)
         )
 
     def step(self, action):
