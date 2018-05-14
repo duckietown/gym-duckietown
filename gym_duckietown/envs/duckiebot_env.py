@@ -57,20 +57,22 @@ class DuckiebotEnv(gym.Env):
         self.action_space = spaces.Box(
             low=-1,
             high=1,
-            shape=(2,)
+            shape=(2,),
+            dtype=np.float32
         )
 
         # We observe an RGB image with pixels in [0, 255]
         self.observation_space = spaces.Box(
             low=0,
-            high=1,
-            shape=IMG_SHAPE
+            high=255,
+            shape=IMG_SHAPE,
+            dtype=np.uint8
         )
 
-        self.reward_range = (-1, 1000)
+        self.reward_range = (-10, 1000)
 
         # Environment configuration
-        self.maxSteps = 50
+        self.max_steps = math.inf
 
         # For rendering
         self.window = None
@@ -120,8 +122,6 @@ class DuckiebotEnv(gym.Env):
         )
 
         #print(self.img.shape)
-
-        self.img = (self.img / 255).astype(np.float32)
 
         # BGR to RGB
         self.img = self.img[:, :, ::-1]
@@ -197,14 +197,13 @@ class DuckiebotEnv(gym.Env):
         glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
-        img = np.uint8(self.img * 255)
-        width = img.shape[1]
-        height = img.shape[0]
+        width = self.img.shape[1]
+        height = self.img.shape[0]
         imgData = pyglet.image.ImageData(
             width,
             height,
             'RGB',
-            img.tobytes(),
+            self.img.tobytes(),
             pitch = width * 3,
         )
         imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
