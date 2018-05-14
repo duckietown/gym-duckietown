@@ -87,6 +87,8 @@ class SimpleSimEnv(gym.Env):
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
 
+        self.graphics = True
+
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -197,15 +199,7 @@ class SimpleSimEnv(gym.Env):
         self.step_count = 0
 
         # Horizon color
-        # Note: we explicitly sample white and grey/black because
-        # these colors are easily confused for road and lane markings
-        horz_mode = self.np_random.randint(0, 3)
-        if horz_mode == 0 or not self.domain_rand:
-            self.horizon_color = self._perturb(HORIZON_COLOR)
-        elif horz_mode == 1:
-            self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
-        elif horz_mode == 2:
-            self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
+        self.horizonColor = self._perturb(HORIZON_COLOR)
 
         # Ground color
         self.groundColor = self._perturb(GROUND_COLOR, 0.3)
@@ -270,13 +264,7 @@ class SimpleSimEnv(gym.Env):
             break
 
         # Generate the first camera image
-        obs = self._render_obs(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
-            self.multi_fbo,
-            self.final_fbo,
-            self.img_array
-        )
+        obs = self.render_obs()
 
         # Return first observation
         return obs
@@ -580,13 +568,7 @@ class SimpleSimEnv(gym.Env):
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
         # Generate the current camera image
-        obs = self._render_obs(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
-            self.multi_fbo,
-            self.final_fbo,
-            self.img_array
-        )
+        obs = self.render_obs()
 
         # If the agent is not in a valid pose (on drivable tiles)
         if not self._valid_pose():
@@ -607,7 +589,23 @@ class SimpleSimEnv(gym.Env):
 
         return obs, reward, done, {}
 
-    def _render_obs(self, width, height, multi_fbo, final_fbo, img_array):
+    def render_obs(self):
+        """
+        Render an observation from the point of view of the agent
+        """
+
+        return self._render_img(
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array
+        )
+
+    def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
+        if self.graphics == False:
+            return
+
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
         #pyglet.gl._shadow_window.switch_to()
@@ -619,7 +617,7 @@ class SimpleSimEnv(gym.Env):
         glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
-        glClearColor(*self.horizon_color, 1.0)
+        glClearColor(*self.horizonColor, 1.0)
         glClearDepth(1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -771,8 +769,8 @@ class SimpleSimEnv(gym.Env):
                 self.window.close()
             return
 
-        # Render the observation
-        img = self._render_obs(
+        # Render the image
+        img = self._render_img(
             WINDOW_WIDTH,
             WINDOW_HEIGHT,
             self.multi_fbo_human,
