@@ -75,15 +75,9 @@ class SimpleSimEnv(gym.Env):
         self,
         map_file='gym_duckietown/maps/udem1.yaml',
         max_steps=600,
-        full_res=False,
         draw_curve=False,
         domain_rand=True
     ):
-        # Output image resolution
-        self.img_height = WINDOW_HEIGHT if full_res else CAMERA_HEIGHT
-        self.img_width = WINDOW_WIDTH if full_res else CAMERA_WIDTH
-        self.img_shape = (self.img_height, self.img_width, 3)
-
         # Maximum number of steps per episode
         self.max_steps = max_steps
 
@@ -107,14 +101,11 @@ class SimpleSimEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=self.img_shape,
+            shape=(CAMERA_HEIGHT, CAMERA_WIDTH, 3),
             dtype=np.uint8
         )
 
-        self.reward_range = (-1, 1000)
-
-        # Array to render the image into
-        self.img_array = np.zeros(shape=self.img_shape, dtype=np.uint8)
+        self.reward_range = (-10, 1000)
 
         # Window for displaying the environment to humans
         self.window = None
@@ -130,6 +121,26 @@ class SimpleSimEnv(gym.Env):
             y = WINDOW_HEIGHT - 19
         )
 
+        # Create a frame buffer object for the observation
+        self.multi_fbo, self.final_fbo = create_frame_buffers(
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            32
+        )
+
+        # Array to render the image into (for observation rendering)
+        self.img_array = np.zeros(shape=self.observation_space.shape, dtype=np.uint8)
+
+        # Create a frame buffer object for human rendering
+        self.multi_fbo_human, self.final_fbo_human = create_frame_buffers(
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            4
+        )
+
+        # Array to render the image into (for human rendering)
+        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
+
         # Load the road textures
         self.road_tex = load_texture('road_plain.png')
         self.road_stop_tex = load_texture('road_stop.png')
@@ -141,12 +152,6 @@ class SimpleSimEnv(gym.Env):
         self.asphalt_tex = load_texture('asphalt.png')
         self.grass_tex = load_texture('grass_1.png')
         self.floor_tex = load_texture('floor_tiles_green.png')
-
-        # Create a frame buffer object
-        self.multi_fbo, self.final_fbo = create_frame_buffers(
-            self.img_width,
-            self.img_height
-        )
 
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
@@ -256,8 +261,14 @@ class SimpleSimEnv(gym.Env):
 
             break
 
-        # Get the first camera image
-        obs = self._render_obs()
+        # Generate the first camera image
+        obs = self._render_obs(
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array
+        )
 
         # Return first observation
         return obs
@@ -561,7 +572,13 @@ class SimpleSimEnv(gym.Env):
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
         # Generate the current camera image
-        obs = self._render_obs()
+        obs = self._render_obs(
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array
+        )
 
         # If the agent is not in a valid pose (on drivable tiles)
         if not self._valid_pose():
@@ -575,16 +592,14 @@ class SimpleSimEnv(gym.Env):
             reward = 0
             return obs, reward, done, {}
 
-        reward = 0
-        done = False
-
         # Get the position relative to the right lane tangent
         dist, dotDir, angle = self.get_lane_pos()
         reward = 1.0 * dotDir - 10.00 * abs(dist)
+        done = False
 
         return obs, reward, done, {}
 
-    def _render_obs(self):
+    def _render_obs(self, width, height, multi_fbo, final_fbo, img_array):
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
         #pyglet.gl._shadow_window.switch_to()
@@ -592,8 +607,8 @@ class SimpleSimEnv(gym.Env):
 
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
-        glBindFramebuffer(GL_FRAMEBUFFER, self.multi_fbo);
-        glViewport(0, 0, self.img_width, self.img_height)
+        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo);
+        glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
         glClearColor(*self.horizonColor, 1.0)
@@ -605,7 +620,7 @@ class SimpleSimEnv(gym.Env):
         glLoadIdentity()
         gluPerspective(
             self.camFovY,
-            self.img_width / float(self.img_height),
+            width / float(height),
             0.04,
             100.0
         )
@@ -713,34 +728,34 @@ class SimpleSimEnv(gym.Env):
             glPopMatrix()
 
         # Resolve the multisampled frame buffer into the final frame buffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.multi_fbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.final_fbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo);
         glBlitFramebuffer(
             0, 0,
-            self.img_width, self.img_height,
+            width, height,
             0, 0,
-            self.img_width, self.img_height,
+            width, height,
             GL_COLOR_BUFFER_BIT,
             GL_LINEAR
         );
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        glBindFramebuffer(GL_FRAMEBUFFER, self.final_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo);
         glReadPixels(
             0,
             0,
-            self.img_width,
-            self.img_height,
+            width,
+            height,
             GL_RGB,
             GL_UNSIGNED_BYTE,
-            self.img_array.ctypes.data_as(POINTER(GLubyte))
+            img_array.ctypes.data_as(POINTER(GLubyte))
         )
 
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        return self.img_array
+        return img_array
 
     def render(self, mode='human', close=False):
         if close:
@@ -749,7 +764,13 @@ class SimpleSimEnv(gym.Env):
             return
 
         # Render the observation
-        img = self._render_obs()
+        img = self._render_obs(
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            self.multi_fbo_human,
+            self.final_fbo_human,
+            self.img_array_human
+        )
 
         if mode == 'rgb_array':
             return img
