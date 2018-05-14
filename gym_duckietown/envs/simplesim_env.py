@@ -199,22 +199,30 @@ class SimpleSimEnv(gym.Env):
         self.step_count = 0
 
         # Horizon color
-        self.horizonColor = self._perturb(HORIZON_COLOR)
+        # Note: we explicitly sample white and grey/black because
+        # these colors are easily confused for road and lane markings
+        horz_mode = self.np_random.randint(0, 3)
+        if horz_mode == 0 or not self.domain_rand:
+            self.horizon_color = self._perturb(HORIZON_COLOR)
+        elif horz_mode == 1:
+            self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
+        elif horz_mode == 2:
+            self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
 
         # Ground color
-        self.groundColor = self._perturb(GROUND_COLOR, 0.3)
+        self.ground_color = self._perturb(GROUND_COLOR, 0.3)
 
         # Distance between the robot's wheels
-        self.wheelDist = self._perturb(WHEEL_DIST)
+        self.wheel_dist = self._perturb(WHEEL_DIST)
 
         # Distance bewteen camera and ground
-        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
+        self.cam_height = self._perturb(CAMERA_FLOOR_DIST, 0.08)
 
         # Angle at which the camera is pitched downwards
-        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
+        self.cam_angle = self._perturb(CAMERA_ANGLE, 0.2)
 
         # Field of view angle of the camera
-        self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
+        self.cam_fov_y = self._perturb(CAMERA_FOV_Y, 0.2)
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
@@ -504,7 +512,7 @@ class SimpleSimEnv(gym.Env):
         """
 
         Vl, Vr = wheelVels
-        l = self.wheelDist
+        l = self.wheel_dist
 
         # If the wheel velocities are the same, then there is no rotation
         if Vl == Vr:
@@ -617,7 +625,7 @@ class SimpleSimEnv(gym.Env):
         glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
-        glClearColor(*self.horizonColor, 1.0)
+        glClearColor(*self.horizon_color, 1.0)
         glClearDepth(1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -625,7 +633,7 @@ class SimpleSimEnv(gym.Env):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(
-            self.camFovY,
+            self.cam_fov_y,
             width / float(height),
             0.04,
             100.0
@@ -639,7 +647,7 @@ class SimpleSimEnv(gym.Env):
         dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glRotatef(self.camAngle, 1, 0, 0)
+        glRotatef(self.cam_angle, 1, 0, 0)
         glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
         gluLookAt(
             # Eye position
@@ -656,7 +664,7 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the ground quad
         glDisable(GL_TEXTURE_2D)
-        glColor3f(*self.groundColor)
+        glColor3f(*self.ground_color)
         glPushMatrix()
         glScalef(50, 1, 50)
         self.ground_vlist.draw(GL_QUADS)
