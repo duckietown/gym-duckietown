@@ -197,7 +197,15 @@ class SimpleSimEnv(gym.Env):
         self.step_count = 0
 
         # Horizon color
-        self.horizonColor = self._perturb(HORIZON_COLOR)
+        # Note: we explicitly sample white and grey/black because
+        # these colors are easily confused for road and lane markings
+        horz_mode = self.np_random.randint(0, 3)
+        if horz_mode == 0 or not self.domain_rand:
+            self.horizon_color = self._perturb(HORIZON_COLOR)
+        elif horz_mode == 1:
+            self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
+        elif horz_mode == 2:
+            self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
 
         # Ground color
         self.groundColor = self._perturb(GROUND_COLOR, 0.3)
@@ -611,7 +619,7 @@ class SimpleSimEnv(gym.Env):
         glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
-        glClearColor(*self.horizonColor, 1.0)
+        glClearColor(*self.horizon_color, 1.0)
         glClearDepth(1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
