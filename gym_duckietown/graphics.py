@@ -25,7 +25,7 @@ def load_texture(tex_name):
 
     return tex
 
-def create_frame_buffers(width, height):
+def create_frame_buffers(width, height, num_samples):
     """Create the frame buffer objects"""
 
     # Create a frame buffer (rendering target)
@@ -38,13 +38,12 @@ def create_frame_buffers(width, height):
     # support multisampling on frame buffer objects
     try:
         # Create a multisampled texture to render into
-        numSamples = 32
         fbTex = GLuint(0)
         glGenTextures( 1, byref(fbTex));
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex);
         glTexImage2DMultisample(
             GL_TEXTURE_2D_MULTISAMPLE,
-            numSamples,
+            num_samples,
             GL_RGBA32F,
             width,
             height,
@@ -62,7 +61,7 @@ def create_frame_buffers(width, height):
         depth_rb = GLuint(0)
         glGenRenderbuffers(1, byref(depth_rb))
         glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
-        glRenderbufferStorageMultisample(GL_RENDERBUFFER, numSamples, GL_DEPTH_COMPONENT, width, height);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, num_samples, GL_DEPTH_COMPONENT, width, height);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
 
     except:
