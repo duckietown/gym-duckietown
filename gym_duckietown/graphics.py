@@ -1,4 +1,3 @@
-import os
 import math
 
 import numpy as np
@@ -7,13 +6,13 @@ import pyglet
 from pyglet.gl import *
 from ctypes import byref, POINTER
 
+from .utils import *
+
 def load_texture(tex_name):
     # Assemble the absolute path to the texture
-    absPathModule = os.path.realpath(__file__)
-    moduleDir, _ = os.path.split(absPathModule)
-    texPath = os.path.join(moduleDir, 'textures', tex_name)
+    tex_path = get_file_path('textures', tex_name, 'png')
 
-    img = pyglet.image.load(texPath)
+    img = pyglet.image.load(tex_path)
     tex = img.get_texture()
     glEnable(tex.target)
     glBindTexture(tex.target, tex.id)

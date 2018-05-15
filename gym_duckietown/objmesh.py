@@ -3,6 +3,7 @@ import math
 import numpy as np
 import pyglet
 from .graphics import *
+from .utils import *
 
 class ObjMesh:
     """
@@ -27,9 +28,7 @@ class ObjMesh:
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
         # Assemble the absolute path to the mesh file
-        abs_path_module = os.path.realpath(__file__)
-        module_dir, _ = os.path.split(abs_path_module)
-        file_path = os.path.join(module_dir, 'meshes', mesh_name)
+        file_path = get_file_path('meshes', mesh_name, 'obj')
 
         print('loading mesh file "%s"' % file_path)
         mesh_file = open(file_path, 'r')

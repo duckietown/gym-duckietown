@@ -13,6 +13,7 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 
 # Graphics utility code
+from ..utils import *
 from ..graphics import *
 from ..objmesh import *
 
@@ -73,7 +74,7 @@ class SimpleSimEnv(gym.Env):
 
     def __init__(
         self,
-        map_file='gym_duckietown/maps/udem1.yaml',
+        map_file='udem1',
         max_steps=600,
         draw_curve=False,
         domain_rand=True
@@ -144,26 +145,26 @@ class SimpleSimEnv(gym.Env):
         self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
 
         # Load the road textures
-        self.road_tex = load_texture('road_plain.png')
-        self.road_stop_tex = load_texture('road_stop.png')
-        self.road_stop_left_tex = load_texture('road_stop_left.png')
-        self.road_stop_both_tex = load_texture('road_stop_both.png')
-        self.road_left_tex = load_texture('road_left.png')
-        self.road_right_tex = load_texture('road_right.png')
-        self.road_3way_left_tex = load_texture('road_3way_left.png')
-        self.asphalt_tex = load_texture('asphalt.png')
-        self.grass_tex = load_texture('grass_1.png')
-        self.floor_tex = load_texture('floor_tiles_green.png')
+        self.road_tex = load_texture('road_plain')
+        self.road_stop_tex = load_texture('road_stop')
+        self.road_stop_left_tex = load_texture('road_stop_left')
+        self.road_stop_both_tex = load_texture('road_stop_both')
+        self.road_left_tex = load_texture('road_left')
+        self.road_right_tex = load_texture('road_right')
+        self.road_3way_left_tex = load_texture('road_3way_left')
+        self.asphalt_tex = load_texture('asphalt')
+        self.grass_tex = load_texture('grass_1')
+        self.floor_tex = load_texture('floor_tiles_green')
 
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
         # rotate the tiles about their center
-        halfSize = ROAD_TILE_SIZE / 2
+        half_size = ROAD_TILE_SIZE / 2
         verts = [
-            -halfSize, 0.0, -halfSize,
-             halfSize, 0.0, -halfSize,
-             halfSize, 0.0,  halfSize,
-            -halfSize, 0.0,  halfSize
+            -half_size, 0.0, -half_size,
+             half_size, 0.0, -half_size,
+             half_size, 0.0,  half_size,
+            -half_size, 0.0,  half_size
         ]
         texCoords = [
             1.0, 0.0,
@@ -277,10 +278,12 @@ class SimpleSimEnv(gym.Env):
         # Return first observation
         return obs
 
-    def _load_map(self, file_path):
+    def _load_map(self, map_name):
         """
         Load the map layout from a CSV file
         """
+
+        file_path = get_file_path('maps', map_name, 'yaml')
 
         print('loading map file "%s"' % file_path)
 
