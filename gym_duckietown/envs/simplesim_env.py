@@ -77,7 +77,7 @@ class SimpleSimEnv(gym.Env):
 
     def __init__(
         self,
-        map_file='udem1',
+        map_name='udem1',
         max_steps=600,
         draw_curve=False,
         domain_rand=True
@@ -187,7 +187,7 @@ class SimpleSimEnv(gym.Env):
         self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
         # Load the map
-        self._load_map(map_file)
+        self._load_map(map_name)
 
         # Initialize the state
         self.seed()
@@ -654,7 +654,7 @@ class SimpleSimEnv(gym.Env):
         # Note: we add a bit of noise to the camera position for data augmentation
         pos = self.cur_pos
         if self.domain_rand:
-            pos += self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
+            pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
         x, y, z = pos
         y += CAMERA_FLOOR_DIST
         dx, dy, dz = self.get_dir_vec()
