@@ -30,26 +30,53 @@ objects:
   pos: [2.1, 2.9]
   rotate: 180
   height: 0.08
+  optional: true
+
+- kind: sign_blank
+  pos: [2.05, 4.05]
+  rotate: 90
+  height: 0.18
+  optional: true
 
 - kind: house
   pos: [4.8, 2.6]
   rotate: 90
   height: 0.5
+  optional: true
+- kind: sign_blank
+  pos: [5.95, 3.8]
+  rotate: -30
+  height: 0.18
+  optional: true
+- kind: sign_blank
+  pos: [5.95, 2.4]
+  rotate: -20
+  height: 0.18
+  optional: true
 
 - kind: truck
   pos: [1.6, 6.3]
   rotate: 0
   height: 0.2
+  optional: true
 
 - kind: bus
   pos: [2.0, 0.5]
   rotate: 0
   height: 0.18
+  optional: true
 - kind: bus
   pos: [4, 0.5]
   rotate: 0
   height: 0.18
+  optional: true
 - kind: bus
   pos: [6.0, 0.5]
   rotate: 0
   height: 0.18
+  optional: true
+- kind: truck
+  pos: [7.5, 0.5]
+  rotate: 180
+  height: 0.2
+  optional: true

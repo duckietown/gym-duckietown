@@ -257,6 +257,12 @@ class SimpleSimEnv(gym.Env):
             # Randomize the object color
             obj['color'] = self._perturb(np.array([1, 1, 1]), 0.3)
 
+            # Randomize whether the object is visible or not
+            if obj['optional'] and self.domain_rand:
+                obj['visible'] = self.np_random.randint(0, 2) == 0
+            else:
+                obj['visible'] = True
+
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
         while True:
@@ -348,11 +354,11 @@ class SimpleSimEnv(gym.Env):
         # For each object
         for desc in map_data['objects']:
             kind = desc['kind']
-            pos = desc['pos']
+            x, z = desc['pos']
             rotate = desc['rotate']
+            optional = desc.get('optional', False)
 
-            pos = pos
-            pos = ROAD_TILE_SIZE * np.array((pos[0], 0, pos[1]))
+            pos = ROAD_TILE_SIZE * np.array((x, 0, z))
 
             # Load the mesh
             mesh = ObjMesh(kind)
@@ -364,10 +370,12 @@ class SimpleSimEnv(gym.Env):
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
             obj = {
+                'kind': kind,
                 'mesh': mesh,
                 'pos': pos,
                 'scale': scale,
-                'y_rot': rotate
+                'y_rot': rotate,
+                'optional': optional
             }
 
             self.objects.append(obj)
@@ -745,6 +753,9 @@ class SimpleSimEnv(gym.Env):
 
         # For each object
         for obj in self.objects:
+            if not obj['visible']:
+                continue
+
             scale = obj['scale']
             y_rot = obj['y_rot']
             mesh = obj['mesh']
