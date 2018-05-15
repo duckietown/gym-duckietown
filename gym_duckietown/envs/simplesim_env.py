@@ -25,8 +25,11 @@ WINDOW_HEIGHT = 600
 CAMERA_WIDTH = 160
 CAMERA_HEIGHT = 120
 
-# Horizon/wall color
-HORIZON_COLOR = np.array([0.64, 0.71, 0.28])
+# Blue sky horizon color
+BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
+
+# Color meant to approximate interior walls
+WALL_COLOR = np.array([0.64, 0.71, 0.28])
 
 # Road color multiplier
 ROAD_COLOR = np.array([0.79, 0.88, 0.53])
@@ -202,13 +205,18 @@ class SimpleSimEnv(gym.Env):
         # Horizon color
         # Note: we explicitly sample white and grey/black because
         # these colors are easily confused for road and lane markings
-        horz_mode = self.np_random.randint(0, 3)
-        if horz_mode == 0 or not self.domain_rand:
-            self.horizon_color = self._perturb(HORIZON_COLOR)
-        elif horz_mode == 1:
-            self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
-        elif horz_mode == 2:
-            self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
+        if self.domain_rand:
+            horz_mode = self.np_random.randint(0, 4)
+            if horz_mode == 0:
+                self.horizon_color = self._perturb(BLUE_SKY_COLOR)
+            elif horz_mode == 1:
+                self.horizon_color = self._perturb(WALL_COLOR)
+            elif horz_mode == 2:
+                self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
+            elif horz_mode == 3:
+                self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
+        else:
+            self.horizon_color = BLUE_SKY_COLOR
 
         # Ground color
         self.ground_color = self._perturb(GROUND_COLOR, 0.3)
@@ -644,8 +652,10 @@ class SimpleSimEnv(gym.Env):
 
         # Set modelview matrix
         # Note: we add a bit of noise to the camera position for data augmentation
-        pos_noise = self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
-        x, y, z = self.cur_pos + pos_noise
+        pos = self.cur_pos
+        if self.domain_rand:
+            pos += self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
+        x, y, z = pos
         y += CAMERA_FLOOR_DIST
         dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
