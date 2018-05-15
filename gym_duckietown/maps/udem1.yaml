@@ -23,32 +23,34 @@ tiles:
 # rotate: the rotation angle determine the object's orientation
 #         a positive rotation angle corresponds to a counter-clockwise
 #         (leftward) rotation. The angles are in degrees.
+#         Models should, at angle 0, face towards the positive X axis.
 objects:
 
-- mesh_file: "duckie.obj"
+- kind: duckie
   pos: [2.1, 2.9]
-  height: 0.08
   rotate: 180
+  height: 0.08
 
-- mesh_file: "house.obj"
+- kind: house
   pos: [4.8, 2.6]
+  rotate: 90
   height: 0.5
-  rotate: 0
 
-- mesh_file: "truck.obj"
+- kind: truck
   pos: [1.6, 6.3]
+  rotate: 0
   height: 0.2
-  rotate: 0
 
-- mesh_file: "bus.obj"
+- kind: bus
   pos: [2.0, 0.5]
-  height: 0.18
   rotate: 0
-- mesh_file: "bus.obj"
+  height: 0.18
+
+- kind: bus
   pos: [4, 0.5]
-  height: 0.18
   rotate: 0
-- mesh_file: "bus.obj"
+  height: 0.18
+- kind: bus
   pos: [6.0, 0.5]
-  height: 0.18
   rotate: 0
+  height: 0.18

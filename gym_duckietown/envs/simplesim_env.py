@@ -345,7 +345,7 @@ class SimpleSimEnv(gym.Env):
 
         # For each object
         for desc in map_data['objects']:
-            mesh_file = desc['mesh_file']
+            kind = desc['kind']
             pos = desc['pos']
             rotate = desc['rotate']
 
@@ -353,7 +353,7 @@ class SimpleSimEnv(gym.Env):
             pos = ROAD_TILE_SIZE * np.array((pos[0], 0, pos[1]))
 
             # Load the mesh
-            mesh = ObjMesh(mesh_file)
+            mesh = ObjMesh(kind)
 
             if 'height' in desc:
                 scale = desc['height'] / mesh.y_max
