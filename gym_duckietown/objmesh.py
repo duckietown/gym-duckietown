@@ -10,7 +10,27 @@ class ObjMesh:
     Load and render OBJ model files
     """
 
-    def __init__(self, mesh_name):
+    # Loaded mesh files, indexed by mesh file path
+    cache = {}
+
+    @classmethod
+    def get(self, mesh_name):
+        """
+        Load a mesh or used a cached version
+        """
+
+        # Assemble the absolute path to the mesh file
+        file_path = get_file_path('meshes', mesh_name, 'obj')
+
+        if file_path in self.cache:
+            return self.cache[file_path]
+
+        mesh = ObjMesh(file_path)
+        self.cache[file_path] = mesh
+
+        return mesh
+
+    def __init__(self, file_path):
         """
         Load an OBJ model file
 
@@ -26,9 +46,6 @@ class ObjMesh:
         # vt u v
         # vn x y z
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
-
-        # Assemble the absolute path to the mesh file
-        file_path = get_file_path('meshes', mesh_name, 'obj')
 
         print('loading mesh file "%s"' % file_path)
         mesh_file = open(file_path, 'r')
@@ -132,7 +149,9 @@ class ObjMesh:
         )
 
         # Load the texture associated with this mesh
-        self.texture = load_texture(mesh_name.replace('obj', 'png'))
+        file_name = os.path.split(file_path)[-1]
+        tex_name = file_name.split('.')[0]
+        self.texture = load_texture(tex_name)
 
     def render(self):
         glEnable(GL_TEXTURE_2D)

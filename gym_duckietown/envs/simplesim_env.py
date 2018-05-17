@@ -361,7 +361,7 @@ class SimpleSimEnv(gym.Env):
             pos = ROAD_TILE_SIZE * np.array((x, 0, z))
 
             # Load the mesh
-            mesh = ObjMesh(kind)
+            mesh = ObjMesh.get(kind)
 
             if 'height' in desc:
                 scale = desc['height'] / mesh.y_max
