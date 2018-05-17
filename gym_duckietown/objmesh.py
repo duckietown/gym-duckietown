@@ -47,7 +47,7 @@ class ObjMesh:
         # vn x y z
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
-        print('loading mesh file "%s"' % file_path)
+        print('loading mesh "%s"' % file_path)
         mesh_file = open(file_path, 'r')
 
         verts = []

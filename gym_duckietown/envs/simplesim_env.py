@@ -157,6 +157,7 @@ class SimpleSimEnv(gym.Env):
         self.road_left_tex = load_texture('road_left')
         self.road_right_tex = load_texture('road_right')
         self.road_3way_left_tex = load_texture('road_3way_left')
+        self.road_3way_right_tex = load_texture('road_3way_right')
         self.asphalt_tex = load_texture('asphalt')
         self.grass_tex = load_texture('grass_1')
         self.floor_tex = load_texture('floor_tiles_green')
@@ -731,6 +732,8 @@ class SimpleSimEnv(gym.Env):
                     glBindTexture(self.road_stop_both_tex.target, self.road_stop_both_tex.id)
                 elif kind == '3way_left':
                     glBindTexture(self.road_3way_left_tex.target, self.road_3way_left_tex.id)
+                elif kind == '3way_right':
+                    glBindTexture(self.road_3way_right_tex.target, self.road_3way_right_tex.id)
                 elif kind == 'diag_left':
                     glBindTexture(self.road_left_tex.target, self.road_left_tex.id)
                 elif kind == 'diag_right':

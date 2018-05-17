@@ -12,6 +12,8 @@ def load_texture(tex_name):
     # Assemble the absolute path to the texture
     tex_path = get_file_path('textures', tex_name, 'png')
 
+    print('loading texture "%s"' % tex_path)
+
     img = pyglet.image.load(tex_path)
     tex = img.get_texture()
     glEnable(tex.target)
