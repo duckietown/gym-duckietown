@@ -317,6 +317,9 @@ class SimpleSimEnv(gym.Env):
         self.grid_width = len(grid[0])
         self.grid = [None] * self.grid_width * self.grid_height
 
+        # We keep a separate list of drivable tiles
+        self.drivable_tiles = []
+
         # For each row in the grid
         for j, row in enumerate(grid):
             assert len(row) == self.grid_width
@@ -344,6 +347,9 @@ class SimpleSimEnv(gym.Env):
                     'angle': angle,
                     'drivable': drivable
                 }
+
+                if drivable:
+                    self.drivable_tiles.append(tile)
 
                 self._set_tile(i, j, tile)
 
