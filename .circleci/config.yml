@@ -5,6 +5,7 @@ jobs:
       - image: circleci/python:3.5
     steps:
       - checkout
+      - run: sudo apt-get install freeglut3-dev
       - run: pip3 install --user -e .
       - run: ./run_tests.py
 workflows:
