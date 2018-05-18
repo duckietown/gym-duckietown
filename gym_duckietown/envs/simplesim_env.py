@@ -159,8 +159,9 @@ class SimpleSimEnv(gym.Env):
         self.road_3way_left_tex = load_texture('road_3way_left')
         self.road_3way_right_tex = load_texture('road_3way_right')
         self.asphalt_tex = load_texture('asphalt')
-        self.grass_tex = load_texture('grass_1')
         self.floor_tex = load_texture('floor_tiles_green')
+        self.grass_tex = load_texture('grass_1')
+        self.water_tex = load_texture('water')
 
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
@@ -740,10 +741,12 @@ class SimpleSimEnv(gym.Env):
                     glBindTexture(self.road_right_tex.target, self.road_right_tex.id)
                 elif kind == 'asphalt':
                     glBindTexture(self.asphalt_tex.target, self.asphalt_tex.id)
-                elif kind == 'grass':
-                    glBindTexture(self.grass_tex.target, self.grass_tex.id)
                 elif kind == 'floor':
                     glBindTexture(self.floor_tex.target, self.floor_tex.id)
+                elif kind == 'grass':
+                    glBindTexture(self.grass_tex.target, self.grass_tex.id)
+                elif kind == 'water':
+                    glBindTexture(self.water_tex.target, self.water_tex.id)
                 else:
                     assert False, kind
 
