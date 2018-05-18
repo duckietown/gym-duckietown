@@ -5,9 +5,9 @@ jobs:
       - image: circleci/python:3.5
     steps:
       - checkout
-      - run: sudo apt-get install freeglut3-dev
+      - run: sudo apt-get install xvfb freeglut3-dev
       - run: pip3 install --user -e .
-      - run: ./run_tests.py
+      - run: xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ./run_tests.py
 workflows:
   version: 2
   build_and_test:
