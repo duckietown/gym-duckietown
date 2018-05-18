@@ -1,0 +1,22 @@
+version: 2
+jobs:
+#  build:
+#    docker:
+#      - image: circleci/<language>:<version TAG>
+#    steps:
+#      - checkout
+#      - run: <command>
+  test:
+#   working_directory: ~/circleci-demo-python-django # directory where steps will run
+    docker:
+      - image: circleci/python:3.5
+    steps:
+      - checkout
+      - run: pip3 install -e .
+      - run: ./run_tests.py
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+#      - build
+      - test

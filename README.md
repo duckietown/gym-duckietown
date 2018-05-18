@@ -1,5 +1,9 @@
 # Gym-Duckietown
 
+<a href="https://circleci.com/gh/duckietown/gym-duckietown/tree/master">
+<img src='https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield'/>
+</a>
+
 [Duckietown](http://duckietown.org/) self-driving car simulator environments for OpenAI Gym.
 
 Please use this bibtex if you want to cite this repository in your publications:
