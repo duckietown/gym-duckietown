@@ -99,8 +99,9 @@ def create_frame_buffers(width, height, num_samples):
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
 
     # Sanity check
-    res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    assert res == GL_FRAMEBUFFER_COMPLETE
+    if pyglet.options['debug_gl']:
+      res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+      assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Create the frame buffer used to resolve the final render
     final_fbo = GLuint(0)
@@ -129,8 +130,9 @@ def create_frame_buffers(width, height, num_samples):
         fbTex,
         0
     )
-    res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    assert res == GL_FRAMEBUFFER_COMPLETE
+    if pyglet.options['debug_gl']:
+      res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+      assert res == GL_FRAMEBUFFER_COMPLETE
 
     # Enable depth testing
     glEnable(GL_DEPTH_TEST)
