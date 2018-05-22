@@ -19,8 +19,7 @@ Please use this bibtex if you want to cite this repository in your publications:
 
 This simulator was created as part of work done at the [MILA](https://mila.quebec/).
 
-Introduction
-------------
+## Introduction
 
 This repository contains two gym environments: `SimpleSim-v0` and `Duckiebot-v0`.
 
@@ -47,8 +46,7 @@ control your robot remotely with the `Duckiebot-v0` environment, you will need t
 install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
 repository on your Duckiebot.
 
-Installation
-------------
+## Installation
 
 Requirements:
 - Python 3.5+
@@ -93,8 +91,7 @@ source activate gym-duckietown
 export PYTHONPATH="${PYTHONPATH}:`pwd`"
 ```
 
-Usage
------
+## Usage
 
 To run the standalone UI application, which allows you to control the simulation or real robot manually:
 
@@ -116,8 +113,7 @@ Then, to visualize the results of training, you can run the following command. N
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
 ```
 
-Running Headless
-----------------
+## Running Headless
 
 The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. You can create a virtual display using [Xvfb](https://en.wikipedia.org/wiki/Xvfb). The instructions shown below illustrate this. Note, however, that these instructions are specific to MILA, and may need to be adapted:
 
@@ -144,8 +140,19 @@ export DISPLAY=:$SLURM_JOB_ID
 # You are now ready to train
 ```
 
-Reinforcement Learning Notes
-----------------------------
+## Troubleshooting
+
+If you run into problems of any kind, don't hesitate to [open an issue](https://github.com/duckietown/gym-duckietown/issues) on this repository. It's quite possible that you've run into some bug we aren't aware of. Please make sure to give some details about your system and configuration.
+
+### Poor performance, low frame rate
+
+It's possible to improve the performance of the simulator by disabling Pyglet error-checking code. Export this environment variable before running the simulator:
+
+```
+export PYGLET_DEBUG_GL=True
+```
+
+### RL training doesn't converge
 
 Reinforcement learning algorithms are extremely sensitive to hyperparameters. Choosing the
 wrong set of parameters could prevent convergence completely, or lead to unstable performance over
