@@ -25,8 +25,8 @@ class HeadingWrapper(gym.Wrapper):
         #print(action)
 
         # Compute the motor velocities
-        lVel = numpy.array([0.4, 0.5])
-        rVel = numpy.array([0.5, 0.4])
+        lVel = np.array([0.4, 0.5])
+        rVel = np.array([0.5, 0.4])
 
         x = (action + 1) / 2
         #print(x)
