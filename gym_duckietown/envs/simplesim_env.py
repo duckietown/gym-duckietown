@@ -149,20 +149,6 @@ class SimpleSimEnv(gym.Env):
         # Array to render the image into (for human rendering)
         self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
 
-        # Load the road textures
-        self.road_tex = load_texture('road_plain')
-        self.road_stop_tex = load_texture('road_stop')
-        self.road_stop_left_tex = load_texture('road_stop_left')
-        self.road_stop_both_tex = load_texture('road_stop_both')
-        self.road_left_tex = load_texture('road_left')
-        self.road_right_tex = load_texture('road_right')
-        self.road_3way_left_tex = load_texture('road_3way_left')
-        self.road_3way_right_tex = load_texture('road_3way_right')
-        self.asphalt_tex = load_texture('asphalt')
-        self.floor_tex = load_texture('floor_tiles_green')
-        self.grass_tex = load_texture('grass_1')
-        self.water_tex = load_texture('water')
-
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
         # rotate the tiles about their center
@@ -252,6 +238,13 @@ class SimpleSimEnv(gym.Env):
 
         # Randomize tile parameters
         for tile in self.grid:
+            # Randomize the tile texture
+            tile['texture'] = Texture.get(
+                tile['kind'],
+                rng = self.np_random if self.domain_rand else None
+            )
+
+            # Random tile color multiplier
             tile['color'] = self._perturb(ROAD_COLOR, 0.2)
 
         # Randomize object parameters
@@ -724,6 +717,7 @@ class SimpleSimEnv(gym.Env):
                 kind = tile['kind']
                 angle = tile['angle']
                 color = tile['color']
+                texture = tile['texture']
 
                 glColor3f(*color)
 
@@ -732,32 +726,7 @@ class SimpleSimEnv(gym.Env):
                 glRotatef(angle * 90, 0, 1, 0)
 
                 # Bind the appropriate texture
-                if kind == 'linear':
-                    glBindTexture(self.road_tex.target, self.road_tex.id)
-                elif kind == 'linear_stop':
-                    glBindTexture(self.road_stop_tex.target, self.road_stop_tex.id)
-                elif kind == 'linear_stop_left':
-                    glBindTexture(self.road_stop_left_tex.target, self.road_stop_left_tex.id)
-                elif kind == 'linear_stop_both':
-                    glBindTexture(self.road_stop_both_tex.target, self.road_stop_both_tex.id)
-                elif kind == '3way_left':
-                    glBindTexture(self.road_3way_left_tex.target, self.road_3way_left_tex.id)
-                elif kind == '3way_right':
-                    glBindTexture(self.road_3way_right_tex.target, self.road_3way_right_tex.id)
-                elif kind == 'diag_left':
-                    glBindTexture(self.road_left_tex.target, self.road_left_tex.id)
-                elif kind == 'diag_right':
-                    glBindTexture(self.road_right_tex.target, self.road_right_tex.id)
-                elif kind == 'asphalt':
-                    glBindTexture(self.asphalt_tex.target, self.asphalt_tex.id)
-                elif kind == 'floor':
-                    glBindTexture(self.floor_tex.target, self.floor_tex.id)
-                elif kind == 'grass':
-                    glBindTexture(self.grass_tex.target, self.grass_tex.id)
-                elif kind == 'water':
-                    glBindTexture(self.water_tex.target, self.water_tex.id)
-                else:
-                    assert False, kind
+                texture.bind()
 
                 self.road_vlist.draw(GL_QUADS)
                 glPopMatrix()

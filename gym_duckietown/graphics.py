@@ -1,5 +1,6 @@
 import math
 
+import os
 import numpy as np
 
 import pyglet
@@ -8,10 +9,50 @@ from ctypes import byref, POINTER
 
 from .utils import *
 
-def load_texture(tex_name):
-    # Assemble the absolute path to the texture
-    tex_path = get_file_path('textures', tex_name, 'png')
+class Texture:
+    """
+    Manage the caching of textures, and texture randomization
+    """
 
+    # List of textures available for a given path
+    tex_paths = {}
+
+    # Cache of textures
+    tex_cache = {}
+
+    @classmethod
+    def get(self, tex_name, rng=None):
+        paths = self.tex_paths.get(tex_name, [])
+
+        # Get an inventory of the existing texture files
+        if len(paths) == 0:
+            for i in range(1, 10):
+                path = get_file_path('textures', '%s_%d' % (tex_name, i), 'png')
+                if not os.path.exists(path):
+                    break
+                paths.append(path)
+
+        assert len(paths) > 0, 'failed to load textures for name "%s"' % tex_name
+
+        if rng:
+            path_idx = rng.randint(0, len(paths))
+            path = paths[path_idx]
+        else:
+            path = paths[0]
+
+        if path not in self.tex_cache:
+            self.tex_cache[path] = Texture(load_texture(path))
+
+        return self.tex_cache[path]
+
+    def __init__(self, tex):
+        assert not isinstance(tex, str)
+        self.tex = tex
+
+    def bind(self):
+        glBindTexture(self.tex.target, self.tex.id)
+
+def load_texture(tex_path):
     print('loading texture "%s"' % tex_path)
 
     img = pyglet.image.load(tex_path)
@@ -19,8 +60,14 @@ def load_texture(tex_name):
     glEnable(tex.target)
     glBindTexture(tex.target, tex.id)
     glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height, 0,
-        GL_RGBA, GL_UNSIGNED_BYTE,
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,
+        img.width,
+        img.height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
         img.get_image_data().get_data('RGBA', img.width * 4)
     )
 

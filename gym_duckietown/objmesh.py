@@ -151,7 +151,8 @@ class ObjMesh:
         # Load the texture associated with this mesh
         file_name = os.path.split(file_path)[-1]
         tex_name = file_name.split('.')[0]
-        self.texture = load_texture(tex_name)
+        tex_path = get_file_path('textures', tex_name, 'png')
+        self.texture = load_texture(tex_path)
 
     def render(self):
         glEnable(GL_TEXTURE_2D)
