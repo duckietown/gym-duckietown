@@ -26,6 +26,12 @@ tiles:
 #         Models should, at angle 0, face towards the positive X axis.
 objects:
 
+- kind: tree
+  pos: [2.5, 4.5]
+  rotate: 180
+  height: 0.25
+  optional: true
+
 - kind: duckie
   pos: [2.1, 2.9]
   rotate: 180
