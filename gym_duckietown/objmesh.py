@@ -87,7 +87,9 @@ class ObjMesh:
 
                 face = []
                 for token in tokens:
-                    indices = list(map(lambda idx: int(idx), token.split('/')))
+                    indices = filter(lambda t: t != '', token.split('/'))
+                    indices = list(map(lambda idx: int(idx), indices))
+                    assert len(indices) == 2 or len(indices) == 3
                     face.append(indices)
 
                 faces.append(face)
@@ -108,14 +110,20 @@ class ObjMesh:
 
         # For each triangle
         for face in faces:
-            # For each triplet of indices
-            for triplet in face:
-                v_idx, t_idx, n_idx = triplet
-
+            # For each tuple of indices
+            for indices in face:
                 # Note: OBJ uses 1-based indexing
-                vert = verts[v_idx-1]
-                texc = texs[t_idx-1]
-                normal = normals[n_idx-1]
+                # and texture coordinates are optional
+                if len(indices) == 3:
+                    v_idx, t_idx, n_idx = indices
+                    vert = verts[v_idx-1]
+                    texc = texs[t_idx-1]
+                    normal = normals[n_idx-1]
+                else:
+                    v_idx, n_idx = indices
+                    vert = verts[v_idx-1]
+                    normal = normals[n_idx-1]
+                    texc = [0, 0]
 
                 list_verts[cur_vert_idx, :] = vert
                 list_texcs[2*cur_vert_idx:2*(cur_vert_idx+1)] = texc
@@ -152,12 +160,19 @@ class ObjMesh:
         file_name = os.path.split(file_path)[-1]
         tex_name = file_name.split('.')[0]
         tex_path = get_file_path('textures', tex_name, 'png')
-        self.texture = load_texture(tex_path)
+
+        # Try to load the texture, if it exists
+        if os.path.exists(tex_path):
+            self.texture = load_texture(tex_path)
+        else:
+            self.texture = None
 
     def render(self):
-        glEnable(GL_TEXTURE_2D)
-
-        glBindTexture(self.texture.target, self.texture.id)
+        if self.texture:
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(self.texture.target, self.texture.id)
+        else:
+            glDisable(GL_TEXTURE_2D)
 
         self.vlist.draw(GL_TRIANGLES)
 
