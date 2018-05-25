@@ -40,20 +40,28 @@ class ObjMesh:
         """
 
         # Comments
-        # mtllib mtl_name
+        # mtllib file_name
         # o object_name
         # v x y z
         # vt u v
         # vn x y z
+        # usemtl mtl_name
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
         print('loading mesh "%s"' % file_path)
+
+        # Attempt to load the materials library
+        materials = self._load_mtl(file_path)
+
         mesh_file = open(file_path, 'r')
 
         verts = []
         texs = []
         normals = []
         faces = []
+        face_mtls = []
+
+        cur_mtl = None
 
         # For each line of the input file
         for line in mesh_file:
@@ -82,6 +90,10 @@ class ObjMesh:
                 normal = list(map(lambda v: float(v), tokens))
                 normals.append(normal)
 
+            if prefix == 'usemtl':
+                mtl_name = tokens[0]
+                cur_mtl = materials[mtl_name] if mtl_name in materials else None
+
             if prefix == 'f':
                 assert len(tokens) == 3, "only triangle faces are supported"
 
@@ -93,6 +105,7 @@ class ObjMesh:
                     face.append(indices)
 
                 faces.append(face)
+                face_mtls.append(cur_mtl)
 
         mesh_file.close()
 
@@ -103,8 +116,9 @@ class ObjMesh:
 
         # Create numpy arrays to store the vertex data
         list_verts = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
-        list_texcs = np.zeros(shape=3 * 2 * self.num_faces, dtype=np.float32)
-        list_norms = np.zeros(shape=3 * 3 * self.num_faces, dtype=np.float32)
+        list_norms = np.zeros(shape=(3 * 3 * self.num_faces), dtype=np.float32)
+        list_texcs = np.zeros(shape=(3 * 2 * self.num_faces), dtype=np.float32)
+        list_colors = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
 
         cur_vert_idx = 0
 
@@ -166,6 +180,47 @@ class ObjMesh:
             self.texture = load_texture(tex_path)
         else:
             self.texture = None
+
+    def _load_mtl(self, model_path):
+        mtl_path = model_path.split('.')[0] + '.mtl'
+
+        if not os.path.exists(mtl_path):
+            return {}
+
+        print('loading materials from "%s"' % mtl_path)
+
+        mtl_file = open(mtl_path, 'r')
+
+        materials = {}
+        cur_mtl = None
+
+        # For each line of the input file
+        for line in mtl_file:
+            line = line.rstrip(' \r\n')
+
+            # Skip comments
+            if line.startswith('#') or line == '':
+                continue
+
+            tokens = line.split(' ')
+            tokens = map(lambda t: t.strip(' '), tokens)
+            tokens = list(filter(lambda t: t != '', tokens))
+
+            prefix = tokens[0]
+            tokens = tokens[1:]
+
+            if prefix == 'newmtl':
+                cur_mtl = {}
+                materials[tokens[0]] = cur_mtl
+
+            if prefix == 'Kd':
+                vals = list(map(lambda v: float(v), tokens))
+                vals = np.array(vals)
+                cur_mtl['Kd'] = vals
+
+        mtl_file.close()
+
+        return materials
 
     def render(self):
         if self.texture:
