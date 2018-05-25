@@ -116,14 +116,18 @@ class ObjMesh:
 
         # Create numpy arrays to store the vertex data
         list_verts = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
-        list_norms = np.zeros(shape=(3 * 3 * self.num_faces), dtype=np.float32)
-        list_texcs = np.zeros(shape=(3 * 2 * self.num_faces), dtype=np.float32)
-        list_colors = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
+        list_norms = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
+        list_texcs = np.zeros(shape=(3 * self.num_faces, 2), dtype=np.float32)
+        list_color = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
 
         cur_vert_idx = 0
 
         # For each triangle
-        for face in faces:
+        for f_idx, face in enumerate(faces):
+            # Get the color for this face
+            f_mtl = face_mtls[f_idx]
+            f_color = f_mtl['Kd'] if f_mtl else np.array((1,1,1))
+
             # For each tuple of indices
             for indices in face:
                 # Note: OBJ uses 1-based indexing
@@ -140,9 +144,11 @@ class ObjMesh:
                     texc = [0, 0]
 
                 list_verts[cur_vert_idx, :] = vert
-                list_texcs[2*cur_vert_idx:2*(cur_vert_idx+1)] = texc
-                list_norms[3*cur_vert_idx:3*cur_vert_idx+3] = normal
+                list_texcs[cur_vert_idx, :] = texc
+                list_norms[cur_vert_idx, :] = normal
+                list_color[cur_vert_idx, :] = f_color
 
+                # Move to the next vertex
                 cur_vert_idx += 1
 
         # Re-center the object so that y=0 is at the base,
@@ -166,8 +172,9 @@ class ObjMesh:
         self.vlist = pyglet.graphics.vertex_list(
             3 * self.num_faces,
             ('v3f', list_verts.reshape(-1)),
-            ('t2f', list_texcs),
-            ('n3f', list_norms)
+            ('t2f', list_texcs.reshape(-1)),
+            ('n3f', list_norms.reshape(-1)),
+            ('c3f', list_color.reshape(-1))
         )
 
         # Load the texture associated with this mesh

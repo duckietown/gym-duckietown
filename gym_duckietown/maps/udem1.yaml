@@ -26,11 +26,6 @@ tiles:
 #         Models should, at angle 0, face towards the positive X axis.
 objects:
 
-- kind: duckiebot
-  pos: [3.27, 2.85]
-  rotate: -90
-  height: 0.13
-
 - kind: duckie
   pos: [2.1, 2.9]
   rotate: 180
