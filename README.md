@@ -142,7 +142,21 @@ export DISPLAY=:$SLURM_JOB_ID
 
 ## Troubleshooting
 
-If you run into problems of any kind, don't hesitate to [open an issue](https://github.com/duckietown/gym-duckietown/issues) on this repository. It's quite possible that you've run into some bug we aren't aware of. Please make sure to give some details about your system and configuration.
+If you run into problems of any kind, don't hesitate to [open an issue](https://github.com/duckietown/gym-duckietown/issues) on this repository. It's quite possible that you've run into some bug we aren't aware of. Please make sure to give some details about your system configuration (ie: PC or Max, operating system), and to paste the command you used to run the simulator, as well as the complete error message that was produced, if any.
+
+### ImportError: Library "GLU" not found
+
+You may need to manually install packaged needed by Pyglet or OpenAI Gym on your system. The command you need to use will vary depending which OS you are running. For example, to install the glut package on Ubuntu:
+
+```
+sudo apt-get install freeglut3-dev
+```
+
+And on Fedora:
+
+```
+sudo yum install freeglut-devel
+```
 
 ### Poor performance, low frame rate
 
