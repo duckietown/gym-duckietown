@@ -151,22 +151,21 @@ class ObjMesh:
                 # Move to the next vertex
                 cur_vert_idx += 1
 
-        # Re-center the object so that y=0 is at the base,
+        # Re-center the object so that the base is at y=0
         # and the object is centered in x and z
-        x_coords = list_verts[:, 0]
-        z_coords = list_verts[:, 2]
-        min_y = list_verts[:, 1].min()
-        mean_x = (x_coords.min() + x_coords.max()) / 2
-        mean_z = (z_coords.min() + z_coords.max()) / 2
+        min_coords = list_verts.min(axis=0)
+        max_coords = list_verts.max(axis=0)
+        mean_coords = (min_coords + max_coords) / 2
+        min_y = min_coords[1]
+        mean_x = mean_coords[0]
+        mean_z = mean_coords[2]
         list_verts[:, 1] -= min_y
         list_verts[:, 0] -= mean_x
         list_verts[:, 2] -= mean_z
 
-        # Compute the object extents after centering
-        x_coords = list_verts[:, 0]
-        y_coords = list_verts[:, 1]
-        z_coords = list_verts[:, 2]
-        self.y_max = y_coords.max()
+        # Recompute the object extents after centering
+        self.min_coords = list_verts.min(axis=0)
+        self.max_coords = list_verts.max(axis=0)
 
         # Create a vertex list to be used for rendering
         self.vlist = pyglet.graphics.vertex_list(

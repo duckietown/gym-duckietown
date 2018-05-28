@@ -368,7 +368,7 @@ class SimpleSimEnv(gym.Env):
             mesh = ObjMesh.get(kind)
 
             if 'height' in desc:
-                scale = desc['height'] / mesh.y_max
+                scale = desc['height'] / mesh.max_coords[1]
             else:
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
