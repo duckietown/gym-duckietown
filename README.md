@@ -91,6 +91,16 @@ source activate gym-duckietown
 export PYTHONPATH="${PYTHONPATH}:`pwd`"
 ```
 
+### Docker Image
+
+There is a prebuilt docker image available [on dockerhub](https://hub.docker.com/r/maximecb/gym-duckietown/). This image also contains an installation of PyTorch. Alternatively, you can also build this image from the latest version of this repository as follows:
+
+```
+sudo docker build --no-cache=true --network=host --tag gym-duckietown .
+```
+
+Note that in order to get GPU acceleration, you should install and use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
+
 ## Usage
 
 To run the standalone UI application, which allows you to control the simulation or real robot manually:
@@ -113,7 +123,7 @@ Then, to visualize the results of training, you can run the following command. N
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
 ```
 
-## Running Headless
+### Running Headless
 
 The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. You can create a virtual display using [Xvfb](https://en.wikipedia.org/wiki/Xvfb). The instructions shown below illustrate this. Note, however, that these instructions are specific to MILA, and may need to be adapted:
 
@@ -157,6 +167,10 @@ And on Fedora:
 ```
 sudo yum install freeglut-devel
 ```
+
+### NoSuchDisplayException: Cannot connect to "None"
+
+If you are connected through SSH, or running the simulator in a Docker image, you will need to use xvfb to create a virtual display in order to run the simulator. See the "Running Headless" section above.
 
 ### Poor performance, low frame rate
 
