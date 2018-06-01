@@ -6,13 +6,13 @@
 # The orientations are North, South, East, West. This is the direction in
 # which the agent is expected to drive when going onto this tile.
 tiles:
-- [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
-- [floor        , diag_left/W  , linear/W          , 3way_left/W       , linear_stop/W      , linear/W      , diag_left/N   , asphalt]
-- [floor        , linear/S     , grass             , linear_stop_both/N, asphalt            , asphalt       , linear/N      , asphalt]
-- [floor        , 3way_left/S  , linear_stop_both/W, 3way_left/N       , asphalt            , asphalt       , linear/N      , asphalt]
-- [floor        , linear_stop/S, grass             , linear_stop_both/N, asphalt            , diag_right/N  , diag_left/E   , asphalt]
-- [floor        , diag_left/S  , linear_stop/E     , 3way_left/E       , linear_stop_left/E , diag_left/E   , asphalt       , asphalt]
-- [floor        , floor        , floor             , floor             , floor              , floor         , floor         , floor]
+- [floor    , floor         , floor     , floor         , floor     , floor         , floor         , floor]
+- [floor    , curve_left/W  , straight/W, 3way_left/W   , straight/W, straight/W    , curve_left/N  , asphalt]
+- [floor    , straight/S    , grass     , straight/N    , asphalt   , asphalt       , straight/N    , asphalt]
+- [floor    , 3way_left/S   , straight/W, 3way_left/N   , asphalt   , asphalt       , straight/N    , asphalt]
+- [floor    , straight/S    , grass     , straight/N    , asphalt   , curve_right/N , curve_left/E  , asphalt]
+- [floor    , curve_left/S  , straight/E, 3way_left/E   , straight/E, curve_left/E  , asphalt       , asphalt]
+- [floor    , floor         , floor     , floor         , floor     , floor         , floor         , floor]
 
 # The following is a listing of 3D objects placed on the map
 #

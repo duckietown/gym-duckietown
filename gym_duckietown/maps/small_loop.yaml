@@ -1,4 +1,4 @@
 tiles:
-- [diag_left/W  , linear/W, diag_left/N]
-- [linear/S     , asphalt , linear/N]
-- [diag_left/S  , linear/E, diag_left/E]
+- [curve_left/W , straight/W, curve_left/N]
+- [straight/S   , asphalt   , straight/N]
+- [curve_left/S , straight/E, curve_left/E]

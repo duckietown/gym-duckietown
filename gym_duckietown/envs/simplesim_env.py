@@ -448,21 +448,21 @@ class SimpleSimEnv(gym.Env):
         kind = tile['kind']
         angle = tile['angle']
 
-        if kind.startswith('linear') or kind.startswith('3way'):
+        if kind.startswith('straight') or kind.startswith('3way'):
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0,-0.25],
                 [-0.20, 0, 0.25],
                 [-0.20, 0, 0.50],
             ]) * ROAD_TILE_SIZE
-        elif kind == 'diag_left':
+        elif kind == 'curve_left':
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0, 0.00],
                 [ 0.00, 0, 0.20],
                 [ 0.50, 0, 0.20],
             ]) * ROAD_TILE_SIZE
-        elif kind == 'diag_right':
+        elif kind == 'curve_right':
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0,-0.20],
