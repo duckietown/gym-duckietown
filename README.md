@@ -123,6 +123,65 @@ Then, to visualize the results of training, you can run the following command. N
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
 ```
 
+## Design
+
+### Map File Format
+
+The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
+
+The available tile types are: 
+- empty
+- straight
+- curve_left
+- curve_right
+- 3way_left (3-way intersection)
+- 3way_right
+- 4way (4-way intersection)
+- asphalt
+- grass
+- floor (office floor)
+
+The available object types are:
+- barrier
+- cone (traffic cone)
+- duckie
+- tree
+- house
+- truck (delivery-style truck)
+- bus
+- building (multi-floor building)
+- sign_blank (a blank sign post)
+
+Although the environment is rendered in 3D, the map is essentially two-dimensional. As such, objects coordinates are specified along two axes. The coordinates are rescaled based on the tile size, such that coordinates [0.5, 1.5] would mean middle of the first column of tiles, middle of the second row. Objects can have an `optional` flag set, which means that they randomly may or may not appear during training, as a form of domain randomization.
+
+In the future, we will add support for more sign objects matching the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
+
+### Reward Function
+
+The default reward function tries to encourage the agent to drive forward along the right lane in each tile. Each tile has an associated bezier curve defining the path the agent is expected to follow. The agent is rewarded for being as close to the curve as possible, and also for facing the same direction as the curve's tangent. See the `step` function in [this source file](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/simplesim_env.py).
+
+## Troubleshooting
+
+If you run into problems of any kind, don't hesitate to [open an issue](https://github.com/duckietown/gym-duckietown/issues) on this repository. It's quite possible that you've run into some bug we aren't aware of. Please make sure to give some details about your system configuration (ie: PC or Max, operating system), and to paste the command you used to run the simulator, as well as the complete error message that was produced, if any.
+
+### ImportError: Library "GLU" not found
+
+You may need to manually install packaged needed by Pyglet or OpenAI Gym on your system. The command you need to use will vary depending which OS you are running. For example, to install the glut package on Ubuntu:
+
+```
+sudo apt-get install freeglut3-dev
+```
+
+And on Fedora:
+
+```
+sudo yum install freeglut-devel
+```
+
+### NoSuchDisplayException: Cannot connect to "None"
+
+If you are connected through SSH, or running the simulator in a Docker image, you will need to use xvfb to create a virtual display in order to run the simulator. See the "Running Headless" subsection below.
+
 ### Running Headless
 
 The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. You can create a virtual display using [Xvfb](https://en.wikipedia.org/wiki/Xvfb). The instructions shown below illustrate this. Note, however, that these instructions are specific to MILA, and may need to be adapted:
@@ -149,28 +208,6 @@ export DISPLAY=:$SLURM_JOB_ID
 
 # You are now ready to train
 ```
-
-## Troubleshooting
-
-If you run into problems of any kind, don't hesitate to [open an issue](https://github.com/duckietown/gym-duckietown/issues) on this repository. It's quite possible that you've run into some bug we aren't aware of. Please make sure to give some details about your system configuration (ie: PC or Max, operating system), and to paste the command you used to run the simulator, as well as the complete error message that was produced, if any.
-
-### ImportError: Library "GLU" not found
-
-You may need to manually install packaged needed by Pyglet or OpenAI Gym on your system. The command you need to use will vary depending which OS you are running. For example, to install the glut package on Ubuntu:
-
-```
-sudo apt-get install freeglut3-dev
-```
-
-And on Fedora:
-
-```
-sudo yum install freeglut-devel
-```
-
-### NoSuchDisplayException: Cannot connect to "None"
-
-If you are connected through SSH, or running the simulator in a Docker image, you will need to use xvfb to create a virtual display in order to run the simulator. See the "Running Headless" section above.
 
 ### Poor performance, low frame rate
 
