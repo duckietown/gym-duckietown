@@ -317,7 +317,7 @@ class SimpleSimEnv(gym.Env):
 
         # For each row in the grid
         for j, row in enumerate(tiles):
-            assert len(row) == self.grid_width
+            assert len(row) == self.grid_width, "each row of tiles must have the same length"
 
             # For each tile in this row
             for i, tile in enumerate(row):
@@ -448,7 +448,7 @@ class SimpleSimEnv(gym.Env):
         kind = tile['kind']
         angle = tile['angle']
 
-        if kind.startswith('straight') or kind.startswith('3way'):
+        if kind.startswith('straight') or kind.startswith('3way') or kind.startswith('4way'):
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0,-0.25],
