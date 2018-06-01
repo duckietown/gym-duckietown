@@ -50,10 +50,13 @@ class DiscreteWrapper(gym.ActionWrapper):
         self.action_space = spaces.Discrete(3)
 
     def action(self, action):
+        # Turn left
         if action == 0:
             vels = [0.35, 0.58]
+        # Turn right
         elif action == 1:
             vels = [0.58, 0.35]
+        # Go forward
         elif action == 2:
             vels = [0.58, 0.58]
         else:
