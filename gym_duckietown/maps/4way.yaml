@@ -1,3 +1,5 @@
+# 5x5 counter-clockwise loop with a 4-way intersection in the middle
+# Designed to test the 4-way intersection tile
 tiles:
 - [curve_left/W , straight/W, 3way_left/W   , straight/W, curve_left/N]
 - [straight/S   , asphalt   , straight/N    , asphalt   , straight/N]
