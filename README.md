@@ -21,7 +21,7 @@ This simulator was created as part of work done at the [MILA](https://mila.quebe
 
 ## Introduction
 
-This repository contains two gym environments: `SimpleSim-v0`, `Duckiebot-v0` and `MultiMap-v0`.
+This repository contains three gym environments: `SimpleSim-v0`, `Duckiebot-v0` and `MultiMap-v0`.
 
 <p align="center">
 <img src="media/simplesim_1.png" width="300px"><br>
@@ -167,7 +167,7 @@ In the future, we will add support for more sign objects matching the [Duckietow
 
 ### Actions
 
-The Duckiebot is a differential drive robot. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to velocities for the left and right motors of the robot, respectively. There is also a [wrapper](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py#L42) to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
+The Duckiebot is a differential drive robot. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to velocities for the left and right wheel motors of the robot, respectively. There is also a [Gym wrapper class](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py#L42) named `DiscreteWrapper` which allows you to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
 
 ### Reward Function
 
