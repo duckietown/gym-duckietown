@@ -21,7 +21,7 @@ This simulator was created as part of work done at the [MILA](https://mila.quebe
 
 ## Introduction
 
-This repository contains two gym environments: `SimpleSim-v0` and `Duckiebot-v0`.
+This repository contains two gym environments: `SimpleSim-v0`, `Duckiebot-v0` and `MultiMap-v0`.
 
 <p align="center">
 <img src="media/simplesim_1.png" width="300px"><br>
@@ -45,6 +45,11 @@ trained in simulation can transfer to the real robot. If you want to
 control your robot remotely with the `Duckiebot-v0` environment, you will need to
 install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
 repository on your Duckiebot.
+
+The `MultiMap-v0` environment is essentially a [wrapper](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/multimap_env.py) for `SimpleSim-v0` which
+will automatically cycle through all available [map files](https://github.com/duckietown/gym-duckietown/tree/master/gym_duckietown/maps). This makes it possible to train on
+a variety of different maps at the same time, with the idea that training on a variety of
+different scenarios will make for a more robust policy/model.
 
 ## Installation
 
@@ -109,7 +114,11 @@ To run the standalone UI application, which allows you to control the simulation
 ./standalone.py --env-name SimpleSim-v0
 ```
 
-The `standalone.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot.
+The `standalone.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
+
+```
+./standalone.py --env-name SimpleSim-v0 --map-name small_loop
+```
 
 To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR algorithms. A sample command to launch training is:
 
@@ -155,6 +164,10 @@ The available object types are:
 Although the environment is rendered in 3D, the map is essentially two-dimensional. As such, objects coordinates are specified along two axes. The coordinates are rescaled based on the tile size, such that coordinates [0.5, 1.5] would mean middle of the first column of tiles, middle of the second row. Objects can have an `optional` flag set, which means that they randomly may or may not appear during training, as a form of domain randomization.
 
 In the future, we will add support for more sign objects matching the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
+
+### Actions
+
+The Duckiebot is a differential drive robot. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to velocities for the left and right motors of the robot, respectively. There is also a [wrapper](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py#L42) to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
 
 ### Reward Function
 
