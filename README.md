@@ -138,7 +138,7 @@ python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 
 
 The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
 
-The available tile types are: 
+The available tile types are:
 - empty
 - straight
 - curve_left
@@ -165,13 +165,19 @@ Although the environment is rendered in 3D, the map is essentially two-dimension
 
 In the future, we will add support for more sign objects matching the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
 
+### Observations
+
+The observations are single camera images, as numpy arrays of size (120, 160, 3). These arrays contain unsigned 8-bit integer values in the [0, 255] range.
+This image size was chosen because it is exactly one quarter of the 640x480 image resolution provided by the camera, which makes it fast and easy to scale down
+the images. The choice of 8-bit integer values over floating-point values was made because the resulting images are smaller if stored on disk and faster to send over a networked connection.
+
 ### Actions
 
 The Duckiebot is a differential drive robot. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to velocities for the left and right wheel motors of the robot, respectively. There is also a [Gym wrapper class](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py#L42) named `DiscreteWrapper` which allows you to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
 
 ### Reward Function
 
-The default reward function tries to encourage the agent to drive forward along the right lane in each tile. Each tile has an associated bezier curve defining the path the agent is expected to follow. The agent is rewarded for being as close to the curve as possible, and also for facing the same direction as the curve's tangent. See the `step` function in [this source file](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/simplesim_env.py).
+The default reward function tries to encourage the agent to drive forward along the right lane in each tile. Each tile has an associated bezier curve defining the path the agent is expected to follow. The agent is rewarded for being as close to the curve as possible, and also for facing the same direction as the curve's tangent. The episode is terminated if the agent gets too far outside of a drivable tile, or if the `max_steps` parameter is exceeded. See the `step` function in [this source file](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/simplesim_env.py).
 
 ## Troubleshooting
 
