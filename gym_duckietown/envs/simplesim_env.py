@@ -257,9 +257,13 @@ class SimpleSimEnv(gym.Env):
             else:
                 obj['visible'] = True
 
-        # Select a random drivable tile to start on
-        tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
-        tile = self.drivable_tiles[tile_idx]
+        # If the map specifies a starting tile
+        if self.start_tile is not None:
+            tile = self.start_tile
+        else:
+            # Select a random drivable tile to start on
+            tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
+            tile = self.drivable_tiles[tile_idx]
 
         while True:
             i, j = tile['coords']
@@ -351,11 +355,8 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
 
-        if not 'objects' in map_data:
-            return
-
         # For each object
-        for desc in map_data['objects']:
+        for desc in map_data.get('objects', []):
             kind = desc['kind']
             x, z = desc['pos']
             rotate = desc['rotate']
@@ -382,6 +383,12 @@ class SimpleSimEnv(gym.Env):
             }
 
             self.objects.append(obj)
+
+        # Get the starting tile from the map, if specified
+        self.start_tile = None
+        if 'start_tile' in map_data:
+            coords = map_data['start_tile']
+            self.start_tile = self._get_tile(*coords)
 
     def close(self):
         pass
