@@ -92,6 +92,7 @@ class SimpleSimEnv(gym.Env):
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
 
+        # Produce graphical output
         self.graphics = True
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
