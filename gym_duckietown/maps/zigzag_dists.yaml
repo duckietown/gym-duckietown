@@ -1,0 +1,39 @@
+# This map has multiple left and right turns, as well as many
+# white distractor objects trying to confuse the detection of road edges
+
+tiles:
+- [asphalt, asphalt     , asphalt       , asphalt       , asphalt       , asphalt   , asphalt       , asphalt, asphalt]
+- [asphalt, curve_left/W, curve_left/N  , asphalt       , curve_left/W  , straight/W, straight/W    , curve_left/N, asphalt]
+- [asphalt, straight/S  , curve_right/W , straight/W    , curve_right/S , asphalt   , curve_right/N , curve_left/E, asphalt]
+- [asphalt, straight/S  , asphalt       , asphalt       , asphalt       , asphalt   , straight/N    , asphalt, asphalt]
+- [asphalt, straight/S  , asphalt       , asphalt       , curve_right/N , straight/E, curve_left/E  , asphalt, asphalt]
+- [asphalt, straight/S  , asphalt       , curve_right/N , curve_left/E  , asphalt   , asphalt       , asphalt, asphalt]
+- [asphalt, straight/S  , asphalt       , straight/N    , asphalt       , asphalt   , asphalt       , asphalt, asphalt]
+- [asphalt, curve_left/S, straight/E    , curve_left/E  , asphalt       , asphalt   , asphalt       , asphalt, asphalt]
+- [asphalt, asphalt     , asphalt       , asphalt       , asphalt       , asphalt   , asphalt       , asphalt, asphalt]
+
+objects:
+
+- kind: bus
+  pos: [6.0, 0.5]
+  rotate: 0
+  height: 0.18
+  optional: true
+
+- kind: truck
+  pos: [7.5, 0.5]
+  rotate: 180
+  height: 0.2
+  optional: true
+
+- kind: tree
+  pos: [2.5, 4.5]
+  rotate: 180
+  height: 0.25
+  optional: true
+
+- kind: sign_blank
+  pos: [5.95, 2.4]
+  rotate: -20
+  height: 0.18
+  optional: true
