@@ -16,7 +16,8 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--map-name', default='straight_road')
-parser.add_argument('--traj_len', default=60)
+parser.add_argument('--demo_len', default=50, help='length of demonstrations to be generated')
+parser.add_argument('--tail_len', default=10, help='extra actions at the end of trajectories, cut out of demonstrations')
 parser.add_argument('--num_itrs', default=750)
 args = parser.parse_args()
 
@@ -59,12 +60,13 @@ def eval_actions(env, seed, actions):
 
         positions.append((env.cur_pos, env.cur_angle))
 
+        env.graphics = False
         obs, reward, done, info = env.step(vels)
+        env.graphics = True
 
         total_reward += reward
 
         if done:
-            #print('failed')
             break
 
     return positions, total_reward
@@ -93,35 +95,42 @@ def gen_trajectory(env, seed, num_actions, num_itrs):
     return positions, best_actions
 
 env = SimpleSimEnv(map_name=args.map_name)
-env.graphics = False
 
-positions = []
-actions = []
+demos = []
+total_steps = 0
 
 while True:
     seed = random.randint(0, 0xFFFFFFFF)
-    p, a = gen_trajectory(env, seed, args.traj_len, args.num_itrs)
+    p, a = gen_trajectory(env, seed, args.demo_len + args.tail_len, args.num_itrs)
 
     # If the agent fell off the road, ignore this trajectory
-    if len(p) < args.traj_len:
+    if len(p) < args.demo_len + args.tail_len:
         continue
 
     # Drop the last few actions, because the agent behaves more
     # greedily in the last steps (doesn't maximize future reward)
-    p = p[:-10]
-    a = a[:-10]
+    p = p[:-args.tail_len]
+    a = a[:-args.tail_len]
 
     # Convert numpy array to plain Python lists so we can store
     # the data in a JSON file
+    #
+    # Each position has the form [ [x,y,z], angle ]
+    # Each action has the form [v0,v1]
     p = list(map(lambda p: [ p[0].tolist(), p[1] ], p))
     a = list(map(lambda a: a.tolist(), a))
 
-    positions += p
-    actions += a
+    demo = {
+        'positions': p,
+        'actions': a
+    }
 
-    print('total num steps: %d' % len(positions))
+    demos.append(demo)
+    total_steps += len(p)
+
+    print('total num steps: %d' % total_steps)
 
     # Store the trajectories in a JSON file
     import json
     with open('experiments/demos_%s.json' % args.map_name, 'w') as outfile:
-        json.dump({ 'positions': positions, 'actions':actions }, outfile)
+        json.dump({ 'demos': demos }, outfile)
