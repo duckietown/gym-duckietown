@@ -201,7 +201,7 @@ sudo yum install freeglut-devel
 
 If you are connected through SSH, or running the simulator in a Docker image, you will need to use xvfb to create a virtual display in order to run the simulator. See the "Running Headless" subsection below.
 
-### Running Headless
+### Running headless
 
 The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. You can create a virtual display using [Xvfb](https://en.wikipedia.org/wiki/Xvfb). The instructions shown below illustrate this. Note, however, that these instructions are specific to MILA, look further down for instructions on an Ubuntu box:
 
@@ -228,23 +228,24 @@ export DISPLAY=:$SLURM_JOB_ID
 # You are now ready to train
 ```
 
-### Running Headless and Training in a cloud based environment (AWS)
-```
-Recommend using the Ubuntu based [DeepLearning AMI](https://aws.amazon.com/marketplace/pp/B077GCH38C) to provision your server which comes with all the deep learning libraries
+### Running headless and training in a cloud based environment (AWS)
 
-#install xvfb
+We recommend using the Ubuntu-based [Deep Learning AMI](https://aws.amazon.com/marketplace/pp/B077GCH38C) to provision your server which comes with all the deep learning libraries.
+
+```
+# Install xvfb
 sudo apt-get install xvfb mesa-utils -y
 
-#start xvfb
+# Start xvfb
 Xvfb :1 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
 
-#setup your display
+# Export your display id
 export DISPLAY=:1
 
-#check if your display settings are valid
+# Check if your display settings are valid
 glxinfo
 
-# ready to train
+# You are now ready to train
 ```
 
 ### Poor performance, low frame rate
