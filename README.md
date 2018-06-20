@@ -273,7 +273,7 @@ of hyperparameters.
 
 It is possible to use `gym.wrappers.Monitor` to record videos of the agent performing a task. See [examples here](https://www.programcreek.com/python/example/100947/gym.wrappers.Monitor).
 
-The libx264 error is due to a problem with the way ffmpeg and installed on some linux distributions. One possible way to circumvent this is to reinstall ffmpeg using conda:
+The libx264 error is due to a problem with the way ffmpeg is installed on some linux distributions. One possible way to circumvent this is to reinstall ffmpeg using conda:
 
 ```
 conda install -c conda-forge ffmpeg
