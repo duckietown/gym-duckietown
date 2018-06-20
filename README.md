@@ -268,3 +268,15 @@ The reward values are currently rescaled into the [0,1] range, because the RL co
 `pytorch_rl` doesn't do reward clipping, and deals poorly with large reward values. Also
 note that changing the reward function might mean you also have to retune your choice
 of hyperparameters.
+
+### Unknown encoder 'libx264' when using gym.wrappers.Monitor
+
+It is possible to use `gym.wrappers.Monitor` to record videos of the agent performing a task. See [examples here](https://www.programcreek.com/python/example/100947/gym.wrappers.Monitor).
+
+The libx264 error is due to a problem with the way ffmpeg and installed on some linux distributions. One possible way to circumvent this is to reinstall ffmpeg using conda:
+
+```
+conda install -c conda-forge ffmpeg
+```
+
+Alternatively, screencasting programs such as [Kazam](https://launchpad.net/kazam) can be used to record the graphical output of a single window.
