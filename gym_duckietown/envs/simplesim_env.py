@@ -786,6 +786,11 @@ class SimpleSimEnv(gym.Env):
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+        # Flip the image because OpenGL maps (0,0) to the lower-left corner
+        # Note: this is necessary for gym.wrappers.Monitor to record videos
+        # properly, otherwise they are vertically inverted.
+        img_array = np.ascontiguousarray(np.flip(img_array, axis=0))
+
         return img_array
 
     def render(self, mode='human', close=False):
@@ -832,6 +837,7 @@ class SimpleSimEnv(gym.Env):
         # Draw the image to the rendering window
         width = img.shape[1]
         height = img.shape[0]
+        img = np.ascontiguousarray(np.flip(img, axis=0))
         img_data = pyglet.image.ImageData(
             width,
             height,
