@@ -197,10 +197,10 @@ def rotate_point(px, py, cx, cy, theta):
     dx = px - cx
     dy = py - cy
 
-    new_x = dx * math.cos(theta) - dy * math.sin(theta)
-    new_x = dy * math.cos(theta) + dx * math.sin(theta)
+    new_dx = dx * math.cos(theta) - dy * math.sin(theta)
+    new_dy = dy * math.cos(theta) + dx * math.sin(theta)
 
-    return cx + new_x, cy + new_y
+    return cx + new_dx, cy + new_dy
 
 def gen_rot_matrix(axis, angle):
     """
