@@ -1,0 +1,30 @@
+# This is a closed loop (no intersections) with a few obstacles directly
+# on the road, which have to be avoided.
+
+tiles:
+- [asphalt, asphalt     , asphalt   , asphalt       , asphalt   , asphalt       , asphalt]
+- [asphalt, curve_left/W, straight/W, straight/W    , straight/W, curve_left/N  , asphalt]
+- [asphalt, straight/S  , asphalt   , asphalt       , asphalt   , straight/N    , asphalt]
+- [asphalt, straight/S  , asphalt   , curve_right/N , straight/E, curve_left/E  , asphalt]
+- [asphalt, curve_left/S, straight/E, curve_left/E  , asphalt   , asphalt       , asphalt]
+- [asphalt, asphalt     , asphalt   , asphalt       , asphalt   , asphalt       , asphalt]
+
+objects:
+
+- kind: duckie
+  pos: [2.5, 1.2]
+  rotate: 10
+  height: 0.06
+  optional: false
+
+- kind: duckie
+  pos: [1.5, 4.5]
+  rotate: 90
+  height: 0.08
+  optional: false
+
+- kind: cone
+  pos: [5.7, 2.5]
+  rotate: 90
+  height: 0.08
+  optional: false
