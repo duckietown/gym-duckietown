@@ -6,7 +6,6 @@ def duckie_boundbox(cur_pos, theta, width):
   hwidth = 0.5 * width
   px = cur_pos[0]
   pz = cur_pos[2]
-  print('Theta is: {}', theta)
 
   # TODO: WIDTH makes a square -- need 'height'
   return np.array([
