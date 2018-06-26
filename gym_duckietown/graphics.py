@@ -198,7 +198,7 @@ def rotate_point(px, py, cx, cy, theta):
     dy = py - cy
 
     new_x = dx * math.cos(theta) - dy * math.sin(theta)
-    new_x = dy * math.cos(theta) + dx * math.sin(theta)
+    new_y = dy * math.cos(theta) + dx * math.sin(theta)
 
     return cx + new_x, cy + new_y
 

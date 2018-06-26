@@ -15,6 +15,7 @@ from gym.utils import seeding
 from ..utils import *
 from ..graphics import *
 from ..objmesh import *
+from ..math import *
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -380,10 +381,15 @@ class SimpleSimEnv(gym.Env):
                 'pos': pos,
                 'scale': scale,
                 'y_rot': rotate,
-                'optional': optional
+                'optional': optional,
+                'min_coords': mesh.min_coords,
+                'max_coords': mesh.max_coords,
+                'corners': generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale),
+                'static': True # TODO: load this from yml
             }
 
             self.objects.append(obj)
+
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -580,6 +586,23 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
+    def _collision(self):
+        duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle, ROBOT_WIDTH)
+
+        for idx, obj in enumerate(self.objects):
+            if not obj['visible']:
+                continue
+
+            if not obj['static']:
+                continue
+
+            if intersects(duckie_corners, obj['corners']):
+                print('Self: {}, {}: {}'.format(self.cur_pos, obj['kind'], obj['pos']))
+                print('Self: {}\n {}: {}\n'.format(duckie_corners, obj['kind'], obj['corners'],))
+                return True
+
+        return False
+
     def _valid_pose(self):
         """
         Check that the agent is in a valid pose
@@ -611,7 +634,7 @@ class SimpleSimEnv(gym.Env):
         obs = self.render_obs()
 
         # If the agent is not in a valid pose (on drivable tiles)
-        if not self._valid_pose():
+        if not self._valid_pose() or self._collision():
             reward = -10
             done = True
             return obs, reward, done, {}
