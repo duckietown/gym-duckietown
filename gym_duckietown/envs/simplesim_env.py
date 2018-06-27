@@ -55,9 +55,10 @@ CAMERA_FORWARD_DIST = 0.066
 WHEEL_DIST = 0.102
 
 # Total robot width at wheel base, used for collision detection
-# Note: the actual robot width is 13cm, but we add a litte bit of buffer
+# Note: the actual robot width is 13cm and length is 18cm, but we add a litte bit of buffer
 #       to faciliate sim-to-real transfer.
 ROBOT_WIDTH = 0.13 + 0.02
+ROBOT_LENGTH = 0.18 + 0.02
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
@@ -587,7 +588,8 @@ class SimpleSimEnv(gym.Env):
         return tile != None and tile['drivable']
 
     def _collision(self):
-        duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle, ROBOT_WIDTH)
+        duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle,
+            ROBOT_WIDTH, ROBOT_LENGTH)
 
         for idx, obj in enumerate(self.objects):
             if not obj['visible']:

@@ -2,17 +2,18 @@ from .graphics import rotate_point
 import numpy as np
 import time 
 
-def duckie_boundbox(cur_pos, theta, width):
+def duckie_boundbox(cur_pos, theta, width, length):
   hwidth = 0.5 * width
+  hlength = 0.5 * length
   px = cur_pos[0]
   pz = cur_pos[2]
 
-  # TODO: WIDTH makes a square -- need 'height'
+  # TODO: Check dimensions
   return np.array([
-    rotate_point(px-hwidth, pz-hwidth, px, pz, theta),
-    rotate_point(px+hwidth, pz-hwidth, px, pz, theta),
-    rotate_point(px+hwidth, pz+hwidth, px, pz, theta),
-    rotate_point(px-hwidth, pz+hwidth, px, pz, theta),
+    rotate_point(px-hwidth, pz-hlength, px, pz, theta),
+    rotate_point(px+hwidth, pz-hlength, px, pz, theta),
+    rotate_point(px+hwidth, pz+hlength, px, pz, theta),
+    rotate_point(px-hwidth, pz+hlength, px, pz, theta),
   ])
 
 def sat_test(axis, corners):
@@ -52,16 +53,16 @@ def intersects(corners1, corners2):
   norm1 = generate_norm(corners1)
   norm2 = generate_norm(corners2)
   
-  for i in range(len(norm1)):
-    shape1_min, shape1_max = sat_test(norm1[i], corners1)
-    shape2_min, shape2_max = sat_test(norm1[i], corners2)
+  for norm in norm1:
+    shape1_min, shape1_max = sat_test(norm, corners1)
+    shape2_min, shape2_max = sat_test(norm, corners2)
   
   if not overlaps(shape1_min, shape1_max, shape2_min, shape2_max):
     return False
   
-  for i in range(len(norm2)):
-    shape1_min, shape1_max = sat_test(norm2[i], corners1)
-    shape2_min, shape2_max = sat_test(norm2[i], corners2)
+  for norm in norm2:
+    shape1_min, shape1_max = sat_test(norm, corners1)
+    shape2_min, shape2_max = sat_test(norm, corners2)
     
   if not overlaps(shape1_min, shape1_max, shape2_min, shape2_max):
     return False
