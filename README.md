@@ -236,6 +236,13 @@ We recommend using the Ubuntu-based [Deep Learning AMI](https://aws.amazon.com/m
 # Install xvfb
 sudo apt-get install xvfb mesa-utils -y
 
+# Remove the nvidia display drivers (this doesn't remove the CUDA drivers)
+# This is necessary as nvidia display doesn't play well with xvfb
+sudo nvidia-uninstall -y
+
+# Sanity check to make sure you still have CUDA driver and its version
+nvcc --version
+
 # Start xvfb
 Xvfb :1 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
 
