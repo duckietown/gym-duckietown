@@ -79,7 +79,7 @@ while True:
     if done:
         if reward < 0:
             print('*** FAILED ***')
-            time.sleep(1.5)
+            time.sleep(0.8)
         env.reset()
         env.render()
 

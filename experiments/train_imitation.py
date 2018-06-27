@@ -72,15 +72,15 @@ def load_data():
     global positions
     global actions
 
+    positions = []
+    actions = []
+
     file_name = 'experiments/demos_%s.json' % args.map_name
     try:
         with open(file_name, 'r') as f:
             data = json.load(f)
     except:
         print('failed to load data file "%s"' % file_name)
-
-    positions = []
-    actions = []
 
     demos = data['demos']
     positions = map(lambda d: d['positions'], demos)
