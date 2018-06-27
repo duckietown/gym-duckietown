@@ -154,6 +154,7 @@ The available object types are:
 - barrier
 - cone (traffic cone)
 - duckie
+- duckiebot (model of a Duckietown robot)
 - tree
 - house
 - truck (delivery-style truck)

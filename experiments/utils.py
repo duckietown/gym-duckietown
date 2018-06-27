@@ -26,10 +26,10 @@ class GradReverse(torch.autograd.Function):
 def init_weights(m):
     classname = m.__class__.__name__
     if classname.startswith('Conv'):
-        nn.init.orthogonal(m.weight.data)
+        nn.init.orthogonal_(m.weight.data)
         m.bias.data.fill_(0)
     elif classname.find('Linear') != -1:
-        nn.init.xavier_uniform(m.weight)
+        nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0)
     elif classname.find('BatchNorm') != -1:
         m.weight.data.normal_(1.0, 0.02)
