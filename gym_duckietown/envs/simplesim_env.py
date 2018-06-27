@@ -47,7 +47,8 @@ CAMERA_FOV_Y = 42
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
 
-# Forward distance between camera and center of rotation (6.6cm)
+# Forward distance between the camera (at the front)
+# and the center of rotation (6.6cm)
 CAMERA_FORWARD_DIST = 0.066
 
 # Distance (diameter) between the center of the robot wheels (10.2cm)
@@ -57,6 +58,14 @@ WHEEL_DIST = 0.102
 # Note: the actual robot width is 13cm, but we add a litte bit of buffer
 #       to faciliate sim-to-real transfer.
 ROBOT_WIDTH = 0.13 + 0.02
+
+# Total robot length
+# Note: the center of rotation (between the wheels) is not at the
+#       geometric center see CAMERA_FORWARD_DIST
+ROBOT_LENGTH = 0.18
+
+# Height of the robot, used for scaling
+ROBOT_HEIGHT = 0.12
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
