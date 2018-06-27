@@ -1,3 +1,4 @@
+# 3x3 tiles with left turns at the corners going in a counter-clockwise loop
 tiles:
 - [curve_left/W , straight/W, curve_left/N]
 - [straight/S   , asphalt   , straight/N]

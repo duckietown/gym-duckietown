@@ -21,7 +21,7 @@ This simulator was created as part of work done at the [MILA](https://mila.quebe
 
 ## Introduction
 
-This repository contains two gym environments: `SimpleSim-v0` and `Duckiebot-v0`.
+This repository contains three gym environments: `SimpleSim-v0`, `Duckiebot-v0` and `MultiMap-v0`.
 
 <p align="center">
 <img src="media/simplesim_1.png" width="300px"><br>
@@ -45,6 +45,11 @@ trained in simulation can transfer to the real robot. If you want to
 control your robot remotely with the `Duckiebot-v0` environment, you will need to
 install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
 repository on your Duckiebot.
+
+The `MultiMap-v0` environment is essentially a [wrapper](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/multimap_env.py) for `SimpleSim-v0` which
+will automatically cycle through all available [map files](https://github.com/duckietown/gym-duckietown/tree/master/gym_duckietown/maps). This makes it possible to train on
+a variety of different maps at the same time, with the idea that training on a variety of
+different scenarios will make for a more robust policy/model.
 
 ## Installation
 
@@ -109,7 +114,11 @@ To run the standalone UI application, which allows you to control the simulation
 ./standalone.py --env-name SimpleSim-v0
 ```
 
-The `standalone.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot.
+The `standalone.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
+
+```
+./standalone.py --env-name SimpleSim-v0 --map-name small_loop
+```
 
 To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR algorithms. A sample command to launch training is:
 
@@ -129,7 +138,7 @@ python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 
 
 The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
 
-The available tile types are: 
+The available tile types are:
 - empty
 - straight
 - curve_left
@@ -156,9 +165,19 @@ Although the environment is rendered in 3D, the map is essentially two-dimension
 
 In the future, we will add support for more sign objects matching the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
 
+### Observations
+
+The observations are single camera images, as numpy arrays of size (120, 160, 3). These arrays contain unsigned 8-bit integer values in the [0, 255] range.
+This image size was chosen because it is exactly one quarter of the 640x480 image resolution provided by the camera, which makes it fast and easy to scale down
+the images. The choice of 8-bit integer values over floating-point values was made because the resulting images are smaller if stored on disk and faster to send over a networked connection.
+
+### Actions
+
+The Duckiebot is a differential drive robot. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to velocities for the left and right wheel motors of the robot, respectively. There is also a [Gym wrapper class](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py#L42) named `DiscreteWrapper` which allows you to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
+
 ### Reward Function
 
-The default reward function tries to encourage the agent to drive forward along the right lane in each tile. Each tile has an associated bezier curve defining the path the agent is expected to follow. The agent is rewarded for being as close to the curve as possible, and also for facing the same direction as the curve's tangent. See the `step` function in [this source file](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/simplesim_env.py).
+The default reward function tries to encourage the agent to drive forward along the right lane in each tile. Each tile has an associated bezier curve defining the path the agent is expected to follow. The agent is rewarded for being as close to the curve as possible, and also for facing the same direction as the curve's tangent. The episode is terminated if the agent gets too far outside of a drivable tile, or if the `max_steps` parameter is exceeded. See the `step` function in [this source file](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/simplesim_env.py).
 
 ## Troubleshooting
 
@@ -182,7 +201,7 @@ sudo yum install freeglut-devel
 
 If you are connected through SSH, or running the simulator in a Docker image, you will need to use xvfb to create a virtual display in order to run the simulator. See the "Running Headless" subsection below.
 
-### Running Headless
+### Running headless
 
 The simulator uses the OpenGL API to produce graphics. This requires an X11 display to be running, which can be problematic if you are trying to run training code through on SSH, or on a cluster. You can create a virtual display using [Xvfb](https://en.wikipedia.org/wiki/Xvfb). The instructions shown below illustrate this. Note, however, that these instructions are specific to MILA, look further down for instructions on an Ubuntu box:
 
@@ -209,26 +228,31 @@ export DISPLAY=:$SLURM_JOB_ID
 # You are now ready to train
 ```
 
-### Running Headless and Training in a cloud based environment (AWS)
-```
-Recommend using the Ubuntu based [DeepLearning AMI](https://aws.amazon.com/marketplace/pp/B077GCH38C) to provision your server which comes with all the deep learning libraries
+### Running headless and training in a cloud based environment (AWS)
 
-#install xvfb
+We recommend using the Ubuntu-based [Deep Learning AMI](https://aws.amazon.com/marketplace/pp/B077GCH38C) to provision your server which comes with all the deep learning libraries.
+
+```
+# Install xvfb
 sudo apt-get install xvfb mesa-utils -y
 
-#remove the nvidia display drivers
+# Remove the nvidia display drivers (this doesn't remove the CUDA drivers)
+# This is necessary as nvidia display doesn't play well with xvfb
 sudo nvidia-uninstall -y
 
-#start xvfb
+# Sanity check to make sure you still have CUDA driver and its version
+nvcc --version
+
+# Start xvfb
 Xvfb :1 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
 
-#setup your display
+# Export your display id
 export DISPLAY=:1
 
-#check if your display settings are valid
+# Check if your display settings are valid
 glxinfo
 
-# ready to train
+# You are now ready to train
 ```
 
 ### Poor performance, low frame rate
@@ -251,3 +275,15 @@ The reward values are currently rescaled into the [0,1] range, because the RL co
 `pytorch_rl` doesn't do reward clipping, and deals poorly with large reward values. Also
 note that changing the reward function might mean you also have to retune your choice
 of hyperparameters.
+
+### Unknown encoder 'libx264' when using gym.wrappers.Monitor
+
+It is possible to use `gym.wrappers.Monitor` to record videos of the agent performing a task. See [examples here](https://www.programcreek.com/python/example/100947/gym.wrappers.Monitor).
+
+The libx264 error is due to a problem with the way ffmpeg is installed on some linux distributions. One possible way to circumvent this is to reinstall ffmpeg using conda:
+
+```
+conda install -c conda-forge ffmpeg
+```
+
+Alternatively, screencasting programs such as [Kazam](https://launchpad.net/kazam) can be used to record the graphical output of a single window.

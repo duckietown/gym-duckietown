@@ -1,4 +1,3 @@
-import os
 import math
 import time
 import numpy as np
@@ -93,6 +92,7 @@ class SimpleSimEnv(gym.Env):
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
 
+        # Produce graphical output
         self.graphics = True
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
@@ -258,9 +258,13 @@ class SimpleSimEnv(gym.Env):
             else:
                 obj['visible'] = True
 
-        # Select a random drivable tile to start on
-        tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
-        tile = self.drivable_tiles[tile_idx]
+        # If the map specifies a starting tile
+        if self.start_tile is not None:
+            tile = self.start_tile
+        else:
+            # Select a random drivable tile to start on
+            tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
+            tile = self.drivable_tiles[tile_idx]
 
         while True:
             i, j = tile['coords']
@@ -352,11 +356,8 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
 
-        if not 'objects' in map_data:
-            return
-
         # For each object
-        for desc in map_data['objects']:
+        for desc in map_data.get('objects', []):
             kind = desc['kind']
             x, z = desc['pos']
             rotate = desc['rotate']
@@ -383,6 +384,12 @@ class SimpleSimEnv(gym.Env):
             }
 
             self.objects.append(obj)
+
+        # Get the starting tile from the map, if specified
+        self.start_tile = None
+        if 'start_tile' in map_data:
+            coords = map_data['start_tile']
+            self.start_tile = self._get_tile(*coords)
 
     def close(self):
         pass
@@ -779,6 +786,11 @@ class SimpleSimEnv(gym.Env):
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+        # Flip the image because OpenGL maps (0,0) to the lower-left corner
+        # Note: this is necessary for gym.wrappers.Monitor to record videos
+        # properly, otherwise they are vertically inverted.
+        img_array = np.ascontiguousarray(np.flip(img_array, axis=0))
+
         return img_array
 
     def render(self, mode='human', close=False):
@@ -825,6 +837,7 @@ class SimpleSimEnv(gym.Env):
         # Draw the image to the rendering window
         width = img.shape[1]
         height = img.shape[0]
+        img = np.ascontiguousarray(np.flip(img, axis=0))
         img_data = pyglet.image.ImageData(
             width,
             height,
