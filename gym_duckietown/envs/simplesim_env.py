@@ -6,6 +6,7 @@ import yaml
 import pyglet
 from pyglet.gl import *
 from ctypes import byref, POINTER
+from multiprocessing.dummy import Pool as ThreadPool
 
 import gym
 from gym import error, spaces, utils
@@ -55,10 +56,17 @@ CAMERA_FORWARD_DIST = 0.066
 WHEEL_DIST = 0.102
 
 # Total robot width at wheel base, used for collision detection
-# Note: the actual robot width is 13cm and length is 18cm, but we add a litte bit of buffer
+# Note: the actual robot width is 13cm, but we add a litte bit of buffer
 #       to faciliate sim-to-real transfer.
 ROBOT_WIDTH = 0.13 + 0.02
-ROBOT_LENGTH = 0.18 + 0.02
+
+# Total robot length
+# Note: the center of rotation (between the wheels) is not at the
+#       geometric center see CAMERA_FORWARD_DIST
+ROBOT_LENGTH = 0.18
+
+# Height of the robot, used for scaling
+ROBOT_HEIGHT = 0.12
 
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
@@ -66,6 +74,10 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.45
 
+# Minimum distance spawn position needs to be from all objects
+MIN_SPAWN_OBJ_DIST = 0.10
+
+    
 class SimpleSimEnv(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -280,7 +292,10 @@ class SimpleSimEnv(gym.Env):
             self.cur_angle = self.np_random.uniform(0, 2 * math.pi)
 
             # If this is not a valid pose, retry
-            if not self._valid_pose():
+            if not self._valid_pose() or self._collision():
+                continue
+
+            if self._inconvenient_spawn():
                 continue
 
             # If the angle is too far away from the driving direction, retry
@@ -357,6 +372,7 @@ class SimpleSimEnv(gym.Env):
 
         # Create the objects array
         self.objects = []
+        self.static_objects = []
 
         # For each object
         for desc in map_data.get('objects', []):
@@ -385,12 +401,13 @@ class SimpleSimEnv(gym.Env):
                 'optional': optional,
                 'min_coords': mesh.min_coords,
                 'max_coords': mesh.max_coords,
-                'corners': generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale),
                 'static': True # TODO: load this from yml
             }
 
             self.objects.append(obj)
-
+            if obj['static']:
+                self.static_objects.append(generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale)
+                )
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -587,23 +604,31 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
+    def _spawn_helper(self, pos):
+        return distance(pos, self.cur_pos)
+
+    def _inconvenient_spawn(self):
+        pool = ThreadPool(len(self.static_objects))
+        results = np.array(pool.map(
+            self._spawn_helper, 
+            [x['pos'] for x in self.objects if x['visible']])
+        )
+        pool.close()
+
+        return np.any(results < MIN_SPAWN_OBJ_DIST)
+
+    def _collision_helper(self, corners):
+        return intersects(self.duckie_corners, corners)
+
     def _collision(self):
-        duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle,
+        self.duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle,
             ROBOT_WIDTH, ROBOT_LENGTH)
 
-        for idx, obj in enumerate(self.objects):
-            if not obj['visible']:
-                continue
+        pool = ThreadPool(len(self.static_objects))
+        results = np.array(pool.map(self._collision_helper, self.static_objects))
+        pool.close()
 
-            if not obj['static']:
-                continue
-
-            if intersects(duckie_corners, obj['corners']):
-                print('Self: {}, {}: {}'.format(self.cur_pos, obj['kind'], obj['pos']))
-                print('Self: {}\n {}: {}\n'.format(duckie_corners, obj['kind'], obj['corners'],))
-                return True
-
-        return False
+        return np.any(results)
 
     def _valid_pose(self):
         """
