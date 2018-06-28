@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+This script allows you to manually control the simulator or Duckiebot
+using the keyboard arrows.
+"""
+
 import sys
 import argparse
-
 import pyglet
 import numpy as np
-
 import gym
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
@@ -14,15 +17,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
 parser.add_argument('--map-name', default='udem1')
 parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
-parser.add_argument('--no-random', action='store_true', help='disable domain randomization')
-
+parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 args = parser.parse_args()
 
 if args.env_name == 'SimpleSim-v0':
     env = SimpleSimEnv(
         map_name = args.map_name,
         draw_curve = args.draw_curve,
-        domain_rand = not args.no_random
+        domain_rand = args.domain_rand
     )
 else:
     env = gym.make(args.env_name)
@@ -33,7 +35,6 @@ env.render()
 def save_numpy_img(file_name, img):
     img = np.ascontiguousarray(img)
     img = (img * 255).astype(np.uint8)
-    img = np.flip(img, 0)
 
     from skimage import io
     io.imsave(file_name, img)

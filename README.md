@@ -108,16 +108,16 @@ Note that in order to get GPU acceleration, you should install and use [nvidia-d
 
 ## Usage
 
-To run the standalone UI application, which allows you to control the simulation or real robot manually:
+There is a simple UI application which allows you to control the simulation or real robot manually:
 
 ```
-./standalone.py --env-name SimpleSim-v0
+./manual_control.py --env-name SimpleSim-v0
 ```
 
-The `standalone.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
+The `manual_control.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
 
 ```
-./standalone.py --env-name SimpleSim-v0 --map-name small_loop
+./manual_control.py --env-name SimpleSim-v0 --map-name small_loop
 ```
 
 To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR algorithms. A sample command to launch training is:
