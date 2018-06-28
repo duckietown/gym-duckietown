@@ -154,6 +154,7 @@ The available object types are:
 - barrier
 - cone (traffic cone)
 - duckie
+- duckiebot (model of a Duckietown robot)
 - tree
 - house
 - truck (delivery-style truck)
@@ -236,6 +237,13 @@ We recommend using the Ubuntu-based [Deep Learning AMI](https://aws.amazon.com/m
 # Install xvfb
 sudo apt-get install xvfb mesa-utils -y
 
+# Remove the nvidia display drivers (this doesn't remove the CUDA drivers)
+# This is necessary as nvidia display doesn't play well with xvfb
+sudo nvidia-uninstall -y
+
+# Sanity check to make sure you still have CUDA driver and its version
+nvcc --version
+
 # Start xvfb
 Xvfb :1 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
 
@@ -268,3 +276,15 @@ The reward values are currently rescaled into the [0,1] range, because the RL co
 `pytorch_rl` doesn't do reward clipping, and deals poorly with large reward values. Also
 note that changing the reward function might mean you also have to retune your choice
 of hyperparameters.
+
+### Unknown encoder 'libx264' when using gym.wrappers.Monitor
+
+It is possible to use `gym.wrappers.Monitor` to record videos of the agent performing a task. See [examples here](https://www.programcreek.com/python/example/100947/gym.wrappers.Monitor).
+
+The libx264 error is due to a problem with the way ffmpeg is installed on some linux distributions. One possible way to circumvent this is to reinstall ffmpeg using conda:
+
+```
+conda install -c conda-forge ffmpeg
+```
+
+Alternatively, screencasting programs such as [Kazam](https://launchpad.net/kazam) can be used to record the graphical output of a single window.

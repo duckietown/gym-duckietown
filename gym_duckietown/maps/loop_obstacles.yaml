@@ -15,16 +15,27 @@ objects:
   pos: [2.5, 1.2]
   rotate: 10
   height: 0.06
-  optional: false
+  optional: true
 
 - kind: duckie
   pos: [1.5, 4.5]
   rotate: 90
   height: 0.08
-  optional: false
+  optional: true
 
 - kind: cone
-  pos: [5.7, 2.5]
+  pos: [5.8, 2.5]
   rotate: 90
   height: 0.08
-  optional: false
+  optional: true
+- kind: cone
+  pos: [5.6, 2.4]
+  rotate: 90
+  height: 0.08
+  optional: true
+
+- kind: duckiebot
+  pos: [3.5, 4.75]
+  rotate: -45
+  height: 0.12
+  optional: true
