@@ -8,7 +8,7 @@ Please use this bibtex if you want to cite this repository in your publications:
 
 ```
 @misc{gym_duckietown,
-  author = {Maxime Chevalier-Boisvert, Florian Golemo, Yanjun Cao, Liam Paull},
+  author = {Maxime Chevalier-Boisvert, Florian Golemo, Yanjun Cao, Bhairav Mehta, Liam Paull},
   title = {Duckietown Environments for OpenAI Gym},
   year = {2018},
   publisher = {GitHub},
@@ -108,6 +108,8 @@ Note that in order to get GPU acceleration, you should install and use [nvidia-d
 
 ## Usage
 
+### Testing
+
 There is a simple UI application which allows you to control the simulation or real robot manually:
 
 ```
@@ -120,6 +122,10 @@ The `manual_control.py` application will launch the Gym environment, display cam
 ./manual_control.py --env-name SimpleSim-v0 --map-name small_loop
 ```
 
+There is also a script to run automated tests (`run_tests.py`) and a script to gather performance metrics (`benchmark.py`).
+
+### Reinforcement Learning
+
 To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR algorithms. A sample command to launch training is:
 
 ```
@@ -131,6 +137,28 @@ Then, to visualize the results of training, you can run the following command. N
 ```
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
 ```
+
+### Imitation Learning
+
+There is a script in the `experiments` directory which automatically generates a dataset of synthetic demonstrations. It uses hillclimbing to optimize the reward obtained, and outputs a JSON file:
+
+```
+experiments/gen_demos.py --map-name loop_obstacles
+```
+
+Then you can start training an imitation learning model (conv net) with:
+
+```
+experiments/train_imitation.py --map-name loop_obstacles
+```
+
+Finally, you can visualize what the trained model is doing with:
+
+```
+experiments/control_imitation.py --map-name loop_obstacles
+```
+
+Note that it is possible to have `gen_demos.py` and `train_imitate.py` running simultaneously, so that training takes place while new demonstrations are being generated. You can also run `control_imitate.py` periodically during training to check on learning progress.
 
 ## Design
 
