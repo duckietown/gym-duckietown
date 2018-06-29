@@ -606,6 +606,13 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
+    def _actual_zpos(self, pos):
+        """
+        calculate true center, != center of rotation
+        see CAMERA_FORWARD_DIST
+        """
+        return self.cur_pos[2] + CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)
+        
     def _inconvenient_spawn(self):
         """
         Check that duckie spawn is not too close to any visible object
@@ -623,8 +630,8 @@ class SimpleSimEnv(gym.Env):
         """
 
         # Recompute the bounding boxes for dynamic objects
-        self.duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle,
-            ROBOT_WIDTH, ROBOT_LENGTH)
+        self.duckie_corners = duckie_boundbox(self.cur_pos, _actual_zpos(self.cur_pos),
+            self.cur_angle, ROBOT_WIDTH, ROBOT_LENGTH)
         # Generate the norms corresponding to each face of BB
         self.duckie_norm = generate_norm(self.duckie_corners)
         return intersects(self.duckie_corners, self.static_objects,
