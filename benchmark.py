@@ -44,7 +44,7 @@ fps = num_frames / dt
 frame_time = 1000 * dt / num_frames
 
 print()
-print('load time: {} ms'.format(load_time))
+print('load time: {} ms'.format(int(load_time)))
 print('reset time: {:,.1f} ms'.format(reset_time))
 print('frame time: {:,.1f} ms'.format(frame_time))
 print('frame rate: {:,.1f} FPS'.format(fps))

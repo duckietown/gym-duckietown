@@ -49,7 +49,8 @@ CAMERA_FOV_Y = 42
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
 
-# Forward distance between camera and center of rotation (6.6cm)
+# Forward distance between the camera (at the front)
+# and the center of rotation (6.6cm)
 CAMERA_FORWARD_DIST = 0.066
 
 # Distance (diameter) between the center of the robot wheels (10.2cm)
@@ -836,6 +837,11 @@ class SimpleSimEnv(gym.Env):
         # Unbind the frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+        # Flip the image because OpenGL maps (0,0) to the lower-left corner
+        # Note: this is necessary for gym.wrappers.Monitor to record videos
+        # properly, otherwise they are vertically inverted.
+        img_array = np.ascontiguousarray(np.flip(img_array, axis=0))
+
         return img_array
 
     def render(self, mode='human', close=False):
@@ -882,6 +888,7 @@ class SimpleSimEnv(gym.Env):
         # Draw the image to the rendering window
         width = img.shape[1]
         height = img.shape[0]
+        img = np.ascontiguousarray(np.flip(img, axis=0))
         img_data = pyglet.image.ImageData(
             width,
             height,
