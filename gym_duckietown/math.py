@@ -23,7 +23,7 @@ def duckie_boundbox(cur_pos, theta, width, length):
 
 def tensor_sat_test(norm, corners):
     """
-    Separating Axis Theorem (SAT) extended to >2D. 
+    Separating Axis Theorem (SAT) extended to >2D.
     Requires that both the inputs are stacked on axis 0.
     (each input ~ "a list of 2D matrices" = 3D Tensor)
     """
@@ -42,12 +42,12 @@ def is_between_ordered(val, lowerbound, upperbound):
     """
     return lowerbound <= val and val <= upperbound
 
-def generate_corners(pos, min_coords,max_coords, theta, scale): 
+def generate_corners(pos, min_coords,max_coords, theta, scale):
     """
     Generates corners given obj pos, extents, scale, and rotation
     """
     px = pos[0]
-    pz = pos[-1]   
+    pz = pos[-1]
     return np.array([
         rotate_point(min_coords[0]*scale+px, min_coords[-1]*scale+pz, px, pz, theta),
         rotate_point(max_coords[0]*scale+px, min_coords[-1]*scale+pz, px, pz, theta),
@@ -68,12 +68,12 @@ def generate_norm(corners):
 
 def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     """
-    Helper function for Tensor-based OBB intersection. 
+    Helper function for Tensor-based OBB intersection.
     Variable naming: SAT requires checking of the projection of all normals
     to all sides, which is where we use tensor_sat_test (gives the mins and maxs)
     of each projection pair. The variables are named as:
     {x's norm + projected on + min/max}.
-    """   
+    """
     duckduck_min, duckduck_max = tensor_sat_test(duckie_norm, duckie.T)
     objduck_min, objduck_max = tensor_sat_test(duckie_norm, objs_stacked)
     duckobj_min, duckobj_max = tensor_sat_test(norms_stacked, duckie.T)
@@ -96,5 +96,5 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
             continue
         # All projection intervals overlap, collision with an object
         return True
-      
+
     return False

@@ -6,7 +6,6 @@ import yaml
 import pyglet
 from pyglet.gl import *
 from ctypes import byref, POINTER
-from multiprocessing.dummy import Pool as ThreadPool
 
 import gym
 from gym import error, spaces, utils
@@ -78,7 +77,7 @@ ROBOT_SPEED = 0.45
 # Buffer added to mindist. spawn position needs to be from all objects
 MIN_SPAWN_OBJ_DIST = 0.05
 
-    
+
 class SimpleSimEnv(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -608,18 +607,18 @@ class SimpleSimEnv(gym.Env):
         return tile != None and tile['drivable']
 
     def _inconvenient_spawn(self):
-        """ 
+        """
         Check that duckie spawn is not too close to any visible object
         """
 
-        results = [np.linalg.norm(x['pos'] - self.cur_pos) < 
+        results = [np.linalg.norm(x['pos'] - self.cur_pos) <
             max(x['max_coords']) * 0.5 * x['scale'] + MIN_SPAWN_OBJ_DIST
             for x in self.objects if x['visible']
         ]
         return np.any(results)
 
     def _collision(self):
-        """ 
+        """
         Tensor-based OBB Collision detection, using math.py
         """
 
@@ -628,7 +627,7 @@ class SimpleSimEnv(gym.Env):
             ROBOT_WIDTH, ROBOT_LENGTH)
         # Generate the norms corresponding to each face of BB
         self.duckie_norm = generate_norm(self.duckie_corners)
-        return intersects(self.duckie_corners, self.static_objects, 
+        return intersects(self.duckie_corners, self.static_objects,
             self.duckie_norm, self.static_norms)
 
     def _valid_pose(self):
@@ -644,7 +643,7 @@ class SimpleSimEnv(gym.Env):
         f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
         collision = self._collision()
-        
+
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
         return (
