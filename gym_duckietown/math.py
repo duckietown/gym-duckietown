@@ -18,11 +18,9 @@ def duckie_boundbox(cur_pos, theta, width, length):
     rotate_point(px-hwidth, pz+hlength, px, pz, theta),
   ])
 
-def sat_test(norm, corners):
-  dotval = np.matmul(norm, corners.T)
-  mins = np.min(dotval, axis=1)
-  maxs = np.max(dotval, axis=1)
-  return mins[0], maxs[0], mins[1], maxs[1]
+def tensor_sat_test(norm, corners):
+  dotval = np.matmul(norm, corners)
+  return np.min(dotval, axis=-1), np.max(dotval, axis=-1)
 
 def overlaps(min1, max1, min2, max2):
   return is_between_ordered(min2, min1, max1) or is_between_ordered(min1, min2, max2)
@@ -39,31 +37,30 @@ def generate_corners(pos, min_coords,max_coords, theta, scale):
   ])
 
 def generate_norm(corners):
-  ca = np.cov(corners,y = None,rowvar = 0,bias = 1)
-  _, vect = np.linalg.eig(ca)
-  return vect.T
+  width = corners[0] - corners[1]
+  length = corners[0] - corners[2]
+  return np.array([[-1* width[1], width[0]], [length[1], -1
+    *length[0]]])
 
-def intersects(corners1, corners2):    
-  # norms of each side
-  norm1 = generate_norm(corners1)
-  norm2 = generate_norm(corners2)
-  
-  shape1a_min, shape1a_max, shape1b_min, shape1b_max = sat_test(norm1, corners1)
-  shape2a_min, shape2a_max, shape2b_min, shape2b_max = sat_test(norm1, corners2)
+def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):      
+  duckduck_min, duckduck_max = tensor_sat_test(duckie_norm, duckie.T)
+  objduck_min, objduck_max = tensor_sat_test(duckie_norm, objs_stacked)
+  duckobj_min, duckobj_max = tensor_sat_test(norms_stacked, duckie.T)
+  objobj_min, objobj_max = tensor_sat_test(norms_stacked, objs_stacked)
 
-  if not overlaps(shape1a_min, shape1a_max, shape2a_min, shape2a_max):
-    return False
-
-  if not overlaps(shape1b_min, shape1b_max, shape2b_min, shape2b_max):
-    return False
-
-  shape1a_min, shape1a_max, shape1b_min, shape1b_max = sat_test(norm2, corners1)
-  shape2a_min, shape2a_max, shape2b_min, shape2b_max = sat_test(norm2, corners2)
-
-  if not overlaps(shape1a_min, shape1a_max, shape2a_min, shape2a_max):
-    return False
-
-  if not overlaps(shape1b_min, shape1b_max, shape2b_min, shape2b_max):
-    return False
-  
-  return True
+  for idx in range(objduck_min.shape[0]):
+    if not overlaps(
+      duckduck_min[0], duckduck_max[0], objduck_min[idx][0], objduck_max[idx][0]):
+      continue
+    if not overlaps(
+      duckduck_min[1], duckduck_max[1], objduck_min[idx][1], objduck_max[idx][1]):
+      continue
+    if not overlaps(
+      duckobj_min[idx][0], duckobj_max[idx][0], objobj_min[idx][0], objobj_max[idx][0]):
+      continue
+    if not overlaps(
+      duckobj_min[idx][1], duckobj_max[idx][1], objobj_min[idx][1], objobj_max[idx][1]):
+      continue
+    return True
+    
+  return False

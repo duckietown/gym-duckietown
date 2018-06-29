@@ -10,7 +10,7 @@ from gym_duckietown.envs import SimpleSimEnv
 
 # Benchmark loading time
 st = time.time()
-env = SimpleSimEnv(max_steps = 20000)
+env = SimpleSimEnv(max_steps = 20000, map_name='loop_obstacles')
 env.seed(0)
 env.reset()
 load_time = 1000 * (time.time() - st)

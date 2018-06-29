@@ -77,6 +77,7 @@ ROBOT_SPEED = 0.45
 # Minimum distance spawn position needs to be from all objects
 MIN_SPAWN_OBJ_DIST = 0.10
 
+import time
     
 class SimpleSimEnv(gym.Env):
     """
@@ -373,6 +374,7 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
         self.static_objects = []
+        self.static_norms = []
 
         # For each object
         for desc in map_data.get('objects', []):
@@ -406,8 +408,12 @@ class SimpleSimEnv(gym.Env):
 
             self.objects.append(obj)
             if obj['static']:
-                self.static_objects.append(generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale)
-                )
+                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale)
+                self.static_objects.append(corners.T)
+                self.static_norms.append(generate_norm(corners))
+
+        self.static_objects = np.stack(self.static_objects, axis=0)
+        self.static_norms = np.stack(self.static_norms, axis=0)
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -617,18 +623,12 @@ class SimpleSimEnv(gym.Env):
 
         return np.any(results < MIN_SPAWN_OBJ_DIST)
 
-    def _collision_helper(self, corners):
-        return intersects(self.duckie_corners, corners)
-
     def _collision(self):
         self.duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle,
             ROBOT_WIDTH, ROBOT_LENGTH)
-
-        pool = ThreadPool(len(self.static_objects))
-        results = np.array(pool.map(self._collision_helper, self.static_objects))
-        pool.close()
-
-        return np.any(results)
+        self.duckie_norm = generate_norm(self.duckie_corners)
+        return intersects(self.duckie_corners, self.static_objects, 
+            self.duckie_norm, self.static_norms)
 
     def _valid_pose(self):
         """
