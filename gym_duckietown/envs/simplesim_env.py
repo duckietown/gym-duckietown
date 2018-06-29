@@ -643,6 +643,8 @@ class SimpleSimEnv(gym.Env):
         r_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * r_vec
         f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
+        collision = self._collision()
+        
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
         return (
@@ -650,7 +652,7 @@ class SimpleSimEnv(gym.Env):
             self._drivable_pos(l_pos) and
             self._drivable_pos(r_pos) and
             self._drivable_pos(f_pos) and
-            not self._collision()
+            not collision
         )
 
     def step(self, action):
