@@ -75,10 +75,9 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.45
 
-# Minimum distance spawn position needs to be from all objects
-MIN_SPAWN_OBJ_DIST = 0.10
+# Buffer added to mindist. spawn position needs to be from all objects
+MIN_SPAWN_OBJ_DIST = 0.05
 
-import time
     
 class SimpleSimEnv(gym.Env):
     """
@@ -293,11 +292,8 @@ class SimpleSimEnv(gym.Env):
             # Choose a random direction
             self.cur_angle = self.np_random.uniform(0, 2 * math.pi)
 
-            # If this is not a valid pose, retry
-            if not self._valid_pose() or self._collision():
-                continue
-
-            if self._inconvenient_spawn():
+            # If this is too close to an object or not a valid pose, retry
+            if self._inconvenient_spawn() or not self._valid_pose():
                 continue
 
             # If the angle is too far away from the driving direction, retry
@@ -611,22 +607,26 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
-    def _spawn_helper(self, pos):
-        return distance(pos, self.cur_pos)
-
     def _inconvenient_spawn(self):
-        pool = ThreadPool(len(self.static_objects))
-        results = np.array(pool.map(
-            self._spawn_helper, 
-            [x['pos'] for x in self.objects if x['visible']])
-        )
-        pool.close()
+        """ 
+        Check that duckie spawn is not too close to any visible object
+        """
 
-        return np.any(results < MIN_SPAWN_OBJ_DIST)
+        results = [np.linalg.norm(x['pos'] - self.cur_pos) < 
+            max(x['max_coords']) * 0.5 * x['scale'] + MIN_SPAWN_OBJ_DIST
+            for x in self.objects if x['visible']
+        ]
+        return np.any(results)
 
     def _collision(self):
+        """ 
+        Tensor-based OBB Collision detection, using math.py
+        """
+
+        # Recompute the bounding boxes for dynamic objects
         self.duckie_corners = duckie_boundbox(self.cur_pos, self.cur_angle,
             ROBOT_WIDTH, ROBOT_LENGTH)
+        # Generate the norms corresponding to each face of BB
         self.duckie_norm = generate_norm(self.duckie_corners)
         return intersects(self.duckie_corners, self.static_objects, 
             self.duckie_norm, self.static_norms)
@@ -644,12 +644,13 @@ class SimpleSimEnv(gym.Env):
         f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
         # Check that the center position and
-        # both wheels are on drivable tiles
+        # both wheels are on drivable tiles and no collisions
         return (
             self._drivable_pos(self.cur_pos) and
             self._drivable_pos(l_pos) and
             self._drivable_pos(r_pos) and
-            self._drivable_pos(f_pos)
+            self._drivable_pos(f_pos) and
+            not self._collision()
         )
 
     def step(self, action):
@@ -662,7 +663,7 @@ class SimpleSimEnv(gym.Env):
         obs = self.render_obs()
 
         # If the agent is not in a valid pose (on drivable tiles)
-        if not self._valid_pose() or self._collision():
+        if not self._valid_pose():
             reward = -10
             done = True
             return obs, reward, done, {}
