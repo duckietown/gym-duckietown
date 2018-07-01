@@ -2,7 +2,7 @@ from .graphics import rotate_point
 import numpy as np
 
 
-def duckie_boundbox(cur_pos, pz_true, theta, width, length):
+def duckie_boundbox(cur_pos, true_pos, theta, width, length):
     """
     Compute bounding box for duckie using its dimensions,
     current position, and angle of rotation
@@ -15,10 +15,10 @@ def duckie_boundbox(cur_pos, pz_true, theta, width, length):
 
     # Corners of the bounding box
     return np.array([
-        rotate_point(px-hwidth, pz_true-hlength, px, pz_rot, theta),
-        rotate_point(px+hwidth, pz_true-hlength, px, pz_rot, theta),
-        rotate_point(px+hwidth, pz_true+hlength, px, pz_rot, theta),
-        rotate_point(px-hwidth, pz_true+hlength, px, pz_rot, theta),
+        rotate_point(px-hwidth, true_pos[2]-hlength, px, pz_rot, theta),
+        rotate_point(px+hwidth, true_pos[2]-hlength, px, pz_rot, theta),
+        rotate_point(px+hwidth, true_pos[2]+hlength, px, pz_rot, theta),
+        rotate_point(px-hwidth, true_pos[2]+hlength, px, pz_rot, theta),
     ])
 
 def tensor_sat_test(norm, corners):

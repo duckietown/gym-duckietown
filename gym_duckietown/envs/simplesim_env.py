@@ -369,7 +369,13 @@ class SimpleSimEnv(gym.Env):
 
         # Create the objects array
         self.objects = []
+
+        # Arrays for checking collisions with N static objects
+
+        # (N x 4 x 2): 4 corners - (x, z) - for object's boundbox
         self.static_objects = []
+
+        # (N x 2 x 2): 2 2D norms for each object (1 per face of boundbox)
         self.static_norms = []
 
         # For each object
@@ -606,12 +612,13 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
-    def _actual_zpos(self, pos):
+    def _actual_center(self, pos):
         """
         calculate true center, != center of rotation
         see CAMERA_FORWARD_DIST
         """
-        return self.cur_pos[2] + CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)
+        return np.array([pos[0], pos[1],
+            self.cur_pos[2] + CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)])
         
     def _inconvenient_spawn(self):
         """
@@ -629,8 +636,8 @@ class SimpleSimEnv(gym.Env):
         Tensor-based OBB Collision detection, using math.py
         """
 
-        # Recompute the bounding boxes for dynamic objects
-        self.duckie_corners = duckie_boundbox(self.cur_pos, _actual_zpos(self.cur_pos),
+        # Recompute the bounding boxes (BB) for dynamic objects
+        self.duckie_corners = duckie_boundbox(self.cur_pos, self._actual_center(self.cur_pos),
             self.cur_angle, ROBOT_WIDTH, ROBOT_LENGTH)
         # Generate the norms corresponding to each face of BB
         self.duckie_norm = generate_norm(self.duckie_corners)
