@@ -15,7 +15,6 @@ from gym.utils import seeding
 from ..utils import *
 from ..graphics import *
 from ..objmesh import *
-from ..shader import *
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -180,84 +179,28 @@ class SimpleSimEnv(gym.Env):
         # Load the map
         self._load_map(map_name)
 
-        DLIGHT_FUNC = """
-        float dLight( 
-            in vec3 light_pos, // normalised light position
-            in vec3 frag_normal // normalised geometry normal
-        ) {
-            // returns vec2( ambientMult, diffuseMult )
-            float n_dot_pos = max( 0.0, dot( 
-                frag_normal, light_pos
-            ));
-            return n_dot_pos;
-        }       
-        """
+        gl.glEnable(GL_LIGHTING)
+        gl.glEnable(GL_LIGHT0)
+       
+        
 
-        VERTEX_SHADER = DLIGHT_FUNC + '''
-        uniform vec4 Global_ambient;
-        uniform vec4 Light_ambient;
-        uniform vec4 Light_diffuse;
-        uniform vec3 Light_location;
-        uniform vec4 Material_ambient;
-        uniform vec4 Material_diffuse;
-        attribute vec3 Vertex_position;
-        attribute vec3 Vertex_normal;
-        varying vec4 baseColor;
-        void main() {
-            gl_Position = gl_ModelViewProjectionMatrix * vec4( 
-                Vertex_position, 1.0
-            );
-            vec3 EC_Light_location = gl_NormalMatrix * Light_location;
-            float diffuse_weight = dLight(
-                normalize(EC_Light_location),
-                normalize(gl_NormalMatrix * Vertex_normal)
-            );
-            baseColor = clamp( 
-            (
-                // global component 
-                (Global_ambient * Material_ambient)
-                // material's interaction with light's contribution 
-                // to the ambient lighting...
-                + (Light_ambient * Material_ambient)
-                // material's interaction with the direct light from 
-                // the light.
-                + (Light_diffuse * Material_diffuse * diffuse_weight)
-            ), 0.0, 1.0);
-        }
-        '''
-        VERTEX_SHADER = VERTEX_SHADER.encode('utf-8')
+        def vec(*args):
+            return (GLfloat * len(args))(*args)
 
-        FRAGMENT_SHADER = '''
-        varying vec4 baseColor;
-        void main() {
-            gl_FragColor = baseColor;
-        }
-        '''.encode('utf-8')
+        gl.glLightfv(GL_LIGHT0, GL_POSITION, vec(0.3, 0.3, 0.3, 0))
+        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, vec(.4, .4, .4, 1))
+        # gl.glLightModelfv(GL_LIGHT_MODEL_AMBIENT, vec(0.2, .2, .2, 1))
+        gl.glLightfv(GL_LIGHT0, GL_SPECULAR, vec(1, 1, 1, 1))
+        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(1, 1, 0, 1))
 
-        # compile shader
-        self.shader_id = glCreateProgram()
-        shaders = [
-            FragmentShader([FRAGMENT_SHADER]),
-            VertexShader([VERTEX_SHADER])
-        ]
-        for s in shaders:
-            s.compile()
-            glAttachShader(self.shader_id, s.id)
+        # gl.glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+        # gl.glEnable(GL_COLOR_MATERIAL)
 
-        glLinkProgram(self.shader_id)
 
-        for uniform in (
-            'Global_ambient',
-            'Light_ambient',
-            'Light_diffuse',
-            'Light_location',
-            'Material_ambient',
-            'Material_diffuse',
-        ):
-            location = glGetUniformLocation( self.shader_id, uniform.encode('utf-8') )
-            if location in ( None, -1):
-                print('Warning, no uniform: %s'%( uniform ))
-            setattr( self, uniform+ '_loc', location )
+        gl.glMaterialfv(
+            GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, vec(1, 1, 1, 1))
+        gl.glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, vec(1, 1, 1, 1))
+        # gl.glMaterialf(GL_FRONT_AND_BACK, GL_EMISSION, vec(0, 0, 0, 1))
         
         # Initialize the state
         self.seed()
