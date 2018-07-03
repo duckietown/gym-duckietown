@@ -2,40 +2,38 @@
 # on the road, which have to be avoided.
 
 tiles:
-- [asphalt, asphalt     , asphalt   , asphalt       , asphalt   , asphalt       , asphalt]
-- [asphalt, curve_left/W, straight/W, straight/W    , straight/W, curve_left/N  , asphalt]
-- [asphalt, straight/S  , asphalt   , asphalt       , asphalt   , straight/N    , asphalt]
-- [asphalt, straight/S  , asphalt   , curve_right/N , straight/E, curve_left/E  , asphalt]
-- [asphalt, curve_left/S, straight/E, curve_left/E  , asphalt   , asphalt       , asphalt]
-- [asphalt, asphalt     , asphalt   , asphalt       , asphalt   , asphalt       , asphalt]
+- [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
+- [floor  , curve_left/W, straight/W, straight/W, straight/W    , straight/W, curve_left/N  , floor  ]
+- [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
+- [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
+- [floor  , straight/S  , floor     , floor     , curve_right/N , straight/E, curve_left/E  , floor  ]
+- [floor  , curve_left/S, straight/E, straight/W, curve_left/E  , floor     , floor         , floor  ]
+- [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
 
+# NOTE: obstacles cannot be optional, because they will change for
+# every episode, and this will interfere with imitation learning
 objects:
 
 - kind: duckie
-  pos: [2.5, 1.2]
+  pos: [3.5, 1.2]
   rotate: 10
   height: 0.06
-  optional: true
+
+- kind: cone
+  pos: [6.8, 2.5]
+  rotate: 90
+  height: 0.08
+- kind: cone
+  pos: [6.6, 2.4]
+  rotate: 90
+  height: 0.08
 
 - kind: duckie
-  pos: [1.5, 4.5]
+  pos: [1.5, 5.5]
   rotate: 90
   height: 0.08
-  optional: true
-
-- kind: cone
-  pos: [5.8, 2.5]
-  rotate: 90
-  height: 0.08
-  optional: true
-- kind: cone
-  pos: [5.6, 2.4]
-  rotate: 90
-  height: 0.08
-  optional: true
 
 - kind: duckiebot
-  pos: [3.5, 4.75]
+  pos: [4.5, 5.75]
   rotate: -45
   height: 0.12
-  optional: true
