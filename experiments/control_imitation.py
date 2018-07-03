@@ -41,13 +41,22 @@ else:
 obs = env.reset()
 env.render()
 
-model = Model()
-model.load_state_dict(torch.load('trained_models/imitate.pt'))
-model.eval()
-model.cuda()
-
 avg_frame_time = 0
 max_frame_time = 0
+
+def load_model():
+    global model
+    model = Model()
+
+    try:
+        model.load_state_dict(torch.load('trained_models/imitate.pt'))
+    except:
+        print('failed to load model')
+
+    model.eval()
+    model.cuda()
+
+load_model()
 
 while True:
     start_time = time.time()
@@ -80,8 +89,10 @@ while True:
         if reward < 0:
             print('*** FAILED ***')
             time.sleep(0.8)
-        env.reset()
+        obs = env.reset()
         env.render()
+
+        load_model()
 
     #time.sleep(0.1)
     #time.sleep(0.015)

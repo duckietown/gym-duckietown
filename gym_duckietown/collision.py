@@ -1,7 +1,6 @@
 from .graphics import rotate_point
 import numpy as np
 
-
 def duckie_boundbox(cur_pos, true_pos, theta, width, length):
     """
     Compute bounding box for duckie using its dimensions,
@@ -81,7 +80,7 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
 
     # Iterate through each object we are checking against
     for idx in range(objduck_min.shape[0]):
-        # If even one interval doesn't overlap, immediately know objects haven't collides
+        # If any interval doesn't overlap, immediately know objects don't intersect
         if not overlaps(
             duckduck_min[0], duckduck_max[0], objduck_min[idx][0], objduck_max[idx][0]):
             continue
