@@ -200,9 +200,7 @@ class SimpleSimEnv(gym.Env):
         gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.5, 0.5, 0.5, 1.0))
         gl.glEnable(GL_LIGHT0)
         gl.glEnable(GL_LIGHTING)
-        gl.glEnable(GL_COLOR_MATERIAL)
-        gl.glEnable(GL_DEPTH_TEST)
-        gl.glShadeModel(GL_SMOOTH)
+        # gl.glEnable(GL_COLOR_MATERIAL)
         
         # Initialize the state
         self.seed()
