@@ -592,7 +592,7 @@ class SimpleSimEnv(gym.Env):
         # Compute the distance to the center of curvature
         r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
 
-        # Compute the rotatio angle for this time step
+        # Compute the rotation angle for this time step
         rotAngle = w * deltaTime
 
         # Rotate the robot's position around the center of rotation
@@ -621,9 +621,12 @@ class SimpleSimEnv(gym.Env):
         The value of self.cur_pos is the center of rotation.
         """
 
+        dir_vec = self.get_dir_vec()
+        z_adjustment = dir_vec[2] * (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2))
+        
         return np.array([
             pos[0], pos[1],
-            self.cur_pos[2] + CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)
+            pos[2] + z_adjustment
         ])
 
     def _inconvenient_spawn(self):

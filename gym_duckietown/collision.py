@@ -6,6 +6,7 @@ def duckie_boundbox(cur_pos, true_pos, theta, width, length):
     Compute bounding box for duckie using its dimensions,
     current position, and angle of rotation
     """
+
     # halfwidth/length, posx/y
     hwidth = 0.5 * width
     hlength = 0.5 * length
@@ -41,7 +42,7 @@ def is_between_ordered(val, lowerbound, upperbound):
     """
     return lowerbound <= val and val <= upperbound
 
-def generate_corners(pos, min_coords,max_coords, theta, scale):
+def generate_corners(pos, min_coords, max_coords, theta, scale):
     """
     Generates corners given obj pos, extents, scale, and rotation
     """
