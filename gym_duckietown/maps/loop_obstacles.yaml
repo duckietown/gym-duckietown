@@ -37,3 +37,9 @@ objects:
   pos: [4.5, 5.75]
   rotate: -45
   height: 0.12
+
+- kind: tree
+  pos: [7.5, 0.5]
+  rotate: 180
+  height: 0.2
+  optional: true
