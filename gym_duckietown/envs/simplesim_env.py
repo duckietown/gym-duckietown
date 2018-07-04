@@ -623,7 +623,7 @@ class SimpleSimEnv(gym.Env):
 
         dir_vec = self.get_dir_vec()
         z_adjustment = dir_vec[2] * (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2))
-        
+
         return np.array([
             pos[0], pos[1],
             pos[2] + z_adjustment
@@ -655,7 +655,9 @@ class SimpleSimEnv(gym.Env):
             self._actual_center(self.cur_pos),
             self.cur_angle,
             ROBOT_WIDTH,
-            ROBOT_LENGTH
+            ROBOT_LENGTH,
+            self.get_dir_vec(),
+            self.get_right_vec()
         )
 
         # Generate the norms corresponding to each face of BB
