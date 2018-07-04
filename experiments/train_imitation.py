@@ -26,10 +26,6 @@ from gym_duckietown.envs import SimpleSimEnv
 
 from utils import *
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--map-name', default='straight_road')
-args = parser.parse_args()
-
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
@@ -68,14 +64,14 @@ class Model(nn.Module):
 
         return vels
 
-def load_data():
+def load_data(map_name):
     global positions
     global actions
 
     positions = []
     actions = []
 
-    file_name = 'experiments/demos_%s.json' % args.map_name
+    file_name = 'experiments/demos_%s.json' % map_name
     try:
         with open(file_name, 'r') as f:
             data = json.load(f)
@@ -104,7 +100,11 @@ def gen_data():
     return obs, vels
 
 if __name__ == "__main__":
-    load_data()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--map-name', default='straight_road')
+    args = parser.parse_args()
+
+    load_data(args.map_name)
 
     env = SimpleSimEnv(map_name=args.map_name)
 
@@ -150,4 +150,4 @@ if __name__ == "__main__":
 
         # Periodically reload the training data
         if epoch % 200 == 0:
-            load_data()
+            load_data(args.map_name)
