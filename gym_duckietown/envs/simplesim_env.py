@@ -192,6 +192,29 @@ class SimpleSimEnv(gym.Env):
         # Load the map
         self._load_map(map_name)
 
+        gl.glEnable(GL_LIGHTING)
+        gl.glEnable(GL_LIGHT0)
+       
+        
+
+        def vec(*args):
+            return (GLfloat * len(args))(*args)
+
+        gl.glLightfv(GL_LIGHT0, GL_POSITION, vec(0.3, 0.3, 0.3, 0))
+        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, vec(.4, .4, .4, 1))
+        # gl.glLightModelfv(GL_LIGHT_MODEL_AMBIENT, vec(0.2, .2, .2, 1))
+        gl.glLightfv(GL_LIGHT0, GL_SPECULAR, vec(1, 1, 1, 1))
+        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(1, 1, 0, 1))
+
+        # gl.glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+        # gl.glEnable(GL_COLOR_MATERIAL)
+
+
+        gl.glMaterialfv(
+            GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, vec(1, 1, 1, 1))
+        gl.glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, vec(1, 1, 1, 1))
+        # gl.glMaterialf(GL_FRONT_AND_BACK, GL_EMISSION, vec(0, 0, 0, 1))
+        
         # Initialize the state
         self.seed()
         self.reset()
@@ -739,6 +762,12 @@ class SimpleSimEnv(gym.Env):
         #pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
+        # glUseProgram(self.shader_id)
+        # glUniform4f( self.Global_ambient_loc, .9,.05,.05,.1 )
+        # glUniform4f( self.Light_ambient_loc, .2,.2,.2, 1.0 )
+        # glUniform4f( self.Light_diffuse_loc, 1,1,1,1 )
+        # glUniform3f( self.Light_location_loc, 2,2,10 )
+
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
         glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo);
@@ -758,6 +787,7 @@ class SimpleSimEnv(gym.Env):
             0.04,
             100.0
         )
+        # self.shader.use()
 
         # Set modelview matrix
         # Note: we add a bit of noise to the camera position for data augmentation
