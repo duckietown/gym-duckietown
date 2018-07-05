@@ -23,14 +23,13 @@ from utils import make_var
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
 parser.add_argument('--map-name', default='udem1')
-parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
 parser.add_argument('--no-random', action='store_true', help='disable domain randomization')
+parser.add_argument('--no-pause', action='store_true', help="don't pause on failure")
 args = parser.parse_args()
 
 if args.env_name == 'SimpleSim-v0':
     env = SimpleSimEnv(
         map_name = args.map_name,
-        draw_curve = args.draw_curve,
         domain_rand = not args.no_random
     )
     #env.max_steps = math.inf
@@ -88,7 +87,8 @@ while True:
     if done:
         if reward < 0:
             print('*** FAILED ***')
-            time.sleep(0.8)
+            if not args.no_pause:
+                time.sleep(0.8)
         obs = env.reset()
         env.render()
 
