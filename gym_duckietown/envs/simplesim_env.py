@@ -195,7 +195,17 @@ class SimpleSimEnv(gym.Env):
 
         # Load the map
         self._load_map(map_name)
+       
+        def vec(*args):
+            return (GLfloat * len(args))(*args)
 
+        gl.glLightfv(GL_LIGHT0, GL_POSITION,  vec(-40, 200, 100, 0.0))
+        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, vec(0.6, 0.6, 0.6, 1.0))
+        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.5, 0.5, 0.5, 1.0))
+        gl.glEnable(GL_LIGHT0)
+        gl.glEnable(GL_LIGHTING)
+        gl.glEnable(GL_COLOR_MATERIAL)
+        
         # Initialize the state
         self.seed()
         self.reset()
@@ -761,6 +771,7 @@ class SimpleSimEnv(gym.Env):
             0.04,
             100.0
         )
+        # self.shader.use()
 
         # Set modelview matrix
         # Note: we add a bit of noise to the camera position for data augmentation
