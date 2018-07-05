@@ -646,11 +646,11 @@ class SimpleSimEnv(gym.Env):
 
         # Recompute the bounding boxes (BB) for the duckiebot
         self.duckie_corners = duckie_boundbox(
-            self.cur_pos,
             self._actual_center(self.cur_pos),
-            self.cur_angle,
             ROBOT_WIDTH,
-            ROBOT_LENGTH
+            ROBOT_LENGTH,
+            self.get_dir_vec(),
+            self.get_right_vec()
         )
 
         # Generate the norms corresponding to each face of BB
