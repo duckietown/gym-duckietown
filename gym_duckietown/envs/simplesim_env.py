@@ -226,8 +226,18 @@ class SimpleSimEnv(gym.Env):
             self.horizon_color = BLUE_SKY_COLOR
 
         # Setup some basic lighting with a far away sun
-        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(-40, 200, 100, 0.0))
-        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(0.6, 0.6, 0.6, 1.0))
+        if self.domain_rand:
+            lightPos = [
+                self.np_random.uniform(-150, 150),
+                self.np_random.uniform( 170, 220),
+                self.np_random.uniform(-150, 150),
+            ]
+        else:
+            lightPos = [-40, 200, 100]
+        ambient = self._perturb(np.array([0.65, 0.65, 0.65]))
+        diffuse = self._perturb(np.array([0.50, 0.50, 0.50]))
+        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*lightPos))
+        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(*ambient))
         gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat*4)(0.5, 0.5, 0.5, 1.0))
         gl.glEnable(GL_LIGHT0)
         gl.glEnable(GL_LIGHTING)
