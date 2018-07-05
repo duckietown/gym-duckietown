@@ -94,6 +94,7 @@ class SimpleSimEnv(gym.Env):
         map_name='udem1',
         max_steps=600,
         draw_curve=False,
+        draw_bbox=False,
         domain_rand=True
     ):
         # Maximum number of steps per episode
@@ -101,6 +102,9 @@ class SimpleSimEnv(gym.Env):
 
         # Flag to draw the road curve
         self.draw_curve = draw_curve
+
+        # Flag to draw bounding boxes
+        self.draw_bbox = draw_bbox
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
@@ -279,6 +283,7 @@ class SimpleSimEnv(gym.Env):
             tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
             tile = self.drivable_tiles[tile_idx]
 
+        # Keep trying to find a valid spawn position on this tile
         while True:
             i, j = tile['coords']
 
@@ -371,10 +376,10 @@ class SimpleSimEnv(gym.Env):
 
         # Arrays for checking collisions with N static objects
 
-        # (N x 4 x 2): 4 corners - (x, z) - for object's boundbox
+        # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
         self.static_corners = []
 
-        # (N x 2 x 2): 2 2D norms for each object (1 per face of boundbox)
+        # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
         self.static_norms = []
 
         # For each object
@@ -829,9 +834,20 @@ class SimpleSimEnv(gym.Env):
                     bezier_draw(pts, n = 20)
 
         # For each object
-        for obj in self.objects:
+        for idx, obj in enumerate(self.objects):
             if not obj['visible']:
                 continue
+
+            # Draw the bounding box
+            if self.draw_bbox:
+                corners = self.static_corners[idx]
+                glColor3f(1, 0, 0)
+                glBegin(GL_LINE_LOOP)
+                glVertex3f(corners[0, 0], 0, corners[1, 0])
+                glVertex3f(corners[0, 1], 0, corners[1, 1])
+                glVertex3f(corners[0, 2], 0, corners[1, 2])
+                glVertex3f(corners[0, 3], 0, corners[1, 3])
+                glEnd()
 
             scale = obj['scale']
             y_rot = obj['y_rot']

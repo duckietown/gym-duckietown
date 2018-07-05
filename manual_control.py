@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
 parser.add_argument('--map-name', default='udem1')
 parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
+parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 args = parser.parse_args()
 
@@ -24,6 +25,7 @@ if args.env_name == 'SimpleSim-v0':
     env = SimpleSimEnv(
         map_name = args.map_name,
         draw_curve = args.draw_curve,
+        draw_bbox = args.draw_bbox,
         domain_rand = args.domain_rand
     )
 else:
@@ -59,6 +61,9 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.UP:
         print('forward')
         action = np.array([0.40, 0.40])
+    elif symbol == key.DOWN:
+        print('back')
+        action = np.array([-0.40, -0.40])
     elif symbol == key.BACKSPACE or symbol == key.SLASH:
         print('RESET')
         action = None
