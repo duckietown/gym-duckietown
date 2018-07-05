@@ -53,6 +53,7 @@ class ObjMesh:
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)
         mesh_file = open(file_path, 'r')
+
         verts = []
         texs = []
         normals = []
@@ -178,7 +179,7 @@ class ObjMesh:
         file_name = os.path.split(file_path)[-1]
         tex_name = file_name.split('.')[0]
         tex_path = get_file_path('textures', tex_name, 'png')
-        
+
         # Try to load the texture, if it exists
         if os.path.exists(tex_path):
             self.texture = load_texture(tex_path)

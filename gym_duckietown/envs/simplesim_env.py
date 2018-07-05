@@ -195,17 +195,7 @@ class SimpleSimEnv(gym.Env):
 
         # Load the map
         self._load_map(map_name)
-       
-        def vec(*args):
-            return (GLfloat * len(args))(*args)
 
-        gl.glLightfv(GL_LIGHT0, GL_POSITION,  vec(-40, 200, 100, 0.0))
-        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, vec(0.6, 0.6, 0.6, 1.0))
-        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.5, 0.5, 0.5, 1.0))
-        gl.glEnable(GL_LIGHT0)
-        gl.glEnable(GL_LIGHTING)
-        gl.glEnable(GL_COLOR_MATERIAL)
-        
         # Initialize the state
         self.seed()
         self.reset()
@@ -234,6 +224,14 @@ class SimpleSimEnv(gym.Env):
                 self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
         else:
             self.horizon_color = BLUE_SKY_COLOR
+
+        # Setup some basic lighting with a far away sun
+        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(-40, 200, 100, 0.0))
+        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(0.6, 0.6, 0.6, 1.0))
+        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat*4)(0.5, 0.5, 0.5, 1.0))
+        gl.glEnable(GL_LIGHT0)
+        gl.glEnable(GL_LIGHTING)
+        gl.glEnable(GL_COLOR_MATERIAL)
 
         # Ground color
         self.ground_color = self._perturb(GROUND_COLOR, 0.3)
@@ -426,7 +424,8 @@ class SimpleSimEnv(gym.Env):
 
             # Compute collision detection information
             if obj['static']:
-                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale)
+                angle = rotate * (math.pi / 180)
+                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
                 self.static_corners.append(corners.T)
                 self.static_norms.append(generate_norm(corners))
 
@@ -615,7 +614,7 @@ class SimpleSimEnv(gym.Env):
         px, py, pz = self.cur_pos
         cx = px + r * r_vec[0]
         cz = pz + r * r_vec[2]
-        npx, npz = rotate_point(px, pz, cx, cz, -rotAngle)
+        npx, npz = rotate_point(px, pz, cx, cz, rotAngle)
         self.cur_pos = np.array([npx, py, npz])
 
         # Update the robot's direction angle
@@ -771,7 +770,6 @@ class SimpleSimEnv(gym.Env):
             0.04,
             100.0
         )
-        # self.shader.use()
 
         # Set modelview matrix
         # Note: we add a bit of noise to the camera position for data augmentation

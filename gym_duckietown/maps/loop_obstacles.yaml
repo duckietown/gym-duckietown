@@ -37,3 +37,8 @@ objects:
   pos: [4.5, 5.75]
   rotate: -45
   height: 0.12
+
+- kind: barrier
+  pos: [0.9, 3]
+  rotate: 100
+  height: 0.08
