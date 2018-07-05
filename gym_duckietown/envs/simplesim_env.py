@@ -592,7 +592,7 @@ class SimpleSimEnv(gym.Env):
         # Compute the distance to the center of curvature
         r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
 
-        # Compute the rotatio angle for this time step
+        # Compute the rotation angle for this time step
         rotAngle = w * deltaTime
 
         # Rotate the robot's position around the center of rotation
@@ -621,10 +621,8 @@ class SimpleSimEnv(gym.Env):
         The value of self.cur_pos is the center of rotation.
         """
 
-        return np.array([
-            pos[0], pos[1],
-            self.cur_pos[2] + CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)
-        ])
+        dir_vec = self.get_dir_vec()
+        return pos + (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)) * dir_vec
 
     def _inconvenient_spawn(self):
         """
@@ -648,11 +646,11 @@ class SimpleSimEnv(gym.Env):
 
         # Recompute the bounding boxes (BB) for the duckiebot
         self.duckie_corners = duckie_boundbox(
-            self.cur_pos,
             self._actual_center(self.cur_pos),
-            self.cur_angle,
             ROBOT_WIDTH,
-            ROBOT_LENGTH
+            ROBOT_LENGTH,
+            self.get_dir_vec(),
+            self.get_right_vec()
         )
 
         # Generate the norms corresponding to each face of BB

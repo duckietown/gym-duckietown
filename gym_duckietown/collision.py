@@ -1,24 +1,30 @@
 from .graphics import rotate_point
 import numpy as np
 
-def duckie_boundbox(cur_pos, true_pos, theta, width, length):
+def duckie_boundbox(true_pos, width, length, f_vec, r_vec):
     """
     Compute bounding box for duckie using its dimensions,
     current position, and angle of rotation
+    Order of points in bounding box:
+    (front)
+    4 - 3    
+    |   |
+    1 - 2
     """
-    # halfwidth/length, posx/y
+
+    # halfwidth/length
     hwidth = 0.5 * width
     hlength = 0.5 * length
-    px = cur_pos[0]
-    pz_rot = cur_pos[2]
 
-    # Corners of the bounding box
-    return np.array([
-        rotate_point(px-hwidth, true_pos[2]-hlength, px, pz_rot, theta),
-        rotate_point(px+hwidth, true_pos[2]-hlength, px, pz_rot, theta),
-        rotate_point(px+hwidth, true_pos[2]+hlength, px, pz_rot, theta),
-        rotate_point(px-hwidth, true_pos[2]+hlength, px, pz_rot, theta),
-    ])
+    # Indexing to make sure we only get the x/z dims
+    corners = np.array([
+        true_pos - hwidth*r_vec - hlength * f_vec,
+        true_pos + hwidth*r_vec - hlength * f_vec,
+        true_pos + hwidth*r_vec + hlength * f_vec,
+        true_pos - hwidth*r_vec + hlength * f_vec
+    ])[:, [0, 2]]
+
+    return corners
 
 def tensor_sat_test(norm, corners):
     """
@@ -41,7 +47,7 @@ def is_between_ordered(val, lowerbound, upperbound):
     """
     return lowerbound <= val and val <= upperbound
 
-def generate_corners(pos, min_coords,max_coords, theta, scale):
+def generate_corners(pos, min_coords, max_coords, theta, scale):
     """
     Generates corners given obj pos, extents, scale, and rotation
     """
