@@ -28,3 +28,11 @@ for map_file in os.listdir('gym_duckietown/maps'):
 
 # Test the multi-map environment
 env = MultiMapEnv()
+
+# Check that we do not spawn too close to obstacles
+env = SimpleSimEnv(map_name='loop_obstacles')
+for i in range(0, 75):
+    obs = env.reset()
+    assert not env._collision(), "collision on spawn"
+    env.step(np.array([0.1, 0.1]))
+    assert not env._collision(), "collision after one step"

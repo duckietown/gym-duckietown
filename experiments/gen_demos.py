@@ -17,8 +17,8 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--map-name', default='straight_road')
-parser.add_argument('--demo-len', default=50, type=int, help='length of demonstrations to be generated')
-parser.add_argument('--tail-len', default=10, type=int, help='extra actions at the end of trajectories, cut out of demonstrations')
+parser.add_argument('--demo-len', default=30, type=int, help='length of demonstrations to be generated')
+parser.add_argument('--tail-len', default=30, type=int, help='extra actions at the end of trajectories, cut out of demonstrations')
 parser.add_argument('--num-itrs', default=750, type=int)
 args = parser.parse_args()
 
@@ -78,22 +78,43 @@ def gen_trajectory(env, seed, num_actions, num_itrs):
     total reward obtained
     """
 
-    best_actions = gen_actions(num_actions)
     best_r = -math.inf
+    best_len = 0
+    best_actions = None
+    best_positions = None
 
+    # Do an initial search to try to find a trajectory
+    # along which the agent doesn't fail
+    for i in range(0, 150):
+        new_actions = gen_actions(num_actions)
+        positions, r = eval_actions(env, seed, new_actions)
+        t_len = len(positions)
+
+        if t_len > best_len or (t_len == best_len and r > best_r):
+            best_r = r
+            best_len = t_len
+            best_actions = new_actions
+            best_positions = positions
+
+    # If we couldn't find a working trajectory from this seed, abort
+    if best_len < num_actions:
+        print('abort')
+        return best_positions, best_actions
+
+    # Iteratively mutate and improve the trajectory
     for itr in range(1, num_itrs+1):
-
         new_actions = mutate_actions(best_actions)
         positions, r = eval_actions(env, seed, new_actions)
 
         if r > best_r:
             best_r = r
             best_actions = new_actions
+            best_positions = positions
             print('iteration #%d, r=%f' % (itr, r))
 
     print('r=%f' % best_r)
 
-    return positions, best_actions
+    return best_positions, best_actions
 
 env = SimpleSimEnv(map_name=args.map_name)
 

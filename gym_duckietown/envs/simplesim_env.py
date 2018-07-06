@@ -74,8 +74,8 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.45
 
-# Buffer added to mindist. spawn position needs to be from all objects
-MIN_SPAWN_OBJ_DIST = 0.15
+# Minimum distance spawn position needs to be from all objects
+MIN_SPAWN_OBJ_DIST = 0.25
 
 class SimpleSimEnv(gym.Env):
     """
@@ -94,6 +94,7 @@ class SimpleSimEnv(gym.Env):
         map_name='udem1',
         max_steps=600,
         draw_curve=False,
+        draw_bbox=False,
         domain_rand=True
     ):
         # Maximum number of steps per episode
@@ -101,6 +102,9 @@ class SimpleSimEnv(gym.Env):
 
         # Flag to draw the road curve
         self.draw_curve = draw_curve
+
+        # Flag to draw bounding boxes
+        self.draw_bbox = draw_bbox
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
@@ -215,11 +219,29 @@ class SimpleSimEnv(gym.Env):
             elif horz_mode == 1:
                 self.horizon_color = self._perturb(WALL_COLOR)
             elif horz_mode == 2:
-                self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
+                self.horizon_color = self._perturb([0.15, 0.15, 0.15], 0.4)
             elif horz_mode == 3:
-                self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
+                self.horizon_color = self._perturb([0.9, 0.9, 0.9], 0.4)
         else:
             self.horizon_color = BLUE_SKY_COLOR
+
+        # Setup some basic lighting with a far away sun
+        if self.domain_rand:
+            lightPos = [
+                self.np_random.uniform(-150, 150),
+                self.np_random.uniform( 170, 220),
+                self.np_random.uniform(-150, 150),
+            ]
+        else:
+            lightPos = [-40, 200, 100]
+        ambient = self._perturb([0.65, 0.65, 0.65])
+        diffuse = self._perturb([0.50, 0.50, 0.50])
+        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*lightPos))
+        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(*ambient))
+        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat*4)(0.5, 0.5, 0.5, 1.0))
+        gl.glEnable(GL_LIGHT0)
+        gl.glEnable(GL_LIGHTING)
+        gl.glEnable(GL_COLOR_MATERIAL)
 
         # Ground color
         self.ground_color = self._perturb(GROUND_COLOR, 0.3)
@@ -244,7 +266,7 @@ class SimpleSimEnv(gym.Env):
         for i in range(0, 3 * numTris):
             p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
             c = self.np_random.uniform(low=0, high=0.9)
-            c = self._perturb(np.array([c, c, c]), 0.1)
+            c = self._perturb([c, c, c], 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
@@ -263,7 +285,7 @@ class SimpleSimEnv(gym.Env):
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
-            obj['color'] = self._perturb(np.array([1, 1, 1]), 0.3)
+            obj['color'] = self._perturb([1, 1, 1], 0.3)
 
             # Randomize whether the object is visible or not
             if obj['optional'] and self.domain_rand:
@@ -279,6 +301,7 @@ class SimpleSimEnv(gym.Env):
             tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
             tile = self.drivable_tiles[tile_idx]
 
+        # Keep trying to find a valid spawn position on this tile
         while True:
             i, j = tile['coords']
 
@@ -371,10 +394,10 @@ class SimpleSimEnv(gym.Env):
 
         # Arrays for checking collisions with N static objects
 
-        # (N x 4 x 2): 4 corners - (x, z) - for object's boundbox
+        # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
         self.static_corners = []
 
-        # (N x 2 x 2): 2 2D norms for each object (1 per face of boundbox)
+        # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
         self.static_norms = []
 
         # For each object
@@ -411,7 +434,8 @@ class SimpleSimEnv(gym.Env):
 
             # Compute collision detection information
             if obj['static']:
-                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, rotate, scale)
+                angle = rotate * (math.pi / 180)
+                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
                 self.static_corners.append(corners.T)
                 self.static_norms.append(generate_norm(corners))
 
@@ -451,6 +475,9 @@ class SimpleSimEnv(gym.Env):
         """
         assert scale >= 0
         assert scale < 1
+
+        if isinstance(val, list):
+            val = np.array(val)
 
         if not self.domain_rand:
             return val
@@ -600,7 +627,7 @@ class SimpleSimEnv(gym.Env):
         px, py, pz = self.cur_pos
         cx = px + r * r_vec[0]
         cz = pz + r * r_vec[2]
-        npx, npz = rotate_point(px, pz, cx, cz, -rotAngle)
+        npx, npz = rotate_point(px, pz, cx, cz, rotAngle)
         self.cur_pos = np.array([npx, py, npz])
 
         # Update the robot's direction angle
@@ -763,12 +790,18 @@ class SimpleSimEnv(gym.Env):
         if self.domain_rand:
             pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
         x, y, z = pos
-        y += CAMERA_FLOOR_DIST
         dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glRotatef(self.cam_angle, 1, 0, 0)
-        glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+
+        if self.draw_bbox:
+            y += 0.8
+            glRotatef(90, 1, 0, 0)
+        else:
+            y += CAMERA_FLOOR_DIST
+            glRotatef(self.cam_angle, 1, 0, 0)
+            glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+
         gluLookAt(
             # Eye position
             x,
@@ -829,9 +862,20 @@ class SimpleSimEnv(gym.Env):
                     bezier_draw(pts, n = 20)
 
         # For each object
-        for obj in self.objects:
+        for idx, obj in enumerate(self.objects):
             if not obj['visible']:
                 continue
+
+            # Draw the bounding box
+            if self.draw_bbox:
+                corners = self.static_corners[idx]
+                glColor3f(1, 0, 0)
+                glBegin(GL_LINE_LOOP)
+                glVertex3f(corners[0, 0], 0.01, corners[1, 0])
+                glVertex3f(corners[0, 1], 0.01, corners[1, 1])
+                glVertex3f(corners[0, 2], 0.01, corners[1, 2])
+                glVertex3f(corners[0, 3], 0.01, corners[1, 3])
+                glEnd()
 
             scale = obj['scale']
             y_rot = obj['y_rot']
@@ -843,6 +887,17 @@ class SimpleSimEnv(gym.Env):
             glColor3f(*obj['color'])
             mesh.render()
             glPopMatrix()
+
+        # Draw the agent's own bounding box
+        if self.draw_bbox:
+            corners = self.duckie_corners
+            glColor3f(1, 0, 0)
+            glBegin(GL_LINE_LOOP)
+            glVertex3f(corners[0, 0], 0.01, corners[0, 1])
+            glVertex3f(corners[1, 0], 0.01, corners[1, 1])
+            glVertex3f(corners[2, 0], 0.01, corners[2, 1])
+            glVertex3f(corners[3, 0], 0.01, corners[3, 1])
+            glEnd()
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo);

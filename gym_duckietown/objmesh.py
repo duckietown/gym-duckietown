@@ -52,7 +52,6 @@ class ObjMesh:
 
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)
-
         mesh_file = open(file_path, 'r')
 
         verts = []
