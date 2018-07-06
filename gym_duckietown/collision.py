@@ -61,6 +61,10 @@ def generate_corners(pos, min_coords, max_coords, theta, scale):
     ])
 
 def generate_norm(corners):
+    """
+    Generates both (orthogonal, 1per face) normal vectors
+    for rectangle given vertices *in a particular order* (see generate_corners)
+    """
     ca = np.cov(corners,y = None,rowvar = 0,bias = 1)
     _, vect = np.linalg.eig(ca)
     return vect.T
