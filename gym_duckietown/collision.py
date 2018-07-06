@@ -61,15 +61,9 @@ def generate_corners(pos, min_coords, max_coords, theta, scale):
     ])
 
 def generate_norm(corners):
-    """
-    Generates both (orthogonal, 1per face) normal vectors
-    for rectangle given vertices *in a particular order* (see generate_corners)
-    """
-    width = corners[0] - corners[1]
-    length = corners[0] - corners[2]
-    return np.array([
-      [-1*width[1], width[0]], [length[1], -1*length[0]]
-    ])
+    ca = np.cov(corners,y = None,rowvar = 0,bias = 1)
+    _, vect = np.linalg.eig(ca)
+    return vect.T
 
 def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     """
