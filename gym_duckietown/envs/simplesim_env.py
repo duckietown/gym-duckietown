@@ -74,8 +74,8 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.45
 
-# Buffer added to mindist. spawn position needs to be from all objects
-MIN_SPAWN_OBJ_DIST = 0.15
+# Minimum distance spawn position needs to be from all objects
+MIN_SPAWN_OBJ_DIST = 0.25
 
 class SimpleSimEnv(gym.Env):
     """
@@ -219,9 +219,9 @@ class SimpleSimEnv(gym.Env):
             elif horz_mode == 1:
                 self.horizon_color = self._perturb(WALL_COLOR)
             elif horz_mode == 2:
-                self.horizon_color = self._perturb(np.array([0.15, 0.15, 0.15]), 0.4)
+                self.horizon_color = self._perturb([0.15, 0.15, 0.15], 0.4)
             elif horz_mode == 3:
-                self.horizon_color = self._perturb(np.array([0.9, 0.9, 0.9]), 0.4)
+                self.horizon_color = self._perturb([0.9, 0.9, 0.9], 0.4)
         else:
             self.horizon_color = BLUE_SKY_COLOR
 
@@ -234,8 +234,8 @@ class SimpleSimEnv(gym.Env):
             ]
         else:
             lightPos = [-40, 200, 100]
-        ambient = self._perturb(np.array([0.65, 0.65, 0.65]))
-        diffuse = self._perturb(np.array([0.50, 0.50, 0.50]))
+        ambient = self._perturb([0.65, 0.65, 0.65])
+        diffuse = self._perturb([0.50, 0.50, 0.50])
         gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*lightPos))
         gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(*ambient))
         gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat*4)(0.5, 0.5, 0.5, 1.0))
@@ -266,7 +266,7 @@ class SimpleSimEnv(gym.Env):
         for i in range(0, 3 * numTris):
             p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
             c = self.np_random.uniform(low=0, high=0.9)
-            c = self._perturb(np.array([c, c, c]), 0.1)
+            c = self._perturb([c, c, c], 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
@@ -285,7 +285,7 @@ class SimpleSimEnv(gym.Env):
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
-            obj['color'] = self._perturb(np.array([1, 1, 1]), 0.3)
+            obj['color'] = self._perturb([1, 1, 1], 0.3)
 
             # Randomize whether the object is visible or not
             if obj['optional'] and self.domain_rand:
@@ -475,6 +475,9 @@ class SimpleSimEnv(gym.Env):
         """
         assert scale >= 0
         assert scale < 1
+
+        if isinstance(val, list):
+            val = np.array(val)
 
         if not self.domain_rand:
             return val
