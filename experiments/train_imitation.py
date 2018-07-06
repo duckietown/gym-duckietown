@@ -77,6 +77,7 @@ def load_data(map_name):
             data = json.load(f)
     except:
         print('failed to load data file "%s"' % file_name)
+        return
 
     demos = data['demos']
     positions = map(lambda d: d['positions'], demos)
