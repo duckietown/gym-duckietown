@@ -790,12 +790,18 @@ class SimpleSimEnv(gym.Env):
         if self.domain_rand:
             pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
         x, y, z = pos
-        y += CAMERA_FLOOR_DIST
         dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glRotatef(self.cam_angle, 1, 0, 0)
-        glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+
+        if self.draw_bbox:
+            y += 0.8
+            glRotatef(90, 1, 0, 0)
+        else:
+            y += CAMERA_FLOOR_DIST
+            glRotatef(self.cam_angle, 1, 0, 0)
+            glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+
         gluLookAt(
             # Eye position
             x,
@@ -865,10 +871,10 @@ class SimpleSimEnv(gym.Env):
                 corners = self.static_corners[idx]
                 glColor3f(1, 0, 0)
                 glBegin(GL_LINE_LOOP)
-                glVertex3f(corners[0, 0], 0, corners[1, 0])
-                glVertex3f(corners[0, 1], 0, corners[1, 1])
-                glVertex3f(corners[0, 2], 0, corners[1, 2])
-                glVertex3f(corners[0, 3], 0, corners[1, 3])
+                glVertex3f(corners[0, 0], 0.01, corners[1, 0])
+                glVertex3f(corners[0, 1], 0.01, corners[1, 1])
+                glVertex3f(corners[0, 2], 0.01, corners[1, 2])
+                glVertex3f(corners[0, 3], 0.01, corners[1, 3])
                 glEnd()
 
             scale = obj['scale']
@@ -881,6 +887,17 @@ class SimpleSimEnv(gym.Env):
             glColor3f(*obj['color'])
             mesh.render()
             glPopMatrix()
+
+        # Draw the agent's own bounding box
+        if self.draw_bbox:
+            corners = self.duckie_corners
+            glColor3f(1, 0, 0)
+            glBegin(GL_LINE_LOOP)
+            glVertex3f(corners[0, 0], 0.01, corners[0, 1])
+            glVertex3f(corners[1, 0], 0.01, corners[1, 1])
+            glVertex3f(corners[2, 0], 0.01, corners[2, 1])
+            glVertex3f(corners[3, 0], 0.01, corners[3, 1])
+            glEnd()
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo);
