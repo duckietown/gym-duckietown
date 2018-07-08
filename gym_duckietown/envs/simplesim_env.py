@@ -68,6 +68,12 @@ ROBOT_LENGTH = 0.18
 # Height of the robot, used for scaling
 ROBOT_HEIGHT = 0.12
 
+# Safety Radius Multiplier
+SR_MULT = 4
+
+# Duckie Safety Radius
+DUCKIE_SR = max(ROBOT_LENGTH, ROBOT_WIDTH) / 2 * SR_MULT
+
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
 
@@ -394,11 +400,17 @@ class SimpleSimEnv(gym.Env):
 
         # Arrays for checking collisions with N static objects
 
+        # (N): Object position used in calculating reward 
+        self.static_centers = []
+
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
         self.static_corners = []
 
         # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
         self.static_norms = []
+
+        # (N): Safety radius for object used in calculating reward 
+        self.safety_radii = []
 
         # For each object
         for desc in map_data.get('objects', []):
@@ -417,6 +429,8 @@ class SimpleSimEnv(gym.Env):
             else:
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
+
+            safety_radius = SR_MULT * np.amax([abs(mesh.min_coords), abs(mesh.max_coords)]) * scale
 
             obj = {
                 'kind': kind,
@@ -446,8 +460,10 @@ class SimpleSimEnv(gym.Env):
 
                 # Only add it if one of the vertices is on a drivable tile
                 if np.any(drivable):
+                    self.static_centers.append(pos)
                     self.static_corners.append(corners.T)
                     self.static_norms.append(generate_norm(corners))
+                    self.safety_radii.append(safety_radius)
     
         # If there are static objects
         if len(self.static_corners) > 0:
@@ -459,6 +475,9 @@ class SimpleSimEnv(gym.Env):
         if 'start_tile' in map_data:
             coords = map_data['start_tile']
             self.start_tile = self._get_tile(*coords)
+
+        self.static_centers = np.array(self.static_centers)
+        self.safety_radii = np.array(self.safety_radii)
 
     def close(self):
         pass
@@ -652,6 +671,28 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
+    def _closest_obj(self):
+        """
+        Finds the closest object ahead of agent
+        """
+        projections = np.dot(self.static_centers - self.cur_pos, self.get_dir_vec())
+        return np.argmin(np.ma.MaskedArray(projections, projections < 0))
+
+    def _safe_driving(self):
+        """
+        Calculates a 'safe driving score' (used as negative rew.) as described in 
+        https://github.com/duckietown/gym-duckietown/issues/24
+
+        Defines two safety circles, and returns how much they overlap
+        """
+        pos = self._actual_center(self.cur_pos)
+        obj_idx = self._closest_obj()
+        d = np.linalg.norm(self.static_centers[obj_idx] - pos)
+        r2 = self.safety_radii[obj_idx]
+        if not safety_circle_intersection(d, DUCKIE_SR, r2):
+            return 0.
+        else: return safety_circle_overlap(d, DUCKIE_SR, r2)
+
     def _actual_center(self, pos):
         """
         Calculate the position of the geometric center of the duckiebot
@@ -713,6 +754,7 @@ class SimpleSimEnv(gym.Env):
         f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
         collision = self._collision()
+        print('Safe Driving Score', self._safe_driving())
 
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions

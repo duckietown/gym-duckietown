@@ -1,5 +1,6 @@
 from .graphics import rotate_point
 import numpy as np
+import math
 
 def duckie_boundbox(true_pos, width, length, f_vec, r_vec):
     """
@@ -101,3 +102,30 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
         return True
 
     return False
+
+def safety_circle_intersection(d, r1, r2):
+    """
+    Checks if  two circles with centers separated by d and centered
+    at r1 and r2 either intesect or are enveloped (one inside of other)
+    """
+    intersect = (r1 - r2)**2 <= d**2 and d**2 <= (r1 + r2)**2 
+    enveloped = d < abs(r1 - r2)
+
+    return intersect or enveloped
+
+def safety_circle_overlap(d , r1, r2):
+    """
+    Returns the area of two circles with centers separated by d and centered
+    at r1 and r2, given that they intesect or are enveloped
+    """
+
+    # If one circle's inside of the other, return the area of the smaller one
+    if d < abs(r1 - r2):
+        return np.pi * min(r1, r2) ** 2
+
+    # A formula from math.stackexchange, area of intersection
+    x = r1**2 * math.acos((d **2 + r1**2 - r2**2 ) / (2 * d * r1))
+    y = r2**2 * math.acos((d **2 + r2**2 - r1**2 ) / (2 * d * r2))
+    z = (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)
+
+    return x + y - 0.5 * math.sqrt(z)
