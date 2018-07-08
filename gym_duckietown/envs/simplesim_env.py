@@ -436,9 +436,19 @@ class SimpleSimEnv(gym.Env):
             if obj['static']:
                 angle = rotate * (math.pi / 180)
                 corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
-                self.static_corners.append(corners.T)
-                self.static_norms.append(generate_norm(corners))
 
+                drivable = np.array([ 
+                    self._get_tile(
+                        math.floor(c[0] /  ROAD_TILE_SIZE),
+                        math.floor(c[1] /  ROAD_TILE_SIZE),
+                    )['drivable'] for c in corners
+                ])
+
+                # Only add it if one of the vertices is on a drivable tile
+                if np.any(drivable):
+                    self.static_corners.append(corners.T)
+                    self.static_norms.append(generate_norm(corners))
+    
         # If there are static objects
         if len(self.static_corners) > 0:
             self.static_corners = np.stack(self.static_corners, axis=0)
