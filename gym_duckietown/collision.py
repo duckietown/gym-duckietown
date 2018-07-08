@@ -108,10 +108,14 @@ def safety_circle_intersection(d, r1, r2):
     Checks if  two circles with centers separated by d and centered
     at r1 and r2 either intesect or are enveloped (one inside of other)
     """
-    intersect = (r1 - r2)**2 <= d**2 and d**2 <= (r1 + r2)**2 
-    enveloped = d < abs(r1 - r2)
+    intersect = np.logical_and(
+        np.less_equal(np.power(r1 - r2, 2), np.power(d, 2)),
+        np.less_equal(np.power(d, 2), np.power(r1 + r2, 2))
+    )
 
-    return intersect or enveloped
+    enveloped = np.less(d, abs(r1 - r2))
+
+    return np.any(intersect) or np.any(enveloped)
 
 def safety_circle_overlap(d , r1, r2):
     """
@@ -120,12 +124,12 @@ def safety_circle_overlap(d , r1, r2):
     """
 
     # If one circle's inside of the other, return the area of the smaller one
-    if d < abs(r1 - r2):
-        return np.pi * min(r1, r2) ** 2
+    if np.any(np.less(d, abs(r1 - r2))):
+        return np.pi * min(r1, np.amin(r2)) ** 2
 
     # A formula from math.stackexchange, area of intersection
-    x = r1**2 * math.acos((d **2 + r1**2 - r2**2 ) / (2 * d * r1))
-    y = r2**2 * math.acos((d **2 + r2**2 - r1**2 ) / (2 * d * r2))
+    x = r1**2 * np.arccos((np.power(d, 2) + r1**2 - np.power(r2, 2)) / (2 * d * r1))
+    y = np.power(r2, 2) * np.arccos((np.power(d, 2) + np.power(r2, 2) - r1**2) / (2 * d * r2))
     z = (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)
 
-    return x + y - 0.5 * math.sqrt(z)
+    return np.nansum(x + y - 0.5 * np.sqrt(z))

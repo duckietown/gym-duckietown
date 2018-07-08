@@ -69,7 +69,7 @@ ROBOT_LENGTH = 0.18
 ROBOT_HEIGHT = 0.12
 
 # Safety Radius Multiplier
-SR_MULT = 4
+SR_MULT = 1.5
 
 # Duckie Safety Radius
 DUCKIE_SR = max(ROBOT_LENGTH, ROBOT_WIDTH) / 2 * SR_MULT
@@ -686,12 +686,10 @@ class SimpleSimEnv(gym.Env):
         Defines two safety circles, and returns how much they overlap
         """
         pos = self._actual_center(self.cur_pos)
-        obj_idx = self._closest_obj()
-        d = np.linalg.norm(self.static_centers[obj_idx] - pos)
-        r2 = self.safety_radii[obj_idx]
-        if not safety_circle_intersection(d, DUCKIE_SR, r2):
+        d = np.linalg.norm(self.static_centers - pos, axis=1)
+        if not safety_circle_intersection(d, DUCKIE_SR, self.safety_radii):
             return 0.
-        else: return safety_circle_overlap(d, DUCKIE_SR, r2)
+        else: return safety_circle_overlap(d, DUCKIE_SR, self.safety_radii)
 
     def _actual_center(self, pos):
         """
