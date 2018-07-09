@@ -117,19 +117,11 @@ def safety_circle_intersection(d, r1, r2):
 
     return np.any(intersect) or np.any(enveloped)
 
-def safety_circle_overlap(d , r1, r2):
+def safety_circle_overlap(d, r1, r2):
     """
-    Returns the area of two circles with centers separated by d and centered
-    at r1 and r2, given that they intesect or are enveloped
+    Returns a proxy for area (see issue #24) 
+    of two circles with centers separated by d 
+    and centered at r1 and r2
     """
-
-    # If one circle's inside of the other, return the area of the smaller one
-    if np.any(np.less(d, abs(r1 - r2))):
-        return np.pi * min(r1, np.amin(r2)) ** 2
-
-    # A formula from math.stackexchange, area of intersection
-    x = r1**2 * np.arccos((np.power(d, 2) + r1**2 - np.power(r2, 2)) / (2 * d * r1))
-    y = np.power(r2, 2) * np.arccos((np.power(d, 2) + np.power(r2, 2) - r1**2) / (2 * d * r2))
-    z = (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)
-
-    return np.nansum(x + y - 0.5 * np.sqrt(z))
+    scores = d - r1 - r2
+    return np.sum(scores[np.where(scores < 0)])

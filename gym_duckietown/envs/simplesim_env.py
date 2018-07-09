@@ -675,15 +675,16 @@ class SimpleSimEnv(gym.Env):
         """
         Finds the closest object ahead of agent
         """
-        projections = np.dot(self.static_centers - self.cur_pos, self.get_dir_vec())
+        projections = np.dot(
+            self.static_centers - self.cur_pos, 
+            self.get_dir_vec()
+        )
         return np.argmin(np.ma.MaskedArray(projections, projections < 0))
 
     def _safe_driving(self):
         """
-        Calculates a 'safe driving score' (used as negative rew.) as described in 
-        https://github.com/duckietown/gym-duckietown/issues/24
-
-        Defines two safety circles, and returns how much they overlap
+        Calculates a 'safe driving penalty' (used as negative rew.) 
+        as described in Issue #24
         """
         pos = self._actual_center(self.cur_pos)
         d = np.linalg.norm(self.static_centers - pos, axis=1)
@@ -752,7 +753,7 @@ class SimpleSimEnv(gym.Env):
         f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
         collision = self._collision()
-        print('Safe Driving Score', self._safe_driving())
+        print('Safe Driving Penalty', self._safe_driving())
 
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
