@@ -441,8 +441,13 @@ class SimpleSimEnv(gym.Env):
                 obj_norm = generate_norm(obj_corners)
 
                 # Find min / max x&y tile coordinates of object
-                minx, miny = np.floor(np.amin(obj_corners, axis=0) / ROAD_TILE_SIZE).astype(int)
-                maxx, maxy = np.floor(np.amax(obj_corners, axis=0) / ROAD_TILE_SIZE).astype(int)
+                minx, miny = np.floor(
+                    np.amin(obj_corners, axis=0) / ROAD_TILE_SIZE
+                ).astype(int)
+
+                maxx, maxy = np.floor(
+                    np.amax(obj_corners, axis=0) / ROAD_TILE_SIZE
+                ).astype(int)
 
                 # The max number of tiles we need to check is every possible
                 # combination of x and y within the ranges, so enumerate
