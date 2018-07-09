@@ -679,7 +679,7 @@ class SimpleSimEnv(gym.Env):
             self.static_centers - self.cur_pos, 
             self.get_dir_vec()
         )
-        return np.argmin(np.ma.MaskedArray(projections, projections < 0))
+        return np.argmin(projections[np.where(projections < 0)])
 
     def _safe_driving(self):
         """
