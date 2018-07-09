@@ -33,7 +33,10 @@ def tensor_sat_test(norm, corners):
     (each input ~ "a list of 2D matrices" = 3D Tensor)
     """
     dotval = np.matmul(norm, corners)
-    return np.min(dotval, axis=-1), np.max(dotval, axis=-1)
+    mins = np.min(dotval, axis=-1)
+    maxs = np.max(dotval, axis=-1)
+
+    return mins, maxs
 
 def overlaps(min1, max1, min2, max2):
     """
@@ -58,6 +61,20 @@ def generate_corners(pos, min_coords, max_coords, theta, scale):
         rotate_point(max_coords[0]*scale+px, min_coords[-1]*scale+pz, px, pz, theta),
         rotate_point(max_coords[0]*scale+px, max_coords[-1]*scale+pz, px, pz, theta),
         rotate_point(min_coords[0]*scale+px, max_coords[-1]*scale+pz, px, pz, theta),
+    ])
+
+def tile_corners(pos, width):
+    """
+    Generates the absolute corner coord for a tile, given grid pos and tile width
+    """
+    px = pos[0]
+    pz = pos[-1]
+
+    return np.array([
+        [px*width-width, pz*width-width],
+        [px*width+width, pz*width-width],
+        [px*width+width, pz*width+width],
+        [px*width-width, pz*width+width]
     ])
 
 def generate_norm(corners):

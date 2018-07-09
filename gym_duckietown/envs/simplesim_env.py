@@ -435,24 +435,69 @@ class SimpleSimEnv(gym.Env):
             # Compute collision detection information
             if obj['static']:
                 angle = rotate * (math.pi / 180)
-                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
 
-                drivable = np.array([ 
+                # Find corners and normal vectors assoc w. object
+                obj_corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
+                obj_norm = generate_norm(obj_corners)
+
+                # Find min / max x&y tile coordinates of object
+                minx, miny = np.floor(np.amin(obj_corners, axis=0) / ROAD_TILE_SIZE).astype(int)
+                maxx, maxy = np.floor(np.amax(obj_corners, axis=0) / ROAD_TILE_SIZE).astype(int)
+
+                # The max number of tiles we need to check is every possible
+                # combination of x and y within the ranges, so enumerate
+                xr = list(range(minx, maxx+1))
+                yr = list(range(miny, maxy+1))
+
+                possible_tiles = np.array([(x, y) for x in xr for y in yr])
+                drivable_mask = np.array([ 
                     self._get_tile(
-                        math.floor(c[0] /  ROAD_TILE_SIZE),
-                        math.floor(c[1] /  ROAD_TILE_SIZE),
-                    )['drivable'] for c in corners
+                        c[0],
+                        c[1],
+                    )['drivable'] for c in possible_tiles
                 ])
 
+                # mask away tiles that aren't drivable
+                drivable_tiles = possible_tiles[drivable_mask]
+
+                # None of the candidate tiles are drivable, don't add object
+                if len(drivable_tiles) == 0: continue
+
+                # Find the corners for each candidate tile
+                drivable_tiles = np.array([
+                    tile_corners(
+                        self._get_tile(pt[0], pt[1])['coords'], 
+                        ROAD_TILE_SIZE
+                    ).T for pt in drivable_tiles
+                ])
+                
+                # Tiles are axis aligned, so add normal vectors in bulk
+                tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
+
+                # Stack doesn't do anything if there's only one object,
+                # So we add an extra dimension to avoid shape errors later
+                if len(tile_norms.shape) == 2:
+                    tile_norms = tile_norms[np.newaxis]
+                    
+                else: # Stack works as expected
+                    drivable_tiles = np.stack(drivable_tiles, axis=0)
+                    tile_norms = np.stack(tile_norms, axis=0)
+
                 # Only add it if one of the vertices is on a drivable tile
-                if np.any(drivable):
-                    self.static_corners.append(corners.T)
-                    self.static_norms.append(generate_norm(corners))
-    
+                if intersects(obj_corners, drivable_tiles, obj_norm, tile_norms):
+                    self.static_corners.append(obj_corners.T)
+                    self.static_norms.append(obj_norm)
+
         # If there are static objects
         if len(self.static_corners) > 0:
             self.static_corners = np.stack(self.static_corners, axis=0)
             self.static_norms = np.stack(self.static_norms, axis=0)
+
+            # Stack doesn't do anything if there's only one object,
+            # So we add an extra dimension to avoid shape errors later
+            if len(tile_norms.shape) == 2:
+                self.static_corners = self.static_corners[np.newaxis]
+                self.static_norms = self.static_norms[np.newaxis]
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
