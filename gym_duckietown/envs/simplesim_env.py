@@ -440,44 +440,11 @@ class SimpleSimEnv(gym.Env):
                 # Find drivable tiles object could intersect with
                 obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
                     pos, mesh, angle, scale, ROAD_TILE_SIZE)
-
+                
                 # For drawing purposes
                 self.object_corners.append(obj_corners.T)
                 
-                drivable_mask = np.array([ 
-                    self._get_tile(
-                        c[0],
-                        c[1],
-                    )['drivable'] for c in possible_tiles
-                ])
-
-                # mask away tiles that aren't drivable
-                drivable_tiles = possible_tiles[drivable_mask]
-                # Tiles are axis aligned, so add normal vectors in bulk
-                tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
-
-                # None of the candidate tiles are drivable, don't add object
-                if len(drivable_tiles) == 0: continue
-
-                # Find the corners for each candidate tile
-                drivable_tiles = np.array([
-                    tile_corners(
-                        self._get_tile(pt[0], pt[1])['coords'], 
-                        ROAD_TILE_SIZE
-                    ).T for pt in drivable_tiles
-                ])
-                
-                # Stack doesn't do anything if there's only one object,
-                # So we add an extra dimension to avoid shape errors later
-                if len(tile_norms.shape) == 2:
-                    tile_norms = tile_norms[np.newaxis]  
-                else: # Stack works as expected
-                    drivable_tiles = np.stack(drivable_tiles, axis=0)
-                    tile_norms = np.stack(tile_norms, axis=0)
-
-                # Only add it if one of the vertices is on a drivable tile
-                if intersects(obj_corners, drivable_tiles, obj_norm, tile_norms):
-                    print(kind)
+                if self._collidable_object(obj_corners, obj_norm, possible_tiles):
                     self.static_corners.append(obj_corners.T)
                     self.static_norms.append(obj_norm)
 
@@ -488,7 +455,7 @@ class SimpleSimEnv(gym.Env):
 
             # Stack doesn't do anything if there's only one object,
             # So we add an extra dimension to avoid shape errors later
-            if len(tile_norms.shape) == 2:
+            if len(self.static_corners.shape) == 2:
                 self.static_corners = self.static_corners[np.newaxis]
                 self.static_norms = self.static_norms[np.newaxis]
 
@@ -536,6 +503,43 @@ class SimpleSimEnv(gym.Env):
             noise = self.np_random.uniform(low=1-scale, high=1+scale)
 
         return val * noise
+
+
+    def _collidable_object(self, obj_corners, obj_norm, possible_tiles):
+        drivable_mask = np.array([ 
+            self._get_tile(
+                c[0],
+                c[1],
+            )['drivable'] for c in possible_tiles
+        ])
+
+        # mask away tiles that aren't drivable
+        drivable_tiles = possible_tiles[drivable_mask]
+        # Tiles are axis aligned, so add normal vectors in bulk
+        tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
+
+        # None of the candidate tiles are drivable, don't add object
+        if len(drivable_tiles) == 0: return False
+
+        # Find the corners for each candidate tile
+        drivable_tiles = np.array([
+            tile_corners(
+                self._get_tile(pt[0], pt[1])['coords'], 
+                ROAD_TILE_SIZE
+            ).T for pt in drivable_tiles
+        ])
+        
+        # Stack doesn't do anything if there's only one object,
+        # So we add an extra dimension to avoid shape errors later
+        if len(tile_norms.shape) == 2:
+            tile_norms = tile_norms[np.newaxis]  
+        else: # Stack works as expected
+            drivable_tiles = np.stack(drivable_tiles, axis=0)
+            tile_norms = np.stack(tile_norms, axis=0)
+
+        # Only add it if one of the vertices is on a drivable tile
+        return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
+           
 
     def _get_grid_coords(self, abs_pos):
         """
