@@ -392,6 +392,7 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
 
+        self.object_corners = []
         # Arrays for checking collisions with N static objects
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
@@ -439,6 +440,9 @@ class SimpleSimEnv(gym.Env):
                 # Find drivable tiles object could intersect with
                 obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
                     pos, mesh, angle, scale, ROAD_TILE_SIZE)
+
+                # For drawing purposes
+                self.object_corners.append(obj_corners.T)
                 
                 drivable_mask = np.array([ 
                     self._get_tile(
@@ -473,6 +477,7 @@ class SimpleSimEnv(gym.Env):
 
                 # Only add it if one of the vertices is on a drivable tile
                 if intersects(obj_corners, drivable_tiles, obj_norm, tile_norms):
+                    print(kind)
                     self.static_corners.append(obj_corners.T)
                     self.static_norms.append(obj_norm)
 
@@ -911,7 +916,7 @@ class SimpleSimEnv(gym.Env):
 
             # Draw the bounding box
             if self.draw_bbox:
-                corners = self.static_corners[idx]
+                corners = self.object_corners[idx]
                 glColor3f(1, 0, 0)
                 glBegin(GL_LINE_LOOP)
                 glVertex3f(corners[0, 0], 0.01, corners[1, 0])
