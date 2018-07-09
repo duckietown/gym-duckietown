@@ -436,25 +436,10 @@ class SimpleSimEnv(gym.Env):
             if obj['static']:
                 angle = rotate * (math.pi / 180)
 
-                # Find corners and normal vectors assoc w. object
-                obj_corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
-                obj_norm = generate_norm(obj_corners)
-
-                # Find min / max x&y tile coordinates of object
-                minx, miny = np.floor(
-                    np.amin(obj_corners, axis=0) / ROAD_TILE_SIZE
-                ).astype(int)
-
-                maxx, maxy = np.floor(
-                    np.amax(obj_corners, axis=0) / ROAD_TILE_SIZE
-                ).astype(int)
-
-                # The max number of tiles we need to check is every possible
-                # combination of x and y within the ranges, so enumerate
-                xr = list(range(minx, maxx+1))
-                yr = list(range(miny, maxy+1))
-
-                possible_tiles = np.array([(x, y) for x in xr for y in yr])
+                # Find drivable tiles object could intersect with
+                obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
+                    pos, mesh, angle, scale, ROAD_TILE_SIZE)
+                
                 drivable_mask = np.array([ 
                     self._get_tile(
                         c[0],
@@ -464,6 +449,8 @@ class SimpleSimEnv(gym.Env):
 
                 # mask away tiles that aren't drivable
                 drivable_tiles = possible_tiles[drivable_mask]
+                # Tiles are axis aligned, so add normal vectors in bulk
+                tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
 
                 # None of the candidate tiles are drivable, don't add object
                 if len(drivable_tiles) == 0: continue
@@ -476,14 +463,10 @@ class SimpleSimEnv(gym.Env):
                     ).T for pt in drivable_tiles
                 ])
                 
-                # Tiles are axis aligned, so add normal vectors in bulk
-                tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
-
                 # Stack doesn't do anything if there's only one object,
                 # So we add an extra dimension to avoid shape errors later
                 if len(tile_norms.shape) == 2:
-                    tile_norms = tile_norms[np.newaxis]
-                    
+                    tile_norms = tile_norms[np.newaxis]  
                 else: # Stack works as expected
                     drivable_tiles = np.stack(drivable_tiles, axis=0)
                     tile_norms = np.stack(tile_norms, axis=0)
