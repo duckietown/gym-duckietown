@@ -397,6 +397,7 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
 
+        self.object_corners = []
         # Arrays for checking collisions with N static objects
 
         # (N x 2): Object position used in calculating reward 
@@ -449,26 +450,30 @@ class SimpleSimEnv(gym.Env):
             # Compute collision detection information
             if obj['static']:
                 angle = rotate * (math.pi / 180)
-                corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
 
-                drivable = np.array([ 
-                    self._get_tile(
-                        math.floor(c[0] /  ROAD_TILE_SIZE),
-                        math.floor(c[1] /  ROAD_TILE_SIZE),
-                    )['drivable'] for c in corners
-                ])
-
-                # Only add it if one of the vertices is on a drivable tile
-                if np.any(drivable):
+                # Find drivable tiles object could intersect with
+                obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
+                    pos, mesh, angle, scale, ROAD_TILE_SIZE)
+                
+                # For drawing purposes
+                self.object_corners.append(obj_corners.T)
+                
+                if self._collidable_object(obj_corners, obj_norm, possible_tiles):
                     self.static_centers.append(pos)
-                    self.static_corners.append(corners.T)
-                    self.static_norms.append(generate_norm(corners))
+                    self.static_corners.append(obj_corners.T)
+                    self.static_norms.append(obj_norm)
                     self.safety_radii.append(safety_radius)
     
         # If there are static objects
         if len(self.static_corners) > 0:
             self.static_corners = np.stack(self.static_corners, axis=0)
             self.static_norms = np.stack(self.static_norms, axis=0)
+
+            # Stack doesn't do anything if there's only one object,
+            # So we add an extra dimension to avoid shape errors later
+            if len(self.static_corners.shape) == 2:
+                self.static_corners = self.static_corners[np.newaxis]
+                self.static_norms = self.static_norms[np.newaxis]
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -517,6 +522,48 @@ class SimpleSimEnv(gym.Env):
             noise = self.np_random.uniform(low=1-scale, high=1+scale)
 
         return val * noise
+
+
+    def _collidable_object(self, obj_corners, obj_norm, possible_tiles):
+        """
+        A function to check if an object collides with any
+        drivable tiles, which would mean our agent could run into them.
+        Helps optimize collision checking w agent during runtime
+        """
+        drivable_mask = np.array([ 
+            self._get_tile(
+                c[0],
+                c[1],
+            )['drivable'] for c in possible_tiles
+        ])
+
+        # mask away tiles that aren't drivable
+        drivable_tiles = possible_tiles[drivable_mask]
+        # Tiles are axis aligned, so add normal vectors in bulk
+        tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
+
+        # None of the candidate tiles are drivable, don't add object
+        if len(drivable_tiles) == 0: return False
+
+        # Find the corners for each candidate tile
+        drivable_tiles = np.array([
+            tile_corners(
+                self._get_tile(pt[0], pt[1])['coords'], 
+                ROAD_TILE_SIZE
+            ).T for pt in drivable_tiles
+        ])
+        
+        # Stack doesn't do anything if there's only one object,
+        # So we add an extra dimension to avoid shape errors later
+        if len(tile_norms.shape) == 2:
+            tile_norms = tile_norms[np.newaxis]  
+        else: # Stack works as expected
+            drivable_tiles = np.stack(drivable_tiles, axis=0)
+            tile_norms = np.stack(tile_norms, axis=0)
+
+        # Only add it if one of the vertices is on a drivable tile
+        return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
+           
 
     def _get_grid_coords(self, abs_pos):
         """
@@ -923,7 +970,7 @@ class SimpleSimEnv(gym.Env):
 
             # Draw the bounding box
             if self.draw_bbox:
-                corners = self.static_corners[idx]
+                corners = self.object_corners[idx]
                 glColor3f(1, 0, 0)
                 glBegin(GL_LINE_LOOP)
                 glVertex3f(corners[0, 0], 0.01, corners[1, 0])
