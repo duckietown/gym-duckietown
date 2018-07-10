@@ -314,12 +314,12 @@ class SimpleSimEnv(gym.Env):
             self.cur_angle = self.np_random.uniform(0, 2 * math.pi)
 
             # If this is too close to an object or not a valid pose, retry
-            if self._inconvenient_spawn() or not self._valid_pose():
+            if self._inconvenient_spawn() or not self._valid_pose(1.3):
                 continue
 
             # If the angle is too far away from the driving direction, retry
             dist, dot_dir, angle = self.get_lane_pos()
-            if angle < -70 or angle > 70:
+            if angle < -60 or angle > 60:
                 continue
 
             # Found a valid initial pose
@@ -706,14 +706,14 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
-    def _actual_center(self, pos):
+    def _actual_center(self):
         """
         Calculate the position of the geometric center of the duckiebot
         The value of self.cur_pos is the center of rotation.
         """
 
         dir_vec = self.get_dir_vec()
-        return pos + (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)) * dir_vec
+        return self.cur_pos + (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)) * dir_vec
 
     def _inconvenient_spawn(self):
         """
@@ -737,7 +737,7 @@ class SimpleSimEnv(gym.Env):
 
         # Recompute the bounding boxes (BB) for the duckiebot
         duckie_corners = duckie_boundbox(
-            self._actual_center(self.cur_pos),
+            self._actual_center(),
             ROBOT_WIDTH,
             ROBOT_LENGTH,
             self.get_dir_vec(),
@@ -754,28 +754,27 @@ class SimpleSimEnv(gym.Env):
             self.static_norms
         )
 
-    def _valid_pose(self):
+    def _valid_pose(self, safety_factor=1):
         """
         Check that the agent is in a valid pose
         """
 
         # Compute the coordinates of the base of both wheels
+        pos = self._actual_center()
         f_vec = self.get_dir_vec()
         r_vec = self.get_right_vec()
-        l_pos = self.cur_pos - 0.5 * ROBOT_WIDTH * r_vec
-        r_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * r_vec
-        f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
-
-        collision = self._collision()
+        l_pos = pos - (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
+        r_pos = pos + (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
+        f_pos = pos + (safety_factor * 0.5 * ROBOT_LENGTH) * f_vec
 
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
         return (
-            self._drivable_pos(self.cur_pos) and
+            self._drivable_pos(pos) and
             self._drivable_pos(l_pos) and
             self._drivable_pos(r_pos) and
             self._drivable_pos(f_pos) and
-            not collision
+            not self._collision()
         )
 
     def step(self, action):
@@ -955,7 +954,7 @@ class SimpleSimEnv(gym.Env):
         # Draw the agent's own bounding box
         if self.draw_bbox:
             corners = duckie_boundbox(
-                self._actual_center(self.cur_pos),
+                self._actual_center(),
                 ROBOT_WIDTH,
                 ROBOT_LENGTH,
                 self.get_dir_vec(),
