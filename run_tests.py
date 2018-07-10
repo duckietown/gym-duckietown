@@ -36,3 +36,9 @@ for i in range(0, 75):
     assert not env._collision(), "collision on spawn"
     env.step(np.array([0.1, 0.1]))
     assert not env._collision(), "collision after one step"
+
+# Test the draw_bbox mode
+env = SimpleSimEnv(map_name='udem1', draw_bbox=True)
+env.render('rgb_array')
+env = SimpleSimEnv(map_name='loop_obstacles', draw_bbox=True)
+env.render('rgb_array')
