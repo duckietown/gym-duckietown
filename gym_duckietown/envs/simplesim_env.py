@@ -31,9 +31,6 @@ BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
 # Color meant to approximate interior walls
 WALL_COLOR = np.array([0.64, 0.71, 0.28])
 
-# Road color multiplier
-ROAD_COLOR = np.array([0.79, 0.88, 0.53])
-
 # Ground/floor color
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
@@ -227,16 +224,16 @@ class SimpleSimEnv(gym.Env):
 
         # Setup some basic lighting with a far away sun
         if self.domain_rand:
-            lightPos = [
+            light_pos = [
                 self.np_random.uniform(-150, 150),
                 self.np_random.uniform( 170, 220),
                 self.np_random.uniform(-150, 150),
             ]
         else:
-            lightPos = [-40, 200, 100]
-        ambient = self._perturb([0.65, 0.65, 0.65])
-        diffuse = self._perturb([0.50, 0.50, 0.50])
-        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*lightPos))
+            light_pos = [-40, 200, 100]
+        ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
+        diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
+        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*light_pos))
         gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(*ambient))
         gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat*4)(0.5, 0.5, 0.5, 1.0))
         gl.glEnable(GL_LIGHT0)
@@ -280,7 +277,7 @@ class SimpleSimEnv(gym.Env):
             )
 
             # Random tile color multiplier
-            tile['color'] = self._perturb(ROAD_COLOR, 0.2)
+            tile['color'] = self._perturb([1, 1, 1], 0.2)
 
         # Randomize object parameters
         for obj in self.objects:
