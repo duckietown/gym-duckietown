@@ -69,11 +69,10 @@ ROBOT_LENGTH = 0.18
 ROBOT_HEIGHT = 0.12
 
 # Safety Radius Multiplier
-SR_MULT = 1.5
+SAFETY_RAD_MULT = 1.5
 
 # Duckie Safety Radius
-DUCKIE_SR = max(ROBOT_LENGTH, ROBOT_WIDTH) / 2 * SR_MULT
-
+AGENT_SAFETY_RAD = max(ROBOT_LENGTH, ROBOT_WIDTH) / 2 * SAFETY_RAD_MULT
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
 
@@ -430,7 +429,8 @@ class SimpleSimEnv(gym.Env):
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
-            safety_radius = SR_MULT * np.amax([abs(mesh.min_coords), abs(mesh.max_coords)]) * scale
+            safety_radius = SAFETY_RAD_MULT * np.amax(
+                [abs(mesh.min_coords), abs(mesh.max_coords)]) * scale
 
             obj = {
                 'kind': kind,
@@ -686,17 +686,19 @@ class SimpleSimEnv(gym.Env):
         Calculates a 'safe driving penalty' (used as negative rew.) 
         as described in Issue #24
         """
-        if len(self.static_centers) == 0: return 0.
+        if len(self.static_centers) == 0: 
+            return 0.
 
         pos = self._actual_center(self.cur_pos)
         d = np.linalg.norm(self.static_centers - pos, axis=1)
-        if not safety_circle_intersection(d, DUCKIE_SR, self.safety_radii):
+        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
             return 0.
-        else: return safety_circle_overlap(d, DUCKIE_SR, self.safety_radii)
+        else: 
+            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
 
     def _actual_center(self, pos):
         """
-        Calculate the position of the geometric center of the duckiebot
+        Calculate the position of the geometric center of the agent
         The value of self.cur_pos is the center of rotation.
         """
 
@@ -705,7 +707,7 @@ class SimpleSimEnv(gym.Env):
 
     def _inconvenient_spawn(self):
         """
-        Check that duckie spawn is not too close to any object
+        Check that agent spawn is not too close to any object
         """
 
         results = [np.linalg.norm(x['pos'] - self.cur_pos) <
@@ -723,8 +725,8 @@ class SimpleSimEnv(gym.Env):
         if len(self.static_corners) == 0:
             return False
 
-        # Recompute the bounding boxes (BB) for the duckiebot
-        self.duckie_corners = duckie_boundbox(
+        # Recompute the bounding boxes (BB) for the agent
+        self.agent_corners = agent_boundbox(
             self._actual_center(self.cur_pos),
             ROBOT_WIDTH,
             ROBOT_LENGTH,
@@ -733,12 +735,12 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Generate the norms corresponding to each face of BB
-        self.duckie_norm = generate_norm(self.duckie_corners)
+        self.agent_norm = generate_norm(self.agent_corners)
 
         return intersects(
-            self.duckie_corners,
+            self.agent_corners,
             self.static_corners,
-            self.duckie_norm,
+            self.agent_norm,
             self.static_norms
         )
 
@@ -943,7 +945,7 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
-            corners = self.duckie_corners
+            corners = self.agent_corners
             glColor3f(1, 0, 0)
             glBegin(GL_LINE_LOOP)
             glVertex3f(corners[0, 0], 0.01, corners[0, 1])

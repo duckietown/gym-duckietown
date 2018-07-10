@@ -2,9 +2,9 @@ from .graphics import rotate_point
 import numpy as np
 import math
 
-def duckie_boundbox(true_pos, width, length, f_vec, r_vec):
+def agent_boundbox(true_pos, width, length, f_vec, r_vec):
     """
-    Compute bounding box for duckie using its dimensions,
+    Compute bounding box for agent using its dimensions,
     current position, and angle of rotation
     Order of points in bounding box:
     (front)
