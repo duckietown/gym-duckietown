@@ -33,7 +33,10 @@ def tensor_sat_test(norm, corners):
     (each input ~ "a list of 2D matrices" = 3D Tensor)
     """
     dotval = np.matmul(norm, corners)
-    return np.min(dotval, axis=-1), np.max(dotval, axis=-1)
+    mins = np.min(dotval, axis=-1)
+    maxs = np.max(dotval, axis=-1)
+
+    return mins, maxs
 
 def overlaps(min1, max1, min2, max2):
     """
@@ -60,6 +63,20 @@ def generate_corners(pos, min_coords, max_coords, theta, scale):
         rotate_point(min_coords[0]*scale+px, max_coords[-1]*scale+pz, px, pz, theta),
     ])
 
+def tile_corners(pos, width):
+    """
+    Generates the absolute corner coord for a tile, given grid pos and tile width
+    """
+    px = pos[0]
+    pz = pos[-1]
+
+    return np.array([
+        [px*width-width, pz*width-width],
+        [px*width+width, pz*width-width],
+        [px*width+width, pz*width+width],
+        [px*width-width, pz*width+width]
+    ])
+
 def generate_norm(corners):
     """
     Generates both (orthogonal, 1 per axis) normal vectors
@@ -68,6 +85,33 @@ def generate_norm(corners):
     ca = np.cov(corners, y = None, rowvar = 0, bias = 1)
     _, vect = np.linalg.eig(ca)
     return vect.T
+
+def find_candidate_tiles(pos, mesh, angle, scale, tile_size):
+    """
+    Finds all of the tiles that a object could intersect with
+    Returns the norms and corners of any of those that are drivable
+    """
+
+    # Find corners and normal vectors assoc w. object
+    obj_corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
+    obj_norm = generate_norm(obj_corners)
+
+    # Find min / max x&y tile coordinates of object
+    minx, miny = np.floor(
+        np.amin(obj_corners, axis=0) / tile_size
+    ).astype(int)
+
+    maxx, maxy = np.floor(
+        np.amax(obj_corners, axis=0) / tile_size
+    ).astype(int)
+
+    # The max number of tiles we need to check is every possible
+    # combination of x and y within the ranges, so enumerate
+    xr = list(range(minx, maxx+1))
+    yr = list(range(miny, maxy+1))
+
+    possible_tiles = np.array([(x, y) for x in xr for y in yr])
+    return obj_corners, obj_norm, possible_tiles
 
 def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     """
