@@ -397,7 +397,9 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
 
+        # The corners for every object, regardless if collidable or not
         self.object_corners = []
+
         # Arrays for checking collisions with N static objects
 
         # (N x 2): Object position used in calculating reward 
@@ -430,8 +432,7 @@ class SimpleSimEnv(gym.Env):
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
-            safety_radius = SAFETY_RAD_MULT * np.amax(
-                [abs(mesh.min_coords), abs(mesh.max_coords)]) * scale
+            safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
 
             obj = {
                 'kind': kind,
@@ -735,7 +736,7 @@ class SimpleSimEnv(gym.Env):
         )
         return np.argmin(projections[np.where(projections < 0)])
 
-    def _safe_driving(self):
+    def _safety_penalty(self):
         """
         Calculates a 'safe driving penalty' (used as negative rew.) 
         as described in Issue #24
@@ -743,14 +744,14 @@ class SimpleSimEnv(gym.Env):
         if len(self.static_centers) == 0: 
             return 0.
 
-        pos = self._actual_center(self.cur_pos)
+        pos = self._actual_center()
         d = np.linalg.norm(self.static_centers - pos, axis=1)
         if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
             return 0.
         else: 
             return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
 
-    def _actual_center(self, pos):
+    def _actual_center(self):
         """
         Calculate the position of the geometric center of the agent
         The value of self.cur_pos is the center of rotation.
@@ -795,7 +796,7 @@ class SimpleSimEnv(gym.Env):
         """
 
         # Compute the coordinates of the base of both wheels
-        pos = self._actual_center(self.cur_pos)
+        pos = self._actual_center()
         f_vec = self.get_dir_vec()
         r_vec = self.get_right_vec()
 
@@ -805,7 +806,7 @@ class SimpleSimEnv(gym.Env):
 
         # Recompute the bounding boxes (BB) for the agent
         self.agent_corners = agent_boundbox(
-            self._actual_center(self.cur_pos),
+            self._actual_center(),
             ROBOT_WIDTH,
             ROBOT_LENGTH,
             self.get_dir_vec(),

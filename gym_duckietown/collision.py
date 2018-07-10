@@ -169,3 +169,11 @@ def safety_circle_overlap(d, r1, r2):
     """
     scores = d - r1 - r2
     return np.sum(scores[np.where(scores < 0)])
+
+def calculate_safety_radius(mesh, scale):
+    """
+    Returns a safety radius for an object, and scales
+    it according to the YAML file's scale param for that obj
+    """
+    x, _, z = np.max([abs(mesh.min_coords), abs(mesh.max_coords)], axis=0)
+    return np.linalg.norm([x, z]) * scale 
