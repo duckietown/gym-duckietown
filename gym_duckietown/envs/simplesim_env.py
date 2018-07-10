@@ -805,7 +805,7 @@ class SimpleSimEnv(gym.Env):
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
         return (
-            self._drivable_pos(pos) and
+            self._drivable_pos(self.cur_pos) and
             self._drivable_pos(l_pos) and
             self._drivable_pos(r_pos) and
             self._drivable_pos(f_pos) and
