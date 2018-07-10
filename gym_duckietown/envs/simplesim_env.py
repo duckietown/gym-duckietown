@@ -319,12 +319,12 @@ class SimpleSimEnv(gym.Env):
             self.cur_angle = self.np_random.uniform(0, 2 * math.pi)
 
             # If this is too close to an object or not a valid pose, retry
-            if self._inconvenient_spawn() or not self._valid_pose():
+            if self._inconvenient_spawn() or not self._valid_pose(1.3):
                 continue
 
             # If the angle is too far away from the driving direction, retry
             dist, dot_dir, angle = self.get_lane_pos()
-            if angle < -70 or angle > 70:
+            if angle < -60 or angle > 60:
                 continue
 
             # Found a valid initial pose
@@ -453,11 +453,17 @@ class SimpleSimEnv(gym.Env):
 
                 # Find drivable tiles object could intersect with
                 obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
-                    pos, mesh, angle, scale, ROAD_TILE_SIZE)
-                
+                    pos,
+                    mesh,
+                    angle,
+                    scale,
+                    ROAD_TILE_SIZE
+                )
+
                 # For drawing purposes
                 self.object_corners.append(obj_corners.T)
-                
+
+                # If the object intersects with a drivable tile
                 if self._collidable_object(obj_corners, obj_norm, possible_tiles):
                     self.static_centers.append(pos)
                     self.static_corners.append(obj_corners.T)
@@ -474,6 +480,8 @@ class SimpleSimEnv(gym.Env):
             if len(self.static_corners.shape) == 2:
                 self.static_corners = self.static_corners[np.newaxis]
                 self.static_norms = self.static_norms[np.newaxis]
+
+        print('num collidable objects:', len(self.static_corners))
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -523,14 +531,13 @@ class SimpleSimEnv(gym.Env):
 
         return val * noise
 
-
     def _collidable_object(self, obj_corners, obj_norm, possible_tiles):
         """
-        A function to check if an object collides with any
+        A function to check if an object intersects with any
         drivable tiles, which would mean our agent could run into them.
-        Helps optimize collision checking w agent during runtime
+        Helps optimize collision checking with agent during runtime
         """
-        drivable_mask = np.array([ 
+        drivable_mask = np.array([
             self._get_tile(
                 c[0],
                 c[1],
@@ -543,27 +550,27 @@ class SimpleSimEnv(gym.Env):
         tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
 
         # None of the candidate tiles are drivable, don't add object
-        if len(drivable_tiles) == 0: return False
+        if len(drivable_tiles) == 0:
+            return False
 
         # Find the corners for each candidate tile
         drivable_tiles = np.array([
             tile_corners(
-                self._get_tile(pt[0], pt[1])['coords'], 
+                self._get_tile(pt[0], pt[1])['coords'],
                 ROAD_TILE_SIZE
             ).T for pt in drivable_tiles
         ])
-        
+
         # Stack doesn't do anything if there's only one object,
         # So we add an extra dimension to avoid shape errors later
         if len(tile_norms.shape) == 2:
-            tile_norms = tile_norms[np.newaxis]  
+            tile_norms = tile_norms[np.newaxis]
         else: # Stack works as expected
             drivable_tiles = np.stack(drivable_tiles, axis=0)
             tile_norms = np.stack(tile_norms, axis=0)
 
         # Only add it if one of the vertices is on a drivable tile
         return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
-           
 
     def _get_grid_coords(self, abs_pos):
         """
@@ -711,13 +718,13 @@ class SimpleSimEnv(gym.Env):
 
     def _drivable_pos(self, pos):
         """
-        Check that the current (x,y,z) position is on a drivable tile
+        Check that the given (x,y,z) position is on a drivable tile
         """
 
         coords = self._get_grid_coords(pos)
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
-
+      
     def _closest_obj(self):
         """
         Finds the closest object ahead of agent
@@ -750,7 +757,7 @@ class SimpleSimEnv(gym.Env):
         """
 
         dir_vec = self.get_dir_vec()
-        return pos + (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)) * dir_vec
+        return self.cur_pos + (CAMERA_FORWARD_DIST - (ROBOT_LENGTH/2)) * dir_vec
 
     def _inconvenient_spawn(self):
         """
@@ -791,29 +798,28 @@ class SimpleSimEnv(gym.Env):
             self.static_norms
         )
 
-    def _valid_pose(self):
+    def _valid_pose(self, safety_factor=1):
         """
         Check that the agent is in a valid pose
         """
 
         # Compute the coordinates of the base of both wheels
+        pos = self._actual_center()
         f_vec = self.get_dir_vec()
         r_vec = self.get_right_vec()
-        l_pos = self.cur_pos - 0.5 * ROBOT_WIDTH * r_vec
-        r_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * r_vec
-        f_pos = self.cur_pos + 0.5 * ROBOT_WIDTH * f_vec
 
-        collision = self._collision()
-        print('Safe Driving Penalty', self._safe_driving())
+        l_pos = pos - (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
+        r_pos = pos + (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
+        f_pos = pos + (safety_factor * 0.5 * ROBOT_LENGTH) * f_vec
 
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
         return (
-            self._drivable_pos(self.cur_pos) and
+            self._drivable_pos(pos) and
             self._drivable_pos(l_pos) and
             self._drivable_pos(r_pos) and
             self._drivable_pos(f_pos) and
-            not collision
+            not self._collision()
         )
 
     def step(self, action):

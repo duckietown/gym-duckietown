@@ -8,6 +8,7 @@ using the keyboard arrows.
 import sys
 import argparse
 import pyglet
+from pyglet.window import key
 import numpy as np
 import gym
 import gym_duckietown
@@ -34,66 +35,63 @@ else:
 env.reset()
 env.render()
 
-def save_numpy_img(file_name, img):
-    img = np.ascontiguousarray(img)
-    img = (img * 255).astype(np.uint8)
-
-    from skimage import io
-    io.imsave(file_name, img)
-
-lastImgNo = 0
-def save_img(img):
-    global lastImgNo
-    save_numpy_img('img_%03d.png' % lastImgNo, img)
-    lastImgNo += 1
-
 @env.window.event
 def on_key_press(symbol, modifiers):
-    from pyglet.window import key
+    """
+    This handler processes keyboard commands that
+    control the simulation
+    """
 
-    action = None
-
-    if symbol == key.LEFT:
-        print('left')
-        action = np.array([0.00, 0.40])
-    elif symbol == key.RIGHT:
-        print('right')
-        action = np.array([0.40, 0.00])
-    elif symbol == key.UP:
-        print('forward')
-        action = np.array([0.40, 0.40])
-    elif symbol == key.DOWN:
-        print('back')
-        action = np.array([-0.40, -0.40])
-    elif symbol == key.BACKSPACE or symbol == key.SLASH:
+    if symbol == key.BACKSPACE or symbol == key.SLASH:
         print('RESET')
-        action = None
         env.reset()
         env.render()
     elif symbol == key.PAGEUP:
         env.cam_angle = 0
         env.render()
-    elif symbol == key.SPACE:
-        action = np.array([0, 0])
     elif symbol == key.ESCAPE:
         env.close()
         sys.exit(0)
-    else:
-        return
+
+# Register a keyboard handler
+key_handler = key.KeyStateHandler()
+env.window.push_handlers(key_handler)
+
+def update(dt):
+    """
+    This function is called at every frame to handle
+    movement/stepping and redrawing
+    """
+
+    action = None
+
+    if key_handler[key.UP]:
+        action = np.array([0.70, 0.70])
+    if key_handler[key.DOWN]:
+        action = np.array([-0.40, -0.40])
+    if key_handler[key.LEFT]:
+        action = np.array([0.00, 0.40])
+    if key_handler[key.RIGHT]:
+        action = np.array([0.40, 0.00])
+    if key_handler[key.SPACE]:
+        action = np.array([0, 0])
 
     if action is not None:
-        print('stepping')
+        # Speed boost
+        if key_handler[key.LSHIFT]:
+            action *= 1.5
+
         obs, reward, done, info = env.step(action)
         print('step_count = %s, reward=%.3f' % (env.step_count, reward))
-
-        env.render()
-
-        #save_img(obs)
 
         if done:
             print('done!')
             env.reset()
             env.render()
+
+    env.render()
+
+pyglet.clock.schedule_interval(update, 0.1)
 
 # Enter main event loop
 pyglet.app.run()
