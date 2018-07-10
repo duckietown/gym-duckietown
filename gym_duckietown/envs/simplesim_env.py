@@ -779,15 +779,6 @@ class SimpleSimEnv(gym.Env):
         if len(self.static_corners) == 0:
             return False
 
-        # Recompute the bounding boxes (BB) for the agent
-        self.agent_corners = agent_boundbox(
-            self._actual_center(self.cur_pos),
-            ROBOT_WIDTH,
-            ROBOT_LENGTH,
-            self.get_dir_vec(),
-            self.get_right_vec()
-        )
-
         # Generate the norms corresponding to each face of BB
         self.agent_norm = generate_norm(self.agent_corners)
 
@@ -804,13 +795,22 @@ class SimpleSimEnv(gym.Env):
         """
 
         # Compute the coordinates of the base of both wheels
-        pos = self._actual_center()
+        pos = self._actual_center(self.cur_pos)
         f_vec = self.get_dir_vec()
         r_vec = self.get_right_vec()
 
         l_pos = pos - (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
         r_pos = pos + (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
         f_pos = pos + (safety_factor * 0.5 * ROBOT_LENGTH) * f_vec
+
+        # Recompute the bounding boxes (BB) for the agent
+        self.agent_corners = agent_boundbox(
+            self._actual_center(self.cur_pos),
+            ROBOT_WIDTH,
+            ROBOT_LENGTH,
+            self.get_dir_vec(),
+            self.get_right_vec()
+        )
 
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
