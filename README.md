@@ -223,7 +223,7 @@ sudo apt-get install freeglut3-dev
 And on Fedora:
 
 ```
-sudo yum install freeglut-devel
+sudo dnf install freeglut-devel
 ```
 
 ### NoSuchDisplayException: Cannot connect to "None"

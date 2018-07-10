@@ -65,11 +65,12 @@ ROBOT_LENGTH = 0.18
 # Height of the robot, used for scaling
 ROBOT_HEIGHT = 0.12
 
-# Safety Radius Multiplier
-SAFETY_RAD_MULT = 1.5
+# Safety radius multiplier
+SAFETY_RAD_MULT = 1.8
 
-# Duckie Safety Radius
-AGENT_SAFETY_RAD = max(ROBOT_LENGTH, ROBOT_WIDTH) / 2 * SAFETY_RAD_MULT
+# Robot safety circle radius
+AGENT_SAFETY_RAD = (max(ROBOT_LENGTH, ROBOT_WIDTH) / 2) * SAFETY_RAD_MULT
+
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
 
@@ -399,7 +400,7 @@ class SimpleSimEnv(gym.Env):
 
         # Arrays for checking collisions with N static objects
 
-        # (N x 2): Object position used in calculating reward 
+        # (N x 2): Object position used in calculating reward
         self.static_centers = []
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
@@ -408,7 +409,7 @@ class SimpleSimEnv(gym.Env):
         # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
         self.static_norms = []
 
-        # (N): Safety radius for object used in calculating reward 
+        # (N): Safety radius for object used in calculating reward
         self.safety_radii = []
 
         # For each object
@@ -467,7 +468,7 @@ class SimpleSimEnv(gym.Env):
                     self.static_corners.append(obj_corners.T)
                     self.static_norms.append(obj_norm)
                     self.safety_radii.append(safety_radius)
-    
+
         # If there are static objects
         if len(self.static_corners) > 0:
             self.static_corners = np.stack(self.static_corners, axis=0)
@@ -722,30 +723,21 @@ class SimpleSimEnv(gym.Env):
         coords = self._get_grid_coords(pos)
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
-      
-    def _closest_obj(self):
-        """
-        Finds the closest object ahead of agent
-        """
-        projections = np.dot(
-            self.static_centers - self.cur_pos, 
-            self.get_dir_vec()
-        )
-        return np.argmin(projections[np.where(projections < 0)])
 
     def _safety_penalty(self):
         """
-        Calculates a 'safe driving penalty' (used as negative rew.) 
+        Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
         """
-        if len(self.static_centers) == 0: 
-            return 0.
+        if len(self.static_centers) == 0:
+            return 0
 
         pos = self._actual_center()
         d = np.linalg.norm(self.static_centers - pos, axis=1)
+
         if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
-            return 0.
-        else: 
+            return 0
+        else:
             return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
 
     def _actual_center(self):
@@ -841,9 +833,12 @@ class SimpleSimEnv(gym.Env):
             reward = 0
             return obs, reward, done, {}
 
+        # Compute the collision avoidance penalty
+        penalty = self._safety_penalty()
+
         # Get the position relative to the right lane tangent
-        dist, dotDir, angle = self.get_lane_pos()
-        reward = 1.0 * dotDir - 10.00 * abs(dist)
+        dist, dot_dir, angle = self.get_lane_pos()
+        reward = 1.0 * dot_dir - 10.00 * abs(dist) + 40 * penalty
         done = False
 
         return obs, reward, done, {}
