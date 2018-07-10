@@ -506,6 +506,11 @@ class SimpleSimEnv(gym.Env):
 
 
     def _collidable_object(self, obj_corners, obj_norm, possible_tiles):
+        """
+        A function to check if an object collides with any
+        drivable tiles, which would mean our agent could run into them.
+        Helps optimize collision checking w agent during runtime
+        """
         drivable_mask = np.array([ 
             self._get_tile(
                 c[0],
