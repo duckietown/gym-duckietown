@@ -39,7 +39,7 @@ objects:
   optional: true
 
 - kind: sign_blank
-  pos: [2.05, 4.05]
+  pos: [2.08, 4.05]
   rotate: 90
   height: 0.18
   optional: true
@@ -50,12 +50,12 @@ objects:
   height: 0.5
   optional: true
 - kind: sign_blank
-  pos: [5.95, 3.8]
+  pos: [5.92, 3.8]
   rotate: -30
   height: 0.18
   optional: true
 - kind: sign_blank
-  pos: [5.95, 2.4]
+  pos: [5.93, 2.4]
   rotate: -20
   height: 0.18
   optional: true

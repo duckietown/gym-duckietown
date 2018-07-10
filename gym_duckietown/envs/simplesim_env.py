@@ -439,11 +439,17 @@ class SimpleSimEnv(gym.Env):
 
                 # Find drivable tiles object could intersect with
                 obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
-                    pos, mesh, angle, scale, ROAD_TILE_SIZE)
-                
+                    pos,
+                    mesh,
+                    angle,
+                    scale,
+                    ROAD_TILE_SIZE
+                )
+
                 # For drawing purposes
                 self.object_corners.append(obj_corners.T)
-                
+
+                # If the object intersects with a drivable tile
                 if self._collidable_object(obj_corners, obj_norm, possible_tiles):
                     self.static_corners.append(obj_corners.T)
                     self.static_norms.append(obj_norm)
@@ -458,6 +464,8 @@ class SimpleSimEnv(gym.Env):
             if len(self.static_corners.shape) == 2:
                 self.static_corners = self.static_corners[np.newaxis]
                 self.static_norms = self.static_norms[np.newaxis]
+
+        print('num collidable objects:', len(self.static_corners))
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -504,14 +512,13 @@ class SimpleSimEnv(gym.Env):
 
         return val * noise
 
-
     def _collidable_object(self, obj_corners, obj_norm, possible_tiles):
         """
-        A function to check if an object collides with any
+        A function to check if an object intersects with any
         drivable tiles, which would mean our agent could run into them.
-        Helps optimize collision checking w agent during runtime
+        Helps optimize collision checking with agent during runtime
         """
-        drivable_mask = np.array([ 
+        drivable_mask = np.array([
             self._get_tile(
                 c[0],
                 c[1],
@@ -524,27 +531,27 @@ class SimpleSimEnv(gym.Env):
         tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
 
         # None of the candidate tiles are drivable, don't add object
-        if len(drivable_tiles) == 0: return False
+        if len(drivable_tiles) == 0:
+            return False
 
         # Find the corners for each candidate tile
         drivable_tiles = np.array([
             tile_corners(
-                self._get_tile(pt[0], pt[1])['coords'], 
+                self._get_tile(pt[0], pt[1])['coords'],
                 ROAD_TILE_SIZE
             ).T for pt in drivable_tiles
         ])
-        
+
         # Stack doesn't do anything if there's only one object,
         # So we add an extra dimension to avoid shape errors later
         if len(tile_norms.shape) == 2:
-            tile_norms = tile_norms[np.newaxis]  
+            tile_norms = tile_norms[np.newaxis]
         else: # Stack works as expected
             drivable_tiles = np.stack(drivable_tiles, axis=0)
             tile_norms = np.stack(tile_norms, axis=0)
 
         # Only add it if one of the vertices is on a drivable tile
         return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
-           
 
     def _get_grid_coords(self, abs_pos):
         """
@@ -692,7 +699,7 @@ class SimpleSimEnv(gym.Env):
 
     def _drivable_pos(self, pos):
         """
-        Check that the current (x,y,z) position is on a drivable tile
+        Check that the given (x,y,z) position is on a drivable tile
         """
 
         coords = self._get_grid_coords(pos)
@@ -729,7 +736,7 @@ class SimpleSimEnv(gym.Env):
             return False
 
         # Recompute the bounding boxes (BB) for the duckiebot
-        self.duckie_corners = duckie_boundbox(
+        duckie_corners = duckie_boundbox(
             self._actual_center(self.cur_pos),
             ROBOT_WIDTH,
             ROBOT_LENGTH,
@@ -738,12 +745,12 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Generate the norms corresponding to each face of BB
-        self.duckie_norm = generate_norm(self.duckie_corners)
+        duckie_norm = generate_norm(duckie_corners)
 
         return intersects(
-            self.duckie_corners,
+            duckie_corners,
             self.static_corners,
-            self.duckie_norm,
+            duckie_norm,
             self.static_norms
         )
 
@@ -947,7 +954,13 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
-            corners = self.duckie_corners
+            corners = duckie_boundbox(
+                self._actual_center(self.cur_pos),
+                ROBOT_WIDTH,
+                ROBOT_LENGTH,
+                self.get_dir_vec(),
+                self.get_right_vec()
+            )
             glColor3f(1, 0, 0)
             glBegin(GL_LINE_LOOP)
             glVertex3f(corners[0, 0], 0.01, corners[0, 1])
