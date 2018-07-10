@@ -52,6 +52,7 @@ def on_key_press(symbol, modifiers):
     from pyglet.window import key
 
     action = None
+
     if symbol == key.LEFT:
         print('left')
         action = np.array([0.00, 0.40])
@@ -68,6 +69,9 @@ def on_key_press(symbol, modifiers):
         print('RESET')
         action = None
         env.reset()
+        env.render()
+    elif symbol == key.PAGEUP:
+        env.cam_angle = 0
         env.render()
     elif symbol == key.SPACE:
         action = np.array([0, 0])
