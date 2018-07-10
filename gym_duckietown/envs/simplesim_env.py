@@ -400,7 +400,7 @@ class SimpleSimEnv(gym.Env):
 
         # Arrays for checking collisions with N static objects
 
-        # (N): Object position used in calculating reward 
+        # (N x 2): Object position used in calculating reward 
         self.static_centers = []
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
@@ -686,6 +686,8 @@ class SimpleSimEnv(gym.Env):
         Calculates a 'safe driving penalty' (used as negative rew.) 
         as described in Issue #24
         """
+        if len(self.static_centers) == 0: return 0.
+
         pos = self._actual_center(self.cur_pos)
         d = np.linalg.norm(self.static_centers - pos, axis=1)
         if not safety_circle_intersection(d, DUCKIE_SR, self.safety_radii):
