@@ -64,12 +64,12 @@ class Model(nn.Module):
 
         return vels
 
+positions = []
+actions = []
+
 def load_data(map_name):
     global positions
     global actions
-
-    positions = []
-    actions = []
 
     file_name = 'experiments/demos_%s.json' % map_name
     try:
