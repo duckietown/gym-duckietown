@@ -102,7 +102,7 @@ def gen_data():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--map-name', default='straight_road')
+    parser.add_argument('--map-name', required=True)
     args = parser.parse_args()
 
     load_data(args.map_name)
