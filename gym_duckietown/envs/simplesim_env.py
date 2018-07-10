@@ -65,6 +65,11 @@ ROBOT_LENGTH = 0.18
 # Height of the robot, used for scaling
 ROBOT_HEIGHT = 0.12
 
+# Safety Radius Multiplier
+SAFETY_RAD_MULT = 1.5
+
+# Duckie Safety Radius
+AGENT_SAFETY_RAD = max(ROBOT_LENGTH, ROBOT_WIDTH) / 2 * SAFETY_RAD_MULT
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
 
@@ -389,14 +394,22 @@ class SimpleSimEnv(gym.Env):
         # Create the objects array
         self.objects = []
 
+        # The corners for every object, regardless if collidable or not
         self.object_corners = []
+
         # Arrays for checking collisions with N static objects
+
+        # (N x 2): Object position used in calculating reward 
+        self.static_centers = []
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
         self.static_corners = []
 
         # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
         self.static_norms = []
+
+        # (N): Safety radius for object used in calculating reward 
+        self.safety_radii = []
 
         # For each object
         for desc in map_data.get('objects', []):
@@ -415,6 +428,8 @@ class SimpleSimEnv(gym.Env):
             else:
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
+
+            safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
 
             obj = {
                 'kind': kind,
@@ -448,9 +463,11 @@ class SimpleSimEnv(gym.Env):
 
                 # If the object intersects with a drivable tile
                 if self._collidable_object(obj_corners, obj_norm, possible_tiles):
+                    self.static_centers.append(pos)
                     self.static_corners.append(obj_corners.T)
                     self.static_norms.append(obj_norm)
-
+                    self.safety_radii.append(safety_radius)
+    
         # If there are static objects
         if len(self.static_corners) > 0:
             self.static_corners = np.stack(self.static_corners, axis=0)
@@ -469,6 +486,9 @@ class SimpleSimEnv(gym.Env):
         if 'start_tile' in map_data:
             coords = map_data['start_tile']
             self.start_tile = self._get_tile(*coords)
+
+        self.static_centers = np.array(self.static_centers)
+        self.safety_radii = np.array(self.safety_radii)
 
     def close(self):
         pass
@@ -702,10 +722,35 @@ class SimpleSimEnv(gym.Env):
         coords = self._get_grid_coords(pos)
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
+      
+    def _closest_obj(self):
+        """
+        Finds the closest object ahead of agent
+        """
+        projections = np.dot(
+            self.static_centers - self.cur_pos, 
+            self.get_dir_vec()
+        )
+        return np.argmin(projections[np.where(projections < 0)])
+
+    def _safety_penalty(self):
+        """
+        Calculates a 'safe driving penalty' (used as negative rew.) 
+        as described in Issue #24
+        """
+        if len(self.static_centers) == 0: 
+            return 0.
+
+        pos = self._actual_center()
+        d = np.linalg.norm(self.static_centers - pos, axis=1)
+        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
+            return 0.
+        else: 
+            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
 
     def _actual_center(self):
         """
-        Calculate the position of the geometric center of the duckiebot
+        Calculate the position of the geometric center of the agent
         The value of self.cur_pos is the center of rotation.
         """
 
@@ -714,7 +759,7 @@ class SimpleSimEnv(gym.Env):
 
     def _inconvenient_spawn(self):
         """
-        Check that duckie spawn is not too close to any object
+        Check that agent spawn is not too close to any object
         """
 
         results = [np.linalg.norm(x['pos'] - self.cur_pos) <
@@ -732,22 +777,13 @@ class SimpleSimEnv(gym.Env):
         if len(self.static_corners) == 0:
             return False
 
-        # Recompute the bounding boxes (BB) for the duckiebot
-        duckie_corners = duckie_boundbox(
-            self._actual_center(),
-            ROBOT_WIDTH,
-            ROBOT_LENGTH,
-            self.get_dir_vec(),
-            self.get_right_vec()
-        )
-
         # Generate the norms corresponding to each face of BB
-        duckie_norm = generate_norm(duckie_corners)
+        self.agent_norm = generate_norm(self.agent_corners)
 
         return intersects(
-            duckie_corners,
+            self.agent_corners,
             self.static_corners,
-            duckie_norm,
+            self.agent_norm,
             self.static_norms
         )
 
@@ -760,9 +796,19 @@ class SimpleSimEnv(gym.Env):
         pos = self._actual_center()
         f_vec = self.get_dir_vec()
         r_vec = self.get_right_vec()
+
         l_pos = pos - (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
         r_pos = pos + (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
         f_pos = pos + (safety_factor * 0.5 * ROBOT_LENGTH) * f_vec
+
+        # Recompute the bounding boxes (BB) for the agent
+        self.agent_corners = agent_boundbox(
+            self._actual_center(),
+            ROBOT_WIDTH,
+            ROBOT_LENGTH,
+            self.get_dir_vec(),
+            self.get_right_vec()
+        )
 
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
@@ -950,13 +996,7 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
-            corners = duckie_boundbox(
-                self._actual_center(),
-                ROBOT_WIDTH,
-                ROBOT_LENGTH,
-                self.get_dir_vec(),
-                self.get_right_vec()
-            )
+            corners = self.agent_corners
             glColor3f(1, 0, 0)
             glBegin(GL_LINE_LOOP)
             glVertex3f(corners[0, 0], 0.01, corners[0, 1])

@@ -1,9 +1,10 @@
 from .graphics import rotate_point
 import numpy as np
+import math
 
-def duckie_boundbox(true_pos, width, length, f_vec, r_vec):
+def agent_boundbox(true_pos, width, length, f_vec, r_vec):
     """
-    Compute bounding box for duckie using its dimensions,
+    Compute bounding box for agent using its dimensions,
     current position, and angle of rotation
     Order of points in bounding box:
     (front)
@@ -145,3 +146,34 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
         return True
 
     return False
+
+def safety_circle_intersection(d, r1, r2):
+    """
+    Checks if  two circles with centers separated by d and centered
+    at r1 and r2 either intesect or are enveloped (one inside of other)
+    """
+    intersect = np.logical_and(
+        np.less_equal(np.power(r1 - r2, 2), np.power(d, 2)),
+        np.less_equal(np.power(d, 2), np.power(r1 + r2, 2))
+    )
+
+    enveloped = np.less(d, abs(r1 - r2))
+
+    return np.any(intersect) or np.any(enveloped)
+
+def safety_circle_overlap(d, r1, r2):
+    """
+    Returns a proxy for area (see issue #24) 
+    of two circles with centers separated by d 
+    and centered at r1 and r2
+    """
+    scores = d - r1 - r2
+    return np.sum(scores[np.where(scores < 0)])
+
+def calculate_safety_radius(mesh, scale):
+    """
+    Returns a safety radius for an object, and scales
+    it according to the YAML file's scale param for that obj
+    """
+    x, _, z = np.max([abs(mesh.min_coords), abs(mesh.max_coords)], axis=0)
+    return np.linalg.norm([x, z]) * scale 
