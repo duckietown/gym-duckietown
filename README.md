@@ -164,7 +164,7 @@ Note that it is possible to have `gen_demos.py` and `train_imitate.py` running s
 
 ### Map File Format
 
-The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
+The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](https://docs.duckietown.org/opmanual_duckietown/out/duckietown_specs.html).
 
 The available tile types are:
 - empty
@@ -192,7 +192,7 @@ The available object types are:
 
 Although the environment is rendered in 3D, the map is essentially two-dimensional. As such, objects coordinates are specified along two axes. The coordinates are rescaled based on the tile size, such that coordinates [0.5, 1.5] would mean middle of the first column of tiles, middle of the second row. Objects can have an `optional` flag set, which means that they randomly may or may not appear during training, as a form of domain randomization.
 
-In the future, we will add support for more sign objects matching the [Duckietown appearance specification](http://book.duckietown.org/master/duckiebook/duckietown_specs.html#sec:duckietown-specs).
+In the future, we will add support for more sign objects matching the [Duckietown appearance specification](https://docs.duckietown.org/opmanual_duckietown/out/duckietown_specs.html).
 
 ### Observations
 
