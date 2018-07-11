@@ -115,15 +115,11 @@ def update(dt):
     if round(joystick.x, 2) == 0.0 and round(joystick.y, 2) == 0.0:
         return
 
-    action = np.zeros(2)
-    if round(joystick.x, 2) == 1.0: # RIGHT
-        action[0] = 0.40 
-    if round(joystick.x, 2) == -1.0: # LEFT
-        action[0] = -0.40
-    if round(joystick.y, 2) == -1.0: # UP
-        action += 0.80
-    if round(joystick.y, 2) == 1.0: # DOWN
-        action -= 0.80
+    x = round(joystick.y, 2)
+    z = round(joystick.x, 2)
+
+    action = np.array([-x, -x])
+    action[1] += z
 
     if joystick.buttons[5]: # RTrigger, Boost
         action *= 1.5
