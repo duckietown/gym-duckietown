@@ -13,6 +13,7 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
@@ -36,38 +37,103 @@ else:
 env.reset()
 env.render()
 
+# global variables for recording
+positions = []
+actions = []
+demos = []
+recording = False
+
+def process_recording():
+    global positions, actions, demos
+
+    p = list(map(lambda p: [ p[0].tolist(), p[1] ], positions))
+    a = list(map(lambda a: a.tolist(), actions))
+
+    demo = {
+        'positions': p,
+        'actions': a
+    }
+
+    demos.append(demo)
+
+    # Store the trajectories in a JSON file
+    with open('experiments/demos_{}.json'.format(args.map_name), 'w') as outfile:
+        json.dump({ 'demos': demos }, outfile)
 
 @env.window.event
 def on_joybutton_press(joystick, button):
-    if button == 12:
+    """
+    Event Handler for Controller Button Inputs
+    Relevant Button Definitions:
+    1 - B
+    2 - A
+    8 - Select
+    9 - Start
+    12 - Home
+
+    Triggers on button presses to control recording capabilities
+    """
+    global recording, positions, actions
+
+    if button == 12: # Home Button
         print('RESET')
         env.reset()
         env.render()
-    if button == 8:
-        print('STOP RECORDING')
-    if button == 9:
-        print('START RECORDING')
+
+    # Select Button
+    if button == 8 and recording:
+        recording = False
+        print('Stop Recording, Press A to confirm, B to delete')
+
+    # Start Button
+    if button == 9 and not recording: 
+        print('Start Recording, Press Select to Finish')
+        recording = True
+        positions.append((env.cur_pos, env.cur_angle))
+
+    # A Button
+    if button == 2 and len(positions) != 0 and not recording:
+        print('Saved Recording')
+        process_recording()
+        positions = []
+        actions = []
+
+    # B Button
+    if button == 1 and len(positions) != 0 and not recording:
+        print('Deleted Recording')
+        positions = []
+        actions = []
             
+
 def update(dt):
     """
     This function is called at every frame to handle
     movement/stepping and redrawing
     """
+
+    # No actions took place
+    if round(joystick.x, 2) == 0.0 and round(joystick.y, 2) == 0.0:
+        return
+
     action = np.zeros(2)
-    if round(joystick.x, 2) == 1.0:
+    if round(joystick.x, 2) == 1.0: # RIGHT
         action[0] = 0.40 
-    if round(joystick.x, 2) == -1.0:
+    if round(joystick.x, 2) == -1.0: # LEFT
         action[0] = -0.40
-    if round(joystick.y, 2) == -1.0:
+    if round(joystick.y, 2) == -1.0: # UP
         action += 0.80
-    if round(joystick.y, 2) == 1.0:
+    if round(joystick.y, 2) == 1.0: # DOWN
         action -= 0.80
 
-    if joystick.buttons[5]:
+    if joystick.buttons[5]: # RTrigger, Boost
         action *= 1.5
 
     obs, reward, done, info = env.step(action)
     print('step_count = %s, reward=%.3f' % (env.step_count, reward))
+
+    if recording:
+        positions.append((env.cur_pos, env.cur_angle))
+        actions.append(action)
 
     if done:
         print('done!')
@@ -78,6 +144,7 @@ def update(dt):
 
 pyglet.clock.schedule_interval(update, 0.1)
 
+# Registers joysticks and recording controls
 joysticks = pyglet.input.get_joysticks()
 assert joysticks, 'No joystick device is connected'
 joystick = joysticks[0]
