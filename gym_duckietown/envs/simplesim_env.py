@@ -501,14 +501,14 @@ class SimpleSimEnv(gym.Env):
                     dyn_idx += 1
 
                     self.pedestrians.append(pedestrian)
-                    self.pedestrian_active.append(False)
+                    self.pedestrian_active.append(True)
 
                     if self.domain_rand:
-                        self.pedestrian_wait_time.append(np.random.randint(0, 30) * 10)
-                        self.dynamic_vels.append(np.random.normal(0.05, 0.01))
+                        self.pedestrian_wait_time.append(np.random.randint(1, 30) * 10)
+                        self.dynamic_vels.append(np.abs(np.random.normal(0.2, 0.02)))
                     else:
                         self.pedestrian_wait_time.append(100)
-                        self.dynamic_vels.append(0.05)
+                        self.dynamic_vels.append(0.02)
                     
                     self.dynamic_rots.append(angle)
                     self.dynamic_headings.append(heading_vec(angle))
@@ -764,62 +764,96 @@ class SimpleSimEnv(gym.Env):
         self.cur_angle += rotAngle
 
     def _update_dynamic_obs(self):
+        # Trigger pedestrian movement every certain number of timesteps
         self.pedestrian_active = np.logical_or(
             self.step_count % self.pedestrian_wait_time == 0,
             self.pedestrian_active)
 
-        self.apply_velocity(dt=0.1)
+        self._update_pedestrians(dt=0.1)
 
+    def _update_pedestrians(self, dt):
+        """
+        Updates pedestrians with a simple motion model, and changes relevant
+        characteristics of each ped. when its current walk is over
 
-    def apply_velocity(self, dt=0.1):
+        dt = timestep
         """
-        Applies a constant velocity to each velocity
-        """
+        
+        # Numpy Arrays for batch updates of centers / bboxes
+        obj_indices = []
+        col_indices = []
+
+        for dyn_idx, active in enumerate(self.pedestrian_active):
+            indices = self.dynamic_obj_indices[dyn_idx]
+            obj_indices.append(indices[0])
+            col_indices.append(indices[1])
+
+        obj_indices = np.array(obj_indices)
+        col_indices = np.array(col_indices)
+        
+        a = self.dynamic_vels[np.where(self.pedestrian_active)] * dt
+        a = a[:, np.newaxis]
+        b = self.dynamic_headings[np.where(self.pedestrian_active)]
+
+        # How much each dimension of position will adjust due to velocity
+        velocity_adjustment = b * a
+
+        # Adjust each dynamic center
+        self.dynamic_centers[np.where(self.pedestrian_active)] += velocity_adjustment
+
+        # Set the collision centers assoc. with moving dyn. obstacles to be the ones
+        # set above
+        self.collidable_centers[col_indices[np.where(self.pedestrian_active)]] =\
+            self.dynamic_centers[np.where(self.pedestrian_active)]
+
+        # Move the corners (only (x,z) so needs some shape fixes) by the same amount
+        self.collidable_corners[col_indices[np.where(self.pedestrian_active)]] =\
+             (self.collidable_corners[col_indices[np.where(self.pedestrian_active)]].T \
+                + velocity_adjustment[:, (0, -1)].T).T
+
+        # Update the features of bboxes / rendering that can't be done in batch
+        self._update_dynamic_bbox(dt=0.1)
+
+        # Distance between start and current
         distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts, axis=1)
-        updates_mask = np.logical_and(distances > ROAD_TILE_SIZE, self.pedestrian_active)
+        updates_mask = np.greater(distances, ROAD_TILE_SIZE)
 
-        self.dynamic_centers[self.pedestrian_active] += np.dot(self.dynamic_vels[self.pedestrian_active], self.dynamic_headings[self.pedestrian_active])*dt
-        self.dynamic_rots[updates_mask] = (self.dynamic_rots[updates_mask] + np.pi) % (2*np.pi)
+        # Turn it around
+        self.dynamic_rots[updates_mask] = self.dynamic_rots[updates_mask] + np.pi
+        
+        # Set its new start pos to be its current
         self.dynamic_starts[updates_mask] = self.dynamic_centers[updates_mask]
-        self.pedestrian_active[updates_mask] = np.invert(self.pedestrian_active[updates_mask])
+
+        # Make them all inactive
+        self.pedestrian_active[updates_mask] = False
 
         if self.domain_rand:
-            self.dynamic_vels[updates_mask] = (
-                -np.sign(self.dynamic_vels[updates_mask]) * np.random.normal(0.05, 0.01))
-            self.pedestrian_wait_time[updates_mask] = np.random.randint(0, 30, size=np.count_nonzero(updates_mask)) * 10
+            # Assign a random velocity (in opp. direction) and a wait time
+            self.dynamic_vels[updates_mask] = -1 * np.sign(self.dynamic_vels[updates_mask]) * np.abs(np.random.normal(0.2, 0.02))
+            self.pedestrian_wait_time[updates_mask] = np.random.randint(1, 30) * 10
         else:
-            self.dynamic_vels[updates_mask] *= -np.sign(self.dynamic_vels[updates_mask])
+            # Just give it the negative of its current velocuty
+            self.dynamic_vels[updates_mask] *= -1
 
 
-        for dyn_idx, indices in self.dynamic_obj_indices.items():
+    def _update_dynamic_bbox(self, dt):
+        """
+        Updates each dynamic bounding box
+        """
+        for dyn_idx, active in enumerate(self.pedestrian_active):
+            indices = self.dynamic_obj_indices[dyn_idx]
             obj_idx = indices[0]
             col_idx = indices[1]
 
-            self._update_dynamic_bbox(dyn_idx, obj_idx, col_idx)
+            self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx] 
+            self.objects[obj_idx]['y_rot'] = self.dynamic_rots[dyn_idx] * (180 / np.pi)
 
-
-    def _update_dynamic_bbox(self, dyn_idx, obj_idx, col_idx):
-        # Rendering
-        self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx] 
-        self.objects[obj_idx]['y_rot'] = self.dynamic_rots[dyn_idx] * (180 / np.pi)
-
-        # Update Collisions parameters
-        self.collidable_centers[col_idx] = self.dynamic_centers[dyn_idx] 
-        corners = generate_corners(
-            self.collidable_centers[col_idx], 
-            self.objects[obj_idx]['min_coords'], 
-            self.objects[obj_idx]['max_coords'], 
-            self.dynamic_rots[dyn_idx],
-            self.objects[obj_idx]['scale']
-        )
-
-        self.collidable_corners[col_idx] = corners.T
-        self.collidable_norms[col_idx] = generate_norm(
-            self.collidable_corners[col_idx].T)
-
-        # Corners for --draw-bbox flag
-        self.object_corners[obj_idx] = corners
-        
+            # self.collidable_corners[col_idx] = corners.T
+            self.collidable_norms[col_idx] = generate_norm(
+                self.collidable_corners[col_idx].T)
+            
+            # Corners for --draw-bbox flag
+            self.object_corners[obj_idx] = self.collidable_corners[col_idx].T
 
     def _drivable_pos(self, pos):
         """
@@ -945,7 +979,7 @@ class SimpleSimEnv(gym.Env):
 
         # Get the position relative to the right lane tangent
         dist, dot_dir, angle = self.get_lane_pos()
-        reward = 1.0 * dot_dir - 10.00 * abs(dist) + 40 * penalty
+        reward = 1.0 * dot_dir - 10.00 * np.abs(dist) + 40 * penalty
         done = False
 
         return obs, reward, done, {}
