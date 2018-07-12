@@ -80,8 +80,6 @@ ROBOT_SPEED = 0.45
 # Minimum distance spawn position needs to be from all objects
 MIN_SPAWN_OBJ_DIST = 0.25
 
-DT = 5e-4
-
 class SimpleSimEnv(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -430,8 +428,7 @@ class SimpleSimEnv(gym.Env):
         self.dynamic_headings = []
         self.dynamic_starts = []
         self.dynamic_centers = []
-        self.dynamic_corners = []
-        self.dynamic_norms = []
+        self.dynamic_rots = []
 
         dyn_idx = 0
 
@@ -503,19 +500,17 @@ class SimpleSimEnv(gym.Env):
 
                     self.pedestrians.append(pedestrian)
                     self.dynamic_vels.append(0.05)
-                    self.dynamic_headings.append(heading_vec(rotate))
+                    self.dynamic_rots.append(angle)
+                    self.dynamic_headings.append(heading_vec(angle))
                     self.dynamic_starts.append(self.collidable_centers[-1])
                     self.dynamic_centers.append(self.collidable_centers[-1])
-                    self.dynamic_corners.append(self.collidable_corners[-1])
-                    self.dynamic_norms.append(self.collidable_norms[-1])
 
         self.pedestrians =  np.array(self.pedestrians)
         self.dynamic_vels =  np.array(self.dynamic_vels)
+        self.dynamic_rots =  np.array(self.dynamic_rots)
         self.dynamic_headings =  np.array(self.dynamic_headings)
         self.dynamic_starts = np.array(self.dynamic_starts)
         self.dynamic_centers =  np.array(self.dynamic_centers)
-        self.dynamic_corners =  np.array(self.dynamic_corners)
-        self.dynamic_norms =  np.array(self.dynamic_norms)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -771,51 +766,40 @@ class SimpleSimEnv(gym.Env):
         Applies a constant velocity to each velocity
         """
         self.dynamic_centers += np.dot(self.dynamic_vels, self.dynamic_headings)*dt
-        distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts)
-        updates_mask = np.logical_and(
-            np.greater(distances, ROAD_TILE_SIZE),
-            self.pedestrians
-        )
+        distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts, axis=1)
+        updates_mask = np.logical_and(distances > ROAD_TILE_SIZE, self.pedestrians)
+
+        self.dynamic_rots[updates_mask] = (self.dynamic_rots[updates_mask] + np.pi) % (2*np.pi)
+        self.dynamic_vels[updates_mask] = (
+            -np.sign(self.dynamic_vels[updates_mask]) * np.random.normal(0.05, 0.01))
+        self.dynamic_starts[updates_mask] = self.dynamic_centers[updates_mask]
 
         for dyn_idx, indices in self.dynamic_obj_indices.items():
             obj_idx = indices[0]
             col_idx = indices[1]
 
-            self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx]
-            self.collidable_centers[col_idx] = self.dynamic_centers[dyn_idx]   
+            # Rendering
+            self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx] 
+            self.objects[obj_idx]['y_rot'] = self.dynamic_rots[dyn_idx] * (180 / np.pi)
 
+            self.collidable_centers[col_idx] = self.dynamic_centers[dyn_idx] 
             self._update_dynamic_bbox(dyn_idx, obj_idx, col_idx)
-
-            if updates_mask[dyn_idx]:
-                angle = (self.objects[obj_idx]['y_rot']  + 180) % 360
-                new_vel = -np.sign(self.dynamic_vels[dyn_idx]) * np.random.normal(0.05, 0.01)
-
-                self.objects[obj_idx]['y_rot'] = angle
-                self.dynamic_vels[dyn_idx] = new_vel
-                self.dynamic_headings[dyn_idx] = np.sign(new_vel) * heading_vec(
-                    (angle) * (math.pi / 180))
-
-                self.dynamic_starts[dyn_idx] = self.dynamic_centers[dyn_idx]
 
 
     def _update_dynamic_bbox(self, dyn_idx, obj_idx, col_idx):
         corners = generate_corners(
-            self.objects[obj_idx]['pos'], 
+            self.collidable_centers[col_idx], 
             self.objects[obj_idx]['min_coords'], 
             self.objects[obj_idx]['max_coords'], 
-            self.objects[obj_idx]['y_rot'] * (math.pi / 180), 
+            self.dynamic_rots[dyn_idx],
             self.objects[obj_idx]['scale']
         )
 
-        self.dynamic_corners[dyn_idx] = corners.T
         self.collidable_corners[col_idx] = corners.T
         self.object_corners[obj_idx] = corners
 
-        norm = generate_norm(
-            self.dynamic_corners[dyn_idx].T)
-
-        self.collidable_norms[col_idx] = norm
-        self.dynamic_norms[dyn_idx] = norm
+        self.collidable_norms[col_idx] = generate_norm(
+            self.collidable_corners[col_idx].T)
         
 
     def _drivable_pos(self, pos):
