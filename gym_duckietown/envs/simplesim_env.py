@@ -420,12 +420,23 @@ class SimpleSimEnv(gym.Env):
         # (N): Safety radius for object used in calculating reward
         self.collidable_safety_radii = []
 
+        # Holds the indices (in self.objects) of static obstacles
         self.static_indices = []
-        
+
+        # Dictionary mapping from the a dynamic obstacle idx 
+        # (used for all arrays below) to indices in (self.objects, self.collidable)
         self.dynamic_obj_indices = {}
+
+        # Stores whether or not this particular dynamic object is a pedestrian
         self.pedestrians = []
+
+        # Whether or not a particular ped is active (in a walk)
         self.pedestrian_active = []
+
+        # How long the Pedestrian will wait before starting its walk
         self.pedestrian_wait_time = []
+
+        # Information arrays used by dynamic objects -- currently only pedestrians
         self.dynamic_vels = []
         self.dynamic_headings = []
         self.dynamic_starts = []
@@ -503,6 +514,7 @@ class SimpleSimEnv(gym.Env):
                     self.pedestrians.append(pedestrian)
                     self.pedestrian_active.append(True)
 
+                    # Randomize velocity and wait time
                     if self.domain_rand:
                         self.pedestrian_wait_time.append(np.random.randint(1, 30) * 10)
                         self.dynamic_vels.append(np.abs(np.random.normal(0.2, 0.02)))
@@ -515,15 +527,16 @@ class SimpleSimEnv(gym.Env):
                     self.dynamic_starts.append(self.collidable_centers[-1])
                     self.dynamic_centers.append(self.collidable_centers[-1])
 
-        self.pedestrians =  np.array(self.pedestrians)
-        self.pedestrian_active =  np.array(self.pedestrian_active)
-        self.pedestrian_wait_time =  np.array(self.pedestrian_wait_time)
-        self.pedestrians =  np.array(self.pedestrians)
-        self.dynamic_vels =  np.array(self.dynamic_vels)
-        self.dynamic_rots =  np.array(self.dynamic_rots)
-        self.dynamic_headings =  np.array(self.dynamic_headings)
+        # Numpy arrays for faster indexing later
+        self.pedestrians = np.array(self.pedestrians)
+        self.pedestrian_active = np.array(self.pedestrian_active)
+        self.pedestrian_wait_time = np.array(self.pedestrian_wait_time)
+        self.pedestrians = np.array(self.pedestrians)
+        self.dynamic_vels = np.array(self.dynamic_vels)
+        self.dynamic_rots = np.array(self.dynamic_rots)
+        self.dynamic_headings = np.array(self.dynamic_headings)
         self.dynamic_starts = np.array(self.dynamic_starts)
-        self.dynamic_centers =  np.array(self.dynamic_centers)
+        self.dynamic_centers = np.array(self.dynamic_centers)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -764,6 +777,8 @@ class SimpleSimEnv(gym.Env):
         self.cur_angle += rotAngle
 
     def _update_dynamic_obs(self):
+        if len(self.pedestrians) == 0: return
+
         # Trigger pedestrian movement every certain number of timesteps
         self.pedestrian_active = np.logical_or(
             self.step_count % self.pedestrian_wait_time == 0,
