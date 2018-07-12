@@ -1,5 +1,3 @@
-import cv2
-
 from gym_duckietown.config import DEFAULTS
 from duckietown_slimremote.networking import make_pull_socket, has_pull_message, receive_data, make_pub_socket, \
     send_array
