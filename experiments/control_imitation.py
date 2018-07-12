@@ -14,8 +14,8 @@ import torch
 
 import numpy as np
 import gym
-import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
+from gym_duckietown.wrappers import HeadingWrapper
 
 from train_imitation import Model
 from utils import make_var
@@ -36,6 +36,7 @@ if args.env_name == 'SimpleSim-v0':
     env.max_steps = 500
 else:
     env = gym.make(args.env_name)
+env = HeadingWrapper(env)
 
 obs = env.reset()
 env.render()
