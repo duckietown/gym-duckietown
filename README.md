@@ -58,7 +58,6 @@ Requirements:
 - OpenAI gym
 - NumPy
 - SciPy
-- OpenCV
 - Pyglet
 - PyYAML
 - PyTorch
