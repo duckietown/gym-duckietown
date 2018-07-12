@@ -1,6 +1,6 @@
 from gym_duckietown.config import DEFAULTS
 from duckietown_slimremote.networking import make_pull_socket, has_pull_message, receive_data, make_pub_socket, \
-    send_array
+    send_gym
 import os
 
 from gym_duckietown.envs import SimpleSimEnv
@@ -37,19 +37,25 @@ def main():
                 print(data)  # in error case, this will contain the err msg
                 continue
 
+            reward = 0 # in case it's just a ping, not a motor command, we are sending a 0 reward
+            done = False # same thing... just for gym-compatibility
+
             if data["topic"] == 0:
                 obs, reward, done, misc = env.step(data["msg"])
-                print('step_count = %s, reward=%.3f' % (env.step_count, reward))
+                print('step_count = %s, reward=%.3f, done = %s' % (env.step_count, reward, done))
                 if done:
                     env.reset()
 
             if data["topic"] == 1:
                 print("received ping:", data)
 
+            if data["topic"] == 2:
+                obs = env.reset()
+
             # can only initialize socket after first listener is connected - weird ZMQ bug
             if publisher_socket is None:
                 publisher_socket = make_pub_socket(for_images=True)
 
             if data["topic"] in [0, 1]:
-                send_array(publisher_socket, obs)
+                send_gym(publisher_socket, obs, reward, done)
 

@@ -12,7 +12,7 @@ setup(
         'scikit-image>=0.13.1',
         'opencv-python>=3.4',
         'pyyaml>=3.12',
-        'duckietown_slimremote>=1.1'
+        'duckietown_slimremote>=1.3'
     ],
     entry_points={
         'console_scripts': [
