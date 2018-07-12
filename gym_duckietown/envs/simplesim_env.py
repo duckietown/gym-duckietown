@@ -488,7 +488,7 @@ class SimpleSimEnv(gym.Env):
                 else:
                     self.dynamic_obj_indices.append(obj_idx)
                     self.pedestrians.append(pedestrian)
-                    self.dynamic_vels.append(0.5)
+                    self.dynamic_vels.append(0.05)
                     self.dynamic_headings.append(heading_vec(rotate))
                     self.dynamic_starts.append(self.collidable_centers[-1])
                     self.dynamic_centers.append(self.collidable_centers[-1])
@@ -765,25 +765,23 @@ class SimpleSimEnv(gym.Env):
         """
         Applies a constant velocity to each velocity
         """
-        print(np.dot(self.dynamic_vels, self.dynamic_headings)*dt)
         self.dynamic_centers += np.dot(self.dynamic_vels, self.dynamic_headings)*dt
         distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts)
         updates_mask = np.logical_and(
-            np.logical_or(
-                np.greater(distances, ROAD_TILE_SIZE),
-                np.less(distances, 1e-2)
-            ), 
+            np.greater(distances, ROAD_TILE_SIZE),
             self.pedestrians
         )
 
-        for i, true_idx in enumerate(self.dynamic_obj_indices):
-            print(self.dynamic_headings[i])
+        for i, true_idx in enumerate(self.dynamic_obj_indices):           
+            angle = self.objects[true_idx]['y_rot']
+            self.objects[true_idx]['pos'] = self.dynamic_centers[i]
+
             if updates_mask[i]:
-                angle = self.objects[-1]['y_rot']
-                self.objects[true_idx]['pos'] = self.dynamic_centers[i]
+                new_vel = np.random.normal(0.05, 0.01)
+                self.dynamic_starts[i] = self.dynamic_centers[i]
                 self.objects[true_idx]['y_rot'] = angle + 180
-                self.dynamic_vels[i] = np.random.normal(0.5, 0.1)
-                self.dynamic_headings[i] = heading_vec(angle * (math.pi / 180))
+                self.dynamic_vels[i] = np.sign(self.dynamic_vels[i]) * -1 * new_vel
+                self.dynamic_headings[i] = np.sign(self.dynamic_vels[i]) * heading_vec((angle + 180) * (math.pi / 180))
 
 
         # self.update_dynamic_bbox()
