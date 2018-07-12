@@ -13,6 +13,7 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
+from gym_duckietown.wrappers import HeadingWrapper
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
@@ -31,11 +32,12 @@ if args.env_name == 'SimpleSim-v0':
     )
 else:
     env = gym.make(args.env_name)
+env = HeadingWrapper(env)
 
 env.reset()
 env.render()
 
-@env.window.event
+@env.unwrapped.window.event
 def on_key_press(symbol, modifiers):
     """
     This handler processes keyboard commands that
@@ -55,7 +57,7 @@ def on_key_press(symbol, modifiers):
 
 # Register a keyboard handler
 key_handler = key.KeyStateHandler()
-env.window.push_handlers(key_handler)
+env.unwrapped.window.push_handlers(key_handler)
 
 def update(dt):
     """
@@ -66,13 +68,13 @@ def update(dt):
     action = None
 
     if key_handler[key.UP]:
-        action = np.array([0.70, 0.70])
+        action = np.array([0.7, 0.0])
     if key_handler[key.DOWN]:
-        action = np.array([-0.40, -0.40])
+        action = np.array([-0.4, 0])
     if key_handler[key.LEFT]:
-        action = np.array([0.00, 0.40])
+        action = np.array([0.6, +1])
     if key_handler[key.RIGHT]:
-        action = np.array([0.40, 0.00])
+        action = np.array([0.6, -1])
     if key_handler[key.SPACE]:
         action = np.array([0, 0])
 
@@ -82,7 +84,7 @@ def update(dt):
             action *= 1.5
 
         obs, reward, done, info = env.step(action)
-        print('step_count = %s, reward=%.3f' % (env.step_count, reward))
+        print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
         if done:
             print('done!')
