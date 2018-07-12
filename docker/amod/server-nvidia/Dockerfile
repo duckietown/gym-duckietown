@@ -1,5 +1,22 @@
-FROM ubuntu:16.04
+# requires nvidia-docker2
 
+# before running this container, use this command once: xhost +si:localuser:root
+# the run the container like so (to connect via loacalhost):
+
+# docker build -t gym-duckietown-server .
+
+# then
+
+# docker run \
+# --runtime=nvidia -ti --rm -e DISPLAY \
+# -v /tmp/.X11-unix:/tmp/.X11-unix \
+# --name gym-server -p 8902:8902 -p 5558:5558 \
+# gym-duckietown-server
+
+
+FROM nvidia/opengl:1.0-glvnd-runtime-ubuntu16.04
+
+ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES},display
 
 # TODO: double-check that we really need all of these for just the server
 RUN apt-get update -y && apt-get install -y --no-install-recommends \

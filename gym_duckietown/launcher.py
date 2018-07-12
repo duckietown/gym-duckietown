@@ -13,11 +13,13 @@ def main():
     # get parameters from environment (set during docker launch) otherwise take default
     map = os.getenv('DUCKIETOWN_MAP', DEFAULTS["map"])
     domain_rand = bool(os.getenv('DUCKIETOWN_DOMAIN_RAND', DEFAULTS["domain_rand"]))
+    max_steps = os.getenv('DUCKIETOWN_MAX_STEPS', DEFAULTS["max_steps"])
 
     env = SimpleSimEnv(
         map_name=map,
         # draw_curve = args.draw_curve,
         # draw_bbox = args.draw_bbox,
+        max_steps=max_steps,
         domain_rand=domain_rand
     )
     obs = env.reset()
