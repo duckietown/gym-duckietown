@@ -19,16 +19,24 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
          freeglut3-dev && \
      rm -rf /var/lib/apt/lists/*
 
+# I moved the pip requirements up here so we can cache them in this layer and don't
+# need to rebuild them when the git repo has changed. Also I don't know why the conda pkg
+# "pyzmq" isn't doing anything. Pip doesn't recognize it and installs the pkg 'zmq'.
+
 RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
      chmod +x ~/miniconda.sh && \
      ~/miniconda.sh -b -p /opt/conda && \
      rm ~/miniconda.sh && \
      /opt/conda/bin/conda install numpy pyyaml scipy pyzmq && \
+     /opt/conda/bin/pip install zmq pyglet opencv-python && \
      /opt/conda/bin/conda clean -ya
 ENV PATH /opt/conda/bin:$PATH
 
 WORKDIR /workspace
 RUN chmod -R a+w /workspace
+
+ENV force-docker-rebuild 1
+
 RUN git clone https://github.com/duckietown/duckietown-slimremote && cd duckietown-slimremote && pip install -e . && cd ..
 RUN git clone https://github.com/duckietown/gym-duckietown && cd gym-duckietown && pip install -e . && cd ..
 COPY launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
