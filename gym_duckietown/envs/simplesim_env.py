@@ -394,6 +394,15 @@ class SimpleSimEnv(gym.Env):
 
                 self._set_tile(i, j, tile)
 
+        self._load_objects(map_data)
+
+        # Get the starting tile from the map, if specified
+        self.start_tile = None
+        if 'start_tile' in map_data:
+            coords = map_data['start_tile']
+            self.start_tile = self._get_tile(*coords)
+
+    def _load_objects(self, map_data):
         # Create the objects array
         self.objects = []
 
@@ -415,7 +424,7 @@ class SimpleSimEnv(gym.Env):
 
         self.static_indices = []
         
-        self.dynamic_obj_indices = []
+        self.dynamic_obj_indices = {}
         self.pedestrians = []
         self.dynamic_vels = []
         self.dynamic_headings = []
@@ -423,6 +432,8 @@ class SimpleSimEnv(gym.Env):
         self.dynamic_centers = []
         self.dynamic_corners = []
         self.dynamic_norms = []
+
+        dyn_idx = 0
 
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
@@ -473,20 +484,23 @@ class SimpleSimEnv(gym.Env):
                 ROAD_TILE_SIZE
             )
 
-            # For drawing purposes
-            self.object_corners.append(obj_corners.T)
+            self.object_corners.append(obj_corners)
 
             # If the object intersects with a drivable tile
             if self._collidable_object(obj_corners, obj_norm, possible_tiles):
                 self.collidable_centers.append(pos)
                 self.collidable_corners.append(obj_corners.T)
                 self.collidable_norms.append(obj_norm)
+
                 self.collidable_safety_radii.append(safety_radius)
 
                 if static:
                     self.static_indices.append(obj_idx)
                 else:
-                    self.dynamic_obj_indices.append(obj_idx)
+                    col_idx = len(self.collidable_centers) - 1
+                    self.dynamic_obj_indices[dyn_idx] = (obj_idx, col_idx)
+                    dyn_idx += 1
+
                     self.pedestrians.append(pedestrian)
                     self.dynamic_vels.append(0.05)
                     self.dynamic_headings.append(heading_vec(rotate))
@@ -495,7 +509,6 @@ class SimpleSimEnv(gym.Env):
                     self.dynamic_corners.append(self.collidable_corners[-1])
                     self.dynamic_norms.append(self.collidable_norms[-1])
 
-        self.dynamic_obj_indices = np.array(self.dynamic_obj_indices)
         self.pedestrians =  np.array(self.pedestrians)
         self.dynamic_vels =  np.array(self.dynamic_vels)
         self.dynamic_headings =  np.array(self.dynamic_headings)
@@ -514,13 +527,6 @@ class SimpleSimEnv(gym.Env):
             if len(self.collidable_corners.shape) == 2:
                 self.collidable_corners = self.collidable_corners[np.newaxis]
                 self.collidable_norms = self.collidable_norms[np.newaxis]
-
-
-        # Get the starting tile from the map, if specified
-        self.start_tile = None
-        if 'start_tile' in map_data:
-            coords = map_data['start_tile']
-            self.start_tile = self._get_tile(*coords)
 
         self.collidable_centers = np.array(self.collidable_centers)
         self.collidable_safety_radii = np.array(self.collidable_safety_radii)
@@ -760,7 +766,6 @@ class SimpleSimEnv(gym.Env):
         #     ROAD_TILE_SIZE
         # )
 
-
     def apply_velocity(self, dt=0.001):
         """
         Applies a constant velocity to each velocity
@@ -772,20 +777,46 @@ class SimpleSimEnv(gym.Env):
             self.pedestrians
         )
 
-        for i, true_idx in enumerate(self.dynamic_obj_indices):           
-            angle = self.objects[true_idx]['y_rot']
-            self.objects[true_idx]['pos'] = self.dynamic_centers[i]
+        for dyn_idx, indices in self.dynamic_obj_indices.items():
+            obj_idx = indices[0]
+            col_idx = indices[1]
 
-            if updates_mask[i]:
-                new_vel = np.random.normal(0.05, 0.01)
-                self.dynamic_starts[i] = self.dynamic_centers[i]
-                self.objects[true_idx]['y_rot'] = angle + 180
-                self.dynamic_vels[i] = np.sign(self.dynamic_vels[i]) * -1 * new_vel
-                self.dynamic_headings[i] = np.sign(self.dynamic_vels[i]) * heading_vec((angle + 180) * (math.pi / 180))
+            self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx]
+            self.collidable_centers[col_idx] = self.dynamic_centers[dyn_idx]   
+
+            self._update_dynamic_bbox(dyn_idx, obj_idx, col_idx)
+
+            if updates_mask[dyn_idx]:
+                angle = (self.objects[obj_idx]['y_rot']  + 180) % 360
+                new_vel = -np.sign(self.dynamic_vels[dyn_idx]) * np.random.normal(0.05, 0.01)
+
+                self.objects[obj_idx]['y_rot'] = angle
+                self.dynamic_vels[dyn_idx] = new_vel
+                self.dynamic_headings[dyn_idx] = np.sign(new_vel) * heading_vec(
+                    (angle) * (math.pi / 180))
+
+                self.dynamic_starts[dyn_idx] = self.dynamic_centers[dyn_idx]
 
 
-        # self.update_dynamic_bbox()
+    def _update_dynamic_bbox(self, dyn_idx, obj_idx, col_idx):
+        corners = generate_corners(
+            self.objects[obj_idx]['pos'], 
+            self.objects[obj_idx]['min_coords'], 
+            self.objects[obj_idx]['max_coords'], 
+            self.objects[obj_idx]['y_rot'] * (math.pi / 180), 
+            self.objects[obj_idx]['scale']
+        )
 
+        self.dynamic_corners[dyn_idx] = corners.T
+        self.collidable_corners[col_idx] = corners.T
+        self.object_corners[obj_idx] = corners
+
+        norm = generate_norm(
+            self.dynamic_corners[dyn_idx].T)
+
+        self.collidable_norms[col_idx] = norm
+        self.dynamic_norms[dyn_idx] = norm
+        
 
     def _drivable_pos(self, pos):
         """
@@ -1042,7 +1073,7 @@ class SimpleSimEnv(gym.Env):
 
             # Draw the bounding box
             if self.draw_bbox:
-                corners = self.object_corners[idx]
+                corners = self.object_corners[idx].T
                 glColor3f(1, 0, 0)
                 glBegin(GL_LINE_LOOP)
                 glVertex3f(corners[0, 0], 0.01, corners[1, 0])
