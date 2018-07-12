@@ -80,6 +80,8 @@ ROBOT_SPEED = 0.45
 # Minimum distance spawn position needs to be from all objects
 MIN_SPAWN_OBJ_DIST = 0.25
 
+DT = 5e-4
+
 class SimpleSimEnv(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -399,21 +401,31 @@ class SimpleSimEnv(gym.Env):
         self.object_corners = []
 
         # Arrays for checking collisions with N static objects
-
         # (N x 2): Object position used in calculating reward
-        self.static_centers = []
+        self.collidable_centers = []
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
-        self.static_corners = []
+        self.collidable_corners = []
 
         # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
-        self.static_norms = []
+        self.collidable_norms = []
 
         # (N): Safety radius for object used in calculating reward
-        self.safety_radii = []
+        self.collidable_safety_radii = []
+
+        self.static_indices = []
+        
+        self.dynamic_obj_indices = []
+        self.pedestrians = []
+        self.dynamic_vels = []
+        self.dynamic_headings = []
+        self.dynamic_starts = []
+        self.dynamic_centers = []
+        self.dynamic_corners = []
+        self.dynamic_norms = []
 
         # For each object
-        for desc in map_data.get('objects', []):
+        for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
             x, z = desc['pos']
             rotate = desc['rotate']
@@ -431,6 +443,8 @@ class SimpleSimEnv(gym.Env):
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
             safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
+            static = desc.get('static', True)
+            pedestrian = desc.get('pedestrian', False)
 
             obj = {
                 'kind': kind,
@@ -441,46 +455,66 @@ class SimpleSimEnv(gym.Env):
                 'optional': optional,
                 'min_coords': mesh.min_coords,
                 'max_coords': mesh.max_coords,
-                'static': True # TODO: load this from yml
+                'static': static # TODO: load this from yml
             }
 
             self.objects.append(obj)
 
             # Compute collision detection information
-            if obj['static']:
-                angle = rotate * (math.pi / 180)
 
-                # Find drivable tiles object could intersect with
-                obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
-                    pos,
-                    mesh,
-                    angle,
-                    scale,
-                    ROAD_TILE_SIZE
-                )
+            angle = rotate * (math.pi / 180)
 
-                # For drawing purposes
-                self.object_corners.append(obj_corners.T)
+            # Find drivable tiles object could intersect with
+            obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
+                pos,
+                mesh,
+                angle,
+                scale,
+                ROAD_TILE_SIZE
+            )
 
-                # If the object intersects with a drivable tile
-                if self._collidable_object(obj_corners, obj_norm, possible_tiles):
-                    self.static_centers.append(pos)
-                    self.static_corners.append(obj_corners.T)
-                    self.static_norms.append(obj_norm)
-                    self.safety_radii.append(safety_radius)
+            # For drawing purposes
+            self.object_corners.append(obj_corners.T)
 
-        # If there are static objects
-        if len(self.static_corners) > 0:
-            self.static_corners = np.stack(self.static_corners, axis=0)
-            self.static_norms = np.stack(self.static_norms, axis=0)
+            # If the object intersects with a drivable tile
+            if self._collidable_object(obj_corners, obj_norm, possible_tiles):
+                self.collidable_centers.append(pos)
+                self.collidable_corners.append(obj_corners.T)
+                self.collidable_norms.append(obj_norm)
+                self.collidable_safety_radii.append(safety_radius)
+
+                if static:
+                    self.static_indices.append(obj_idx)
+                else:
+                    self.dynamic_obj_indices.append(obj_idx)
+                    self.pedestrians.append(pedestrian)
+                    self.dynamic_vels.append(0.5)
+                    self.dynamic_headings.append(heading_vec(rotate))
+                    self.dynamic_starts.append(self.collidable_centers[-1])
+                    self.dynamic_centers.append(self.collidable_centers[-1])
+                    self.dynamic_corners.append(self.collidable_corners[-1])
+                    self.dynamic_norms.append(self.collidable_norms[-1])
+
+        self.dynamic_obj_indices = np.array(self.dynamic_obj_indices)
+        self.pedestrians =  np.array(self.pedestrians)
+        self.dynamic_vels =  np.array(self.dynamic_vels)
+        self.dynamic_headings =  np.array(self.dynamic_headings)
+        self.dynamic_starts = np.array(self.dynamic_starts)
+        self.dynamic_centers =  np.array(self.dynamic_centers)
+        self.dynamic_corners =  np.array(self.dynamic_corners)
+        self.dynamic_norms =  np.array(self.dynamic_norms)
+
+        # If there are collidable objects
+        if len(self.collidable_corners) > 0:
+            self.collidable_corners = np.stack(self.collidable_corners, axis=0)
+            self.collidable_norms = np.stack(self.collidable_norms, axis=0)
 
             # Stack doesn't do anything if there's only one object,
             # So we add an extra dimension to avoid shape errors later
-            if len(self.static_corners.shape) == 2:
-                self.static_corners = self.static_corners[np.newaxis]
-                self.static_norms = self.static_norms[np.newaxis]
+            if len(self.collidable_corners.shape) == 2:
+                self.collidable_corners = self.collidable_corners[np.newaxis]
+                self.collidable_norms = self.collidable_norms[np.newaxis]
 
-        print('num collidable objects:', len(self.static_corners))
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
@@ -488,8 +522,8 @@ class SimpleSimEnv(gym.Env):
             coords = map_data['start_tile']
             self.start_tile = self._get_tile(*coords)
 
-        self.static_centers = np.array(self.static_centers)
-        self.safety_radii = np.array(self.safety_radii)
+        self.collidable_centers = np.array(self.collidable_centers)
+        self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
     def close(self):
         pass
@@ -715,6 +749,46 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's direction angle
         self.cur_angle += rotAngle
 
+    def _update_dynamic_obs(self):
+        self.apply_velocity(dt=0.1)
+        
+        # obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
+        #     pos,
+        #     mesh,
+        #     angle,
+        #     scale,
+        #     ROAD_TILE_SIZE
+        # )
+
+
+    def apply_velocity(self, dt=0.001):
+        """
+        Applies a constant velocity to each velocity
+        """
+        print(np.dot(self.dynamic_vels, self.dynamic_headings)*dt)
+        self.dynamic_centers += np.dot(self.dynamic_vels, self.dynamic_headings)*dt
+        distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts)
+        updates_mask = np.logical_and(
+            np.logical_or(
+                np.greater(distances, ROAD_TILE_SIZE),
+                np.less(distances, 1e-2)
+            ), 
+            self.pedestrians
+        )
+
+        for i, true_idx in enumerate(self.dynamic_obj_indices):
+            print(self.dynamic_headings[i])
+            if updates_mask[i]:
+                angle = self.objects[-1]['y_rot']
+                self.objects[true_idx]['pos'] = self.dynamic_centers[i]
+                self.objects[true_idx]['y_rot'] = angle + 180
+                self.dynamic_vels[i] = np.random.normal(0.5, 0.1)
+                self.dynamic_headings[i] = heading_vec(angle * (math.pi / 180))
+
+
+        # self.update_dynamic_bbox()
+
+
     def _drivable_pos(self, pos):
         """
         Check that the given (x,y,z) position is on a drivable tile
@@ -729,16 +803,16 @@ class SimpleSimEnv(gym.Env):
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
         """
-        if len(self.static_centers) == 0:
+        if len(self.collidable_centers) == 0:
             return 0
 
         pos = self._actual_center()
-        d = np.linalg.norm(self.static_centers - pos, axis=1)
+        d = np.linalg.norm(self.collidable_centers - pos, axis=1)
 
-        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
+        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
             return 0
         else:
-            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
+            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.collidable_safety_radii)
 
     def _actual_center(self):
         """
@@ -766,7 +840,7 @@ class SimpleSimEnv(gym.Env):
         """
 
         # If there are no objects to collide against, stop
-        if len(self.static_corners) == 0:
+        if len(self.collidable_corners) == 0:
             return False
 
         # Generate the norms corresponding to each face of BB
@@ -774,9 +848,9 @@ class SimpleSimEnv(gym.Env):
 
         return intersects(
             self.agent_corners,
-            self.static_corners,
+            self.collidable_corners,
             self.agent_norm,
-            self.static_norms
+            self.collidable_norms
         )
 
     def _valid_pose(self, safety_factor=1):
@@ -816,6 +890,7 @@ class SimpleSimEnv(gym.Env):
         self.step_count += 1
 
         # Update the robot's position
+        self._update_dynamic_obs()
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
         # Generate the current camera image

@@ -42,3 +42,10 @@ objects:
   pos: [0.9, 3]
   rotate: 100
   height: 0.08
+
+- kind: duckie
+  pos: [3.0, 6.0]
+  rotate: 90
+  height: 0.08
+  static: False
+  pedestrian: True
