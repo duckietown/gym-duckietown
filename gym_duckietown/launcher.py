@@ -45,7 +45,7 @@ def main():
 
             if data["topic"] == 0:
                 obs, reward, done, misc = env.step(data["msg"])
-                print('step_count = %s, reward=%.3f, done = %s' % (env.step_count, reward, done))
+                print('step_count = %s, reward=%.3f, done = %s' % (env.unwrapped.step_count, reward, done))
                 if done:
                     env.reset()
 

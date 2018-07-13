@@ -45,7 +45,7 @@ RUN chmod -R a+w /workspace
 # this next line is manually incremented every time
 # we push major changes to the gym-duckietown repo,
 # so that docker forces a rebuild starting at this line
-ENV force-docker-rebuild 2
+ENV force-docker-rebuild 3
 
 RUN git clone https://github.com/duckietown/duckietown-slimremote && cd duckietown-slimremote && pip install -e . && cd ..
 RUN git clone https://github.com/duckietown/gym-duckietown.git && cd gym-duckietown && git checkout amod-dev && pip install -e . && cd ..
