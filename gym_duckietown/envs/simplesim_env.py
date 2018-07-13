@@ -392,6 +392,15 @@ class SimpleSimEnv(gym.Env):
 
                 self._set_tile(i, j, tile)
 
+        self._load_objects(map_data)
+
+        # Get the starting tile from the map, if specified
+        self.start_tile = None
+        if 'start_tile' in map_data:
+            coords = map_data['start_tile']
+            self.start_tile = self._get_tile(*coords)
+
+    def _load_objects(self, map_data):
         # Create the objects array
         self.objects = []
 
@@ -399,21 +408,45 @@ class SimpleSimEnv(gym.Env):
         self.object_corners = []
 
         # Arrays for checking collisions with N static objects
-
         # (N x 2): Object position used in calculating reward
-        self.static_centers = []
+        self.collidable_centers = []
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
-        self.static_corners = []
+        self.collidable_corners = []
 
         # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
-        self.static_norms = []
+        self.collidable_norms = []
 
         # (N): Safety radius for object used in calculating reward
-        self.safety_radii = []
+        self.collidable_safety_radii = []
+
+        # Holds the indices (in self.objects) of static obstacles
+        self.static_indices = []
+
+        # Dictionary mapping from the a dynamic obstacle idx 
+        # (used for all arrays below) to indices in (self.objects, self.collidable)
+        self.dynamic_obj_indices = {}
+
+        # Stores whether or not this particular dynamic object is a pedestrian
+        self.pedestrians = []
+
+        # Whether or not a particular ped is active (in a walk)
+        self.pedestrian_active = []
+
+        # How long the Pedestrian will wait before starting its walk
+        self.pedestrian_wait_time = []
+
+        # Information arrays used by dynamic objects -- currently only pedestrians
+        self.dynamic_vels = []
+        self.dynamic_headings = []
+        self.dynamic_starts = []
+        self.dynamic_centers = []
+        self.dynamic_rots = []
+
+        dyn_idx = 0
 
         # For each object
-        for desc in map_data.get('objects', []):
+        for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
             x, z = desc['pos']
             rotate = desc['rotate']
@@ -431,6 +464,8 @@ class SimpleSimEnv(gym.Env):
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
             safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
+            static = desc.get('static', True)
+            pedestrian = desc.get('pedestrian', False)
 
             obj = {
                 'kind': kind,
@@ -441,55 +476,81 @@ class SimpleSimEnv(gym.Env):
                 'optional': optional,
                 'min_coords': mesh.min_coords,
                 'max_coords': mesh.max_coords,
-                'static': True # TODO: load this from yml
+                'static': static # TODO: load this from yml
             }
 
             self.objects.append(obj)
 
             # Compute collision detection information
-            if obj['static']:
-                angle = rotate * (math.pi / 180)
 
-                # Find drivable tiles object could intersect with
-                obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
-                    pos,
-                    mesh,
-                    angle,
-                    scale,
-                    ROAD_TILE_SIZE
-                )
+            angle = rotate * (math.pi / 180)
 
-                # For drawing purposes
-                self.object_corners.append(obj_corners.T)
+            # Find drivable tiles object could intersect with
+            obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
+                pos,
+                mesh,
+                angle,
+                scale,
+                ROAD_TILE_SIZE
+            )
 
-                # If the object intersects with a drivable tile
-                if self._collidable_object(obj_corners, obj_norm, possible_tiles):
-                    self.static_centers.append(pos)
-                    self.static_corners.append(obj_corners.T)
-                    self.static_norms.append(obj_norm)
-                    self.safety_radii.append(safety_radius)
+            self.object_corners.append(obj_corners)
 
-        # If there are static objects
-        if len(self.static_corners) > 0:
-            self.static_corners = np.stack(self.static_corners, axis=0)
-            self.static_norms = np.stack(self.static_norms, axis=0)
+            # If the object intersects with a drivable tile
+            if self._collidable_object(obj_corners, obj_norm, possible_tiles):
+                self.collidable_centers.append(pos)
+                self.collidable_corners.append(obj_corners.T)
+                self.collidable_norms.append(obj_norm)
+
+                self.collidable_safety_radii.append(safety_radius)
+
+                if static:
+                    self.static_indices.append(obj_idx)
+                else:
+                    col_idx = len(self.collidable_centers) - 1
+                    self.dynamic_obj_indices[dyn_idx] = (obj_idx, col_idx)
+                    dyn_idx += 1
+
+                    self.pedestrians.append(pedestrian)
+                    self.pedestrian_active.append(False)
+
+                    # Randomize velocity and wait time
+                    if self.domain_rand:
+                        self.pedestrian_wait_time.append(np.random.randint(1, 30) * 10)
+                        self.dynamic_vels.append(np.abs(np.random.normal(0.2, 0.02)))
+                    else:
+                        self.pedestrian_wait_time.append(100)
+                        self.dynamic_vels.append(0.02)
+                    
+                    self.dynamic_rots.append(angle)
+                    self.dynamic_headings.append(heading_vec(angle))
+                    self.dynamic_starts.append(self.collidable_centers[-1])
+                    self.dynamic_centers.append(self.collidable_centers[-1])
+
+        # Numpy arrays for faster indexing later
+        self.pedestrians = np.array(self.pedestrians)
+        self.pedestrian_active = np.array(self.pedestrian_active)
+        self.pedestrian_wait_time = np.array(self.pedestrian_wait_time)
+        self.pedestrians = np.array(self.pedestrians)
+        self.dynamic_vels = np.array(self.dynamic_vels)
+        self.dynamic_rots = np.array(self.dynamic_rots)
+        self.dynamic_headings = np.array(self.dynamic_headings)
+        self.dynamic_starts = np.array(self.dynamic_starts)
+        self.dynamic_centers = np.array(self.dynamic_centers)
+
+        # If there are collidable objects
+        if len(self.collidable_corners) > 0:
+            self.collidable_corners = np.stack(self.collidable_corners, axis=0)
+            self.collidable_norms = np.stack(self.collidable_norms, axis=0)
 
             # Stack doesn't do anything if there's only one object,
             # So we add an extra dimension to avoid shape errors later
-            if len(self.static_corners.shape) == 2:
-                self.static_corners = self.static_corners[np.newaxis]
-                self.static_norms = self.static_norms[np.newaxis]
+            if len(self.collidable_corners.shape) == 2:
+                self.collidable_corners = self.collidable_corners[np.newaxis]
+                self.collidable_norms = self.collidable_norms[np.newaxis]
 
-        print('num collidable objects:', len(self.static_corners))
-
-        # Get the starting tile from the map, if specified
-        self.start_tile = None
-        if 'start_tile' in map_data:
-            coords = map_data['start_tile']
-            self.start_tile = self._get_tile(*coords)
-
-        self.static_centers = np.array(self.static_centers)
-        self.safety_radii = np.array(self.safety_radii)
+        self.collidable_centers = np.array(self.collidable_centers)
+        self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
     def close(self):
         pass
@@ -715,6 +776,100 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's direction angle
         self.cur_angle += rotAngle
 
+    def _update_dynamic_obs(self):
+        if len(self.pedestrians) == 0: return
+
+        # Trigger pedestrian movement every certain number of timesteps
+        self.pedestrian_active = np.logical_or(
+            self.step_count % self.pedestrian_wait_time == 0,
+            self.pedestrian_active)
+
+        self._update_pedestrians(dt=0.1)
+
+    def _update_pedestrians(self, dt):
+        """
+        Updates pedestrians with a simple motion model, and changes relevant
+        characteristics of each ped. when its current walk is over
+
+        dt = timestep
+        """
+        
+        # Numpy Arrays for batch updates of centers / bboxes
+        obj_indices = []
+        col_indices = []
+
+        for dyn_idx, active in enumerate(self.pedestrian_active):
+            indices = self.dynamic_obj_indices[dyn_idx]
+            obj_indices.append(indices[0])
+            col_indices.append(indices[1])
+
+        obj_indices = np.array(obj_indices)
+        col_indices = np.array(col_indices)
+        
+        a = self.dynamic_vels[np.where(self.pedestrian_active)] * dt
+        a = a[:, np.newaxis]
+        b = self.dynamic_headings[np.where(self.pedestrian_active)]
+
+        # How much each dimension of position will adjust due to velocity
+        velocity_adjustment = b * a
+
+        # Adjust each dynamic center
+        self.dynamic_centers[np.where(self.pedestrian_active)] += velocity_adjustment
+
+        # Set the collision centers assoc. with moving dyn. obstacles to be the ones
+        # set above
+        self.collidable_centers[col_indices[np.where(self.pedestrian_active)]] =\
+            self.dynamic_centers[np.where(self.pedestrian_active)]
+
+        # Move the corners (only (x,z) so needs some shape fixes) by the same amount
+        self.collidable_corners[col_indices[np.where(self.pedestrian_active)]] =\
+             (self.collidable_corners[col_indices[np.where(self.pedestrian_active)]].T \
+                + velocity_adjustment[:, (0, -1)].T).T
+
+        # Update the features of bboxes / rendering that can't be done in batch
+        self._update_dynamic_bbox(dt=0.1)
+
+        # Distance between start and current
+        distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts, axis=1)
+        updates_mask = np.greater(distances, ROAD_TILE_SIZE)
+
+        # Turn it around
+        self.dynamic_rots[updates_mask] = self.dynamic_rots[updates_mask] + np.pi
+        
+        # Set its new start pos to be its current
+        self.dynamic_starts[updates_mask] = self.dynamic_centers[updates_mask]
+
+        # Make them all inactive
+        self.pedestrian_active[updates_mask] = False
+
+        if self.domain_rand:
+            # Assign a random velocity (in opp. direction) and a wait time
+            self.dynamic_vels[updates_mask] = -1 * np.sign(self.dynamic_vels[updates_mask]) * np.abs(np.random.normal(0.2, 0.02))
+            self.pedestrian_wait_time[updates_mask] = np.random.randint(1, 30) * 10
+        else:
+            # Just give it the negative of its current velocuty
+            self.dynamic_vels[updates_mask] *= -1
+
+
+    def _update_dynamic_bbox(self, dt):
+        """
+        Updates each dynamic bounding box
+        """
+        for dyn_idx, active in enumerate(self.pedestrian_active):
+            indices = self.dynamic_obj_indices[dyn_idx]
+            obj_idx = indices[0]
+            col_idx = indices[1]
+
+            self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx] 
+            self.objects[obj_idx]['y_rot'] = self.dynamic_rots[dyn_idx] * (180 / np.pi)
+
+            # self.collidable_corners[col_idx] = corners.T
+            self.collidable_norms[col_idx] = generate_norm(
+                self.collidable_corners[col_idx].T)
+            
+            # Corners for --draw-bbox flag
+            self.object_corners[obj_idx] = self.collidable_corners[col_idx].T
+
     def _drivable_pos(self, pos):
         """
         Check that the given (x,y,z) position is on a drivable tile
@@ -729,16 +884,16 @@ class SimpleSimEnv(gym.Env):
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
         """
-        if len(self.static_centers) == 0:
+        if len(self.collidable_centers) == 0:
             return 0
 
         pos = self._actual_center()
-        d = np.linalg.norm(self.static_centers - pos, axis=1)
+        d = np.linalg.norm(self.collidable_centers - pos, axis=1)
 
-        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
+        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
             return 0
         else:
-            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
+            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.collidable_safety_radii)
 
     def _actual_center(self):
         """
@@ -766,7 +921,7 @@ class SimpleSimEnv(gym.Env):
         """
 
         # If there are no objects to collide against, stop
-        if len(self.static_corners) == 0:
+        if len(self.collidable_corners) == 0:
             return False
 
         # Generate the norms corresponding to each face of BB
@@ -774,9 +929,9 @@ class SimpleSimEnv(gym.Env):
 
         return intersects(
             self.agent_corners,
-            self.static_corners,
+            self.collidable_corners,
             self.agent_norm,
-            self.static_norms
+            self.collidable_norms
         )
 
     def _valid_pose(self, safety_factor=1):
@@ -818,6 +973,7 @@ class SimpleSimEnv(gym.Env):
         self.step_count += 1
 
         # Update the robot's position
+        self._update_dynamic_obs()
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
 
         # Generate the current camera image
@@ -840,7 +996,7 @@ class SimpleSimEnv(gym.Env):
 
         # Get the position relative to the right lane tangent
         dist, dot_dir, angle = self.get_lane_pos()
-        reward = 1.0 * dot_dir - 10.00 * abs(dist) + 40 * penalty
+        reward = 1.0 * dot_dir - 10.00 * np.abs(dist) + 40 * penalty
         done = False
 
         return obs, reward, done, {}
@@ -971,7 +1127,7 @@ class SimpleSimEnv(gym.Env):
 
             # Draw the bounding box
             if self.draw_bbox:
-                corners = self.object_corners[idx]
+                corners = self.object_corners[idx].T
                 glColor3f(1, 0, 0)
                 glBegin(GL_LINE_LOOP)
                 glVertex3f(corners[0, 0], 0.01, corners[1, 0])

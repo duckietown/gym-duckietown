@@ -177,3 +177,12 @@ def calculate_safety_radius(mesh, scale):
     """
     x, _, z = np.max([abs(mesh.min_coords), abs(mesh.max_coords)], axis=0)
     return np.linalg.norm([x, z]) * scale 
+
+def heading_vec(angle):
+    """
+    Vector pointing in the direction the agent is looking
+    """
+
+    x = math.cos(angle)
+    z = -math.sin(angle)
+    return np.array([x, 0, z])
