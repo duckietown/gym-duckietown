@@ -813,6 +813,8 @@ class SimpleSimEnv(gym.Env):
         )
 
     def step(self, action):
+        action = np.array(action) # just making sure, because this could theoretically be a python list
+
         self.step_count += 1
 
         # Update the robot's position
