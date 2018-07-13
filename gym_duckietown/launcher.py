@@ -6,6 +6,8 @@ import os
 from gym_duckietown.envs import SimpleSimEnv
 from gym_duckietown.wrappers import HeadingWrapper
 
+DEBUG = False
+
 
 def main():
     """ Main launcher that starts the gym thread when the command 'duckietown-start-gym' is invoked
@@ -45,7 +47,8 @@ def main():
 
             if data["topic"] == 0:
                 obs, reward, done, misc = env.step(data["msg"])
-                print('step_count = %s, reward=%.3f, done = %s' % (env.unwrapped.step_count, reward, done))
+                if DEBUG:
+                    print('step_count = %s, reward=%.3f, done = %s' % (env.unwrapped.step_count, reward, done))
                 if done:
                     env.reset()
 
