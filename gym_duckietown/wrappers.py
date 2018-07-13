@@ -3,41 +3,69 @@ import numpy as np
 import gym
 from gym import spaces
 
-class HeadingWrapper(gym.Wrapper):
+class HeadingWrapper(gym.ActionWrapper):
     """
-    Duckietown environment with a single continuous value that
-    controls the current vehicle heading/direction
+    Wrapper to control the simulator using velocity and steering angle
+    instead of differential drive motor velocities
     """
 
-    def __init__(self, env):
-        super(HeadingWrapper, self).__init__(env)
+    def __init__(
+        self,
+        env,
+        gain = 1.0,
+        trim = 0.0,
+        radius = 0.0318,
+        k = 27.0,
+        limit = 1.0
+    ):
+        super().__init__(env)
+        self.action_space = spaces.Discrete(3)
 
-        self.action_space = spaces.Box(
-            low=-1,
-            high=1,
-            shape=(1,),
-            dtype=np.float32
-        )
+        # should be adjusted so that the effective speed of the robot is 0.2 m/s
+        self.gain = gain
 
-    def step(self, action):
-        action = np.tanh(action)
+        # directional trim adjustment
+        self.trim = trim
 
-        #print(action)
+        # Minimal turn radius
+        self.radius = radius
 
-        # Compute the motor velocities
-        lVel = np.array([0.4, 0.5])
-        rVel = np.array([0.5, 0.4])
+        # Motor constant
+        self.k = k
 
-        x = (action + 1) / 2
-        #print(x)
+        # Wheel velocity limit
+        self.limit = limit
 
-        vel = lVel * (1 - x) + x * rVel
+    def action(self, action):
+        vel, angle = action
 
-        return self.env.step(vel)
+        # Distance between the wheels
+        baseline = self.unwrapped.wheel_dist
 
-    def reset(self, **kwargs):
-        self.heading = 0
-        return self.env.reset(**kwargs)
+        # assuming same motor constants k for both motors
+        k_r = self.k
+        k_l = self.k
+
+        # adjusting k by gain and trim
+        k_r_inv = (self.gain + self.trim) / k_r
+        k_l_inv = (self.gain - self.trim) / k_l
+
+        omega_r = (vel + 0.5 * angle * baseline) / self.radius
+        omega_l = (vel - 0.5 * angle * baseline) / self.radius
+
+        # conversion from motor rotation rate to duty cycle
+        # u_r = (gain + trim) (v + 0.5 * omega * b) / (r * k_r)
+        u_r = omega_r * k_r_inv
+        # u_l = (gain - trim) (v - 0.5 * omega * b) / (r * k_l)
+        u_l = omega_l * k_l_inv
+
+        # limiting output to limit, which is 1.0 for the duckiebot
+        u_r_limited = max(min(u_r, self.limit), -self.limit)
+        u_l_limited = max(min(u_l, self.limit), -self.limit)
+
+        vels = np.array([u_l_limited, u_r_limited])
+
+        return np.array(vels)
 
 class DiscreteWrapper(gym.ActionWrapper):
     """
@@ -46,7 +74,7 @@ class DiscreteWrapper(gym.ActionWrapper):
     """
 
     def __init__(self, env):
-        super(DiscreteWrapper, self).__init__(env)
+        super().__init__(env)
         self.action_space = spaces.Discrete(3)
 
     def action(self, action):

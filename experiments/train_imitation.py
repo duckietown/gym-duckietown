@@ -21,8 +21,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
+from gym_duckietown.wrappers import HeadingWrapper
 
 from utils import *
 
@@ -92,10 +92,10 @@ def gen_data():
     cur_angle = positions[idx][1]
     vels = np.array(actions[idx])
 
-    env.cur_pos = cur_pos
-    env.cur_angle = cur_angle
+    env.unwrapped.cur_pos = cur_pos
+    env.unwrapped.cur_angle = cur_angle
 
-    obs = env.render_obs().copy()
+    obs = env.unwrapped.render_obs().copy()
     obs = obs.transpose(2, 0, 1)
 
     return obs, vels
@@ -108,6 +108,7 @@ if __name__ == "__main__":
     load_data(args.map_name)
 
     env = SimpleSimEnv(map_name=args.map_name)
+    env = HeadingWrapper(env)
 
     model = Model()
     model.train()
