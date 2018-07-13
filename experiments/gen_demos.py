@@ -13,6 +13,7 @@ import math
 import json
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
+from gym_duckietown.wrappers import HeadingWrapper
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -26,7 +27,7 @@ def gen_actions(seq_len):
     actions = []
 
     for i in range(0, seq_len):
-        vels = np.random.uniform(low=0.4, high=0.9, size=(2,))
+        vels = np.random.uniform([0.4, -1.0], [1.0, 1.0])
         actions.append(vels)
 
     return actions
@@ -38,7 +39,7 @@ def mutate_actions(actions):
 
     for i in range(0, len(actions)):
         if np.random.uniform(0, 1) < (1 / len(actions)):
-            vels = np.random.uniform(low=0.4, high=0.9, size=(2,))
+            vels = np.random.uniform([0.4, -1.0], [1.0, 1.0])
             actions[i] = vels
 
         if np.random.uniform(0, 1) < (1 / len(actions)):
@@ -59,11 +60,11 @@ def eval_actions(env, seed, actions):
     for i in range(0, len(actions)):
         vels = actions[i]
 
-        positions.append((env.cur_pos, env.cur_angle))
+        positions.append((env.unwrapped.cur_pos, env.unwrapped.cur_angle))
 
-        env.graphics = False
+        env.unwrapped.graphics = False
         obs, reward, done, info = env.step(vels)
-        env.graphics = True
+        env.unwrapped.graphics = True
 
         total_reward += reward
 
@@ -117,6 +118,7 @@ def gen_trajectory(env, seed, num_actions, num_itrs):
     return best_positions, best_actions
 
 env = SimpleSimEnv(map_name=args.map_name)
+env = HeadingWrapper(env)
 
 demos = []
 total_steps = 0
