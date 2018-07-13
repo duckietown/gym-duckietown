@@ -1,4 +1,11 @@
-#### working. build with
+## WORKING NON-NVIDIA IMAGE
+
+#### To use the last dockerhub upload:
+
+# docker run -ti --name gym-duckietown -p 8902:8902 -p 5558:5558 -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix duckietown/gym-duckietown-server
+
+
+#### To build it yourselves:
 
 # docker build -t gym-duckietown-server3 .
 
@@ -38,7 +45,7 @@ RUN chmod -R a+w /workspace
 ENV force-docker-rebuild 1
 
 RUN git clone https://github.com/duckietown/duckietown-slimremote && cd duckietown-slimremote && pip install -e . && cd ..
-RUN git clone https://github.com/duckietown/gym-duckietown && cd gym-duckietown && pip install -e . && cd ..
+RUN git clone https://github.com/duckietown/gym-duckietown.git && cd gym-duckietown && git checkout amod-dev && pip install -e . && cd ..
 COPY launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 RUN chmod +x /usr/bin/launch-gym-server-with-xvfb
 

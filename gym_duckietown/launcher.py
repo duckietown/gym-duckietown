@@ -4,6 +4,7 @@ from duckietown_slimremote.networking import make_pull_socket, has_pull_message,
 import os
 
 from gym_duckietown.envs import SimpleSimEnv
+from gym_duckietown.wrappers import HeadingWrapper
 
 
 def main():
@@ -22,6 +23,7 @@ def main():
         max_steps=max_steps,
         domain_rand=domain_rand
     )
+    env = HeadingWrapper(env) # to convert the (vel_left, vel_right) to (vel, steering)
     obs = env.reset()
     # env.render("rgb_array") # TODO: do we need this? does this initialize anything?
 
