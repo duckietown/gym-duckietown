@@ -512,7 +512,7 @@ class SimpleSimEnv(gym.Env):
                     dyn_idx += 1
 
                     self.pedestrians.append(pedestrian)
-                    self.pedestrian_active.append(True)
+                    self.pedestrian_active.append(False)
 
                     # Randomize velocity and wait time
                     if self.domain_rand:
