@@ -24,6 +24,7 @@ def main():
         domain_rand=domain_rand
     )
     env = HeadingWrapper(env) # to convert the (vel_left, vel_right) to (vel, steering)
+    print ("### STARTING WITH v/omega control")
     obs = env.reset()
     # env.render("rgb_array") # TODO: do we need this? does this initialize anything?
 
