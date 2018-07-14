@@ -10,7 +10,7 @@ Ke 0.000000 0.000000 0.000000
 Ni -1.000000
 d 1.000000
 illum 2
-map_Kd ../../textures/signs/sign_oneway_left.png
+map_Kd ../textures/sign_oneway_left.png
 
 newmtl Color_G13
 Ns 96.078431
@@ -31,4 +31,4 @@ Ke 0.000000 0.000000 0.000000
 Ni -1.000000
 d 1.000000
 illum 2
-map_Kd ../../textures/wood_osb.jpg
+map_Kd ../textures/wood_osb.jpg
