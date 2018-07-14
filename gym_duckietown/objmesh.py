@@ -268,7 +268,7 @@ class ObjMesh:
             # Texture file name
             if prefix == 'map_Kd':
                 tex_file = tokens[-1]
-                tex_file = os.path.join(model_dir, tex_file)
+                tex_file = os.path.normpath(os.path.join(model_dir, tex_file))
                 cur_mtl['map_Kd'] = tex_file
 
         mtl_file.close()
