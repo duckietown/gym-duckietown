@@ -49,7 +49,7 @@ def on_key_press(symbol, modifiers):
         env.reset()
         env.render()
     elif symbol == key.PAGEUP:
-        env.cam_angle = 0
+        env.unwrapped.cam_angle = 0
         env.render()
     elif symbol == key.ESCAPE:
         env.close()

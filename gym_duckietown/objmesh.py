@@ -58,9 +58,8 @@ class ObjMesh:
         texs = []
         normals = []
         faces = []
-        face_mtls = []
 
-        cur_mtl = None
+        cur_mtl = ''
 
         # For each line of the input file
         for line in mesh_file:
@@ -91,7 +90,10 @@ class ObjMesh:
 
             if prefix == 'usemtl':
                 mtl_name = tokens[0]
-                cur_mtl = materials[mtl_name] if mtl_name in materials else None
+                if mtl_name in materials:
+                    cur_mtl = mtl_name
+                else:
+                    cur_mtl = ''
 
             if prefix == 'f':
                 assert len(tokens) == 3, "only triangle faces are supported"
@@ -103,32 +105,48 @@ class ObjMesh:
                     assert len(indices) == 2 or len(indices) == 3
                     face.append(indices)
 
-                faces.append(face)
-                face_mtls.append(cur_mtl)
+                faces.append([face, cur_mtl])
 
-        mesh_file.close()
+        # Sort the faces by material name
+        faces.sort(key=lambda f: f[1])
 
-        self.num_faces = len(faces)
+        # Compute the start and end faces for each chunk in the model
+        cur_mtl = None
+        chunks = []
+        for idx, face in enumerate(faces):
+            face, mtl_name = face
+            if mtl_name != cur_mtl:
+                if len(chunks) > 0:
+                    chunks[-1]['end_idx'] = idx
+                chunks.append({
+                    'mtl': materials[mtl_name],
+                    'start_idx': idx,
+                    'end_idx': None
+                })
+                cur_mtl = mtl_name
+        chunks[-1]['end_idx'] = len(faces)
 
+        num_faces = len(faces)
         print('num verts=%d' % len(verts))
-        print('num_faces=%d' % self.num_faces)
+        print('num faces=%d' % num_faces)
+        print('num chunks=%d' % len(chunks))
 
         # Create numpy arrays to store the vertex data
-        list_verts = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
-        list_norms = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
-        list_texcs = np.zeros(shape=(3 * self.num_faces, 2), dtype=np.float32)
-        list_color = np.zeros(shape=(3 * self.num_faces, 3), dtype=np.float32)
-
-        cur_vert_idx = 0
+        list_verts = np.zeros(shape=(num_faces, 3, 3), dtype=np.float32)
+        list_norms = np.zeros(shape=(num_faces, 3, 3), dtype=np.float32)
+        list_texcs = np.zeros(shape=(num_faces, 3, 2), dtype=np.float32)
+        list_color = np.zeros(shape=(num_faces, 3, 3), dtype=np.float32)
 
         # For each triangle
         for f_idx, face in enumerate(faces):
+            face, mtl_name = face
+
             # Get the color for this face
-            f_mtl = face_mtls[f_idx]
+            f_mtl = materials[mtl_name]
             f_color = f_mtl['Kd'] if f_mtl else np.array((1,1,1))
 
             # For each tuple of indices
-            for indices in face:
+            for l_idx, indices in enumerate(face):
                 # Note: OBJ uses 1-based indexing
                 # and texture coordinates are optional
                 if len(indices) == 3:
@@ -142,61 +160,84 @@ class ObjMesh:
                     normal = normals[n_idx-1]
                     texc = [0, 0]
 
-                list_verts[cur_vert_idx, :] = vert
-                list_texcs[cur_vert_idx, :] = texc
-                list_norms[cur_vert_idx, :] = normal
-                list_color[cur_vert_idx, :] = f_color
-
-                # Move to the next vertex
-                cur_vert_idx += 1
+                list_verts[f_idx, l_idx, :] = vert
+                list_texcs[f_idx, l_idx, :] = texc
+                list_norms[f_idx, l_idx, :] = normal
+                list_color[f_idx, l_idx, :] = f_color
 
         # Re-center the object so that the base is at y=0
         # and the object is centered in x and z
-        min_coords = list_verts.min(axis=0)
-        max_coords = list_verts.max(axis=0)
+        min_coords = list_verts.min(axis=0).min(axis=0)
+        max_coords = list_verts.max(axis=0).min(axis=0)
         mean_coords = (min_coords + max_coords) / 2
         min_y = min_coords[1]
         mean_x = mean_coords[0]
         mean_z = mean_coords[2]
-        list_verts[:, 1] -= min_y
-        list_verts[:, 0] -= mean_x
-        list_verts[:, 2] -= mean_z
+        list_verts[:, :, 1] -= min_y
+        list_verts[:, :, 0] -= mean_x
+        list_verts[:, :, 2] -= mean_z
 
         # Recompute the object extents after centering
-        self.min_coords = list_verts.min(axis=0)
-        self.max_coords = list_verts.max(axis=0)
+        self.min_coords = list_verts.min(axis=0).min(axis=0)
+        self.max_coords = list_verts.max(axis=0).max(axis=0)
 
-        # Create a vertex list to be used for rendering
-        self.vlist = pyglet.graphics.vertex_list(
-            3 * self.num_faces,
-            ('v3f', list_verts.reshape(-1)),
-            ('t2f', list_texcs.reshape(-1)),
-            ('n3f', list_norms.reshape(-1)),
-            ('c3f', list_color.reshape(-1))
-        )
+        # Vertex lists, one per chunk
+        self.vlists = []
 
-        # Load the texture associated with this mesh
-        file_name = os.path.split(file_path)[-1]
+        # Textures, one per chunk
+        self.textures = []
+
+        # For each chunk
+        for chunk in chunks:
+            start_idx = chunk['start_idx']
+            end_idx = chunk['end_idx']
+            num_faces_chunk = end_idx - start_idx
+
+            # Create a vertex list to be used for rendering
+            vlist = pyglet.graphics.vertex_list(
+                3 * num_faces_chunk,
+                ('v3f', list_verts[start_idx:end_idx, :, :].reshape(-1)),
+                ('t2f', list_texcs[start_idx:end_idx, :, :].reshape(-1)),
+                ('n3f', list_norms[start_idx:end_idx, :, :].reshape(-1)),
+                ('c3f', list_color[start_idx:end_idx, :, :].reshape(-1))
+            )
+
+            mtl = chunk['mtl']
+            if 'map_Kd' in mtl:
+                texture = load_texture(mtl['map_Kd'])
+            else:
+                texture = None
+
+            self.vlists.append(vlist)
+            self.textures.append(texture)
+
+    def _load_mtl(self, model_file):
+        model_dir, file_name = os.path.split(model_file)
+
+        # Create a default material for the model
+        default_mtl = {
+            'Kd': np.array([1, 1, 1]),
+        }
+
+        # Determine the default texture path for the default material
         tex_name = file_name.split('.')[0]
         tex_path = get_file_path('textures', tex_name, 'png')
-
-        # Try to load the texture, if it exists
         if os.path.exists(tex_path):
-            self.texture = load_texture(tex_path)
-        else:
-            self.texture = None
+            default_mtl['map_Kd'] = tex_path
 
-    def _load_mtl(self, model_path):
-        mtl_path = model_path.split('.')[0] + '.mtl'
+        materials = {
+            '': default_mtl
+        }
+
+        mtl_path = model_file.split('.')[0] + '.mtl'
 
         if not os.path.exists(mtl_path):
-            return {}
+            return materials
 
         print('loading materials from "%s"' % mtl_path)
 
         mtl_file = open(mtl_path, 'r')
 
-        materials = {}
         cur_mtl = None
 
         # For each line of the input file
@@ -218,22 +259,32 @@ class ObjMesh:
                 cur_mtl = {}
                 materials[tokens[0]] = cur_mtl
 
+            # Diffuse color
             if prefix == 'Kd':
                 vals = list(map(lambda v: float(v), tokens))
                 vals = np.array(vals)
                 cur_mtl['Kd'] = vals
+
+            # Texture file name
+            if prefix == 'map_Kd':
+                tex_file = tokens[-1]
+                tex_file = os.path.join(model_dir, tex_file)
+                cur_mtl['map_Kd'] = tex_file
 
         mtl_file.close()
 
         return materials
 
     def render(self):
-        if self.texture:
-            glEnable(GL_TEXTURE_2D)
-            glBindTexture(self.texture.target, self.texture.id)
-        else:
-            glDisable(GL_TEXTURE_2D)
+        for idx, vlist in enumerate(self.vlists):
+            texture = self.textures[idx]
 
-        self.vlist.draw(GL_TRIANGLES)
+            if texture:
+                glEnable(GL_TEXTURE_2D)
+                glBindTexture(texture.target, texture.id)
+            else:
+                glDisable(GL_TEXTURE_2D)
+
+            vlist.draw(GL_TRIANGLES)
 
         glDisable(GL_TEXTURE_2D)

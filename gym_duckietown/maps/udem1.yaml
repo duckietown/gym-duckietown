@@ -38,7 +38,7 @@ objects:
   height: 0.08
   optional: true
 
-- kind: sign_blank
+- kind: sign_stop
   pos: [2.08, 4.05]
   rotate: 90
   height: 0.18
