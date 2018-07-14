@@ -8,6 +8,7 @@ setup(
         'gym>=0.9.0',
         'numpy>=1.10.0',
         'pyglet',
+        'pillow',
         'pyzmq>=16.0.0',
         'scikit-image>=0.13.1',
         'opencv-python>=3.4',
