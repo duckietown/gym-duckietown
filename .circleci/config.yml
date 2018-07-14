@@ -5,7 +5,7 @@ jobs:
       - image: circleci/python:3.5
     steps:
       - checkout
-      - run: sudo apt-get install xvfb freeglut3-dev
+      - run: sudo apt-get install xvfb freeglut3-dev libpng-dev
       - run: pip3 uninstall pil
       - run: pip3 install --user -e .
       - run: pip3 install --user flake8
