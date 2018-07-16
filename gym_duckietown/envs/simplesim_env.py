@@ -412,6 +412,7 @@ class SimpleSimEnv(gym.Env):
         self.object_corners = []
 
         # Arrays for checking collisions with N static objects
+        # (Dynamic objects done separately)
         # (N x 2): Object position used in calculating reward
         self.collidable_centers = []
 
@@ -475,9 +476,6 @@ class SimpleSimEnv(gym.Env):
 
             # Find drivable tiles object could intersect with
             possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
-
-            # TODO: Render each object with its own method
-            # self.object_corners.append(obj.obj_corners)
 
             # If the object intersects with a drivable tile
             if static and self._collidable_object(
@@ -746,6 +744,7 @@ class SimpleSimEnv(gym.Env):
         if len(self.collidable_centers) == 0:
             static_dist = 0
 
+        # Find safety penalty w.r.t static obstacles
         else:
             d = np.linalg.norm(self.collidable_centers - pos, axis=1)
 
@@ -756,6 +755,7 @@ class SimpleSimEnv(gym.Env):
 
         total_safety_pen = static_dist
         for obj in self.objects:
+            # Find safety penalty w.r.t dynamic obstacles
             total_safety_pen += obj.safe_driving(pos, AGENT_SAFETY_RAD)
 
         return total_safety_pen
