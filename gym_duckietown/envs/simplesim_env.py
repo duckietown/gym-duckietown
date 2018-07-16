@@ -18,8 +18,7 @@ from ..objmesh import *
 from ..collision import *
 
 # Objects utility code
-from ..objects.world_obj import WorldObj
-from ..objects.pedestrian_obj import PedestrianObj
+from ..objects import WorldObj, DuckieObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -298,13 +297,13 @@ class SimpleSimEnv(gym.Env):
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
-            obj['color'] = self._perturb([1, 1, 1], 0.3)
+            obj.color = self._perturb([1, 1, 1], 0.3)
 
             # Randomize whether the object is visible or not
-            if obj['optional'] and self.domain_rand:
-                obj['visible'] = self.np_random.randint(0, 2) == 0
+            if obj.optional and self.domain_rand:
+                obj.visible = self.np_random.randint(0, 2) == 0
             else:
-                obj['visible'] = True
+                obj.visible = True
 
         # If the map specifies a starting tile
         if self.start_tile is not None:
@@ -451,7 +450,6 @@ class SimpleSimEnv(gym.Env):
 
             safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
             static = desc.get('static', True)
-            pedestrian = desc.get('pedestrian', not static) # TODO: Duckiebot incorportartion
 
             obj_desc = {
                 'kind': kind,
@@ -464,15 +462,14 @@ class SimpleSimEnv(gym.Env):
                 'max_coords': mesh.max_coords,
                 'static': static,
                 'safety_radius': safety_radius,
+                'optional': optional,
             }
 
+            obj = None
             if static:
-                obj = WorldObj(obj_desc, self.domain_rand, self.draw_bbox)
+                obj = WorldObj(obj_desc, self.domain_rand)
             else:
-                if pedestrian:
-                    obj = PedestrianObj(obj_desc, self.domain_rand, self.draw_bbox, ROAD_TILE_SIZE)
-                else:
-                    pass # TODO: DuckiebotObj
+                obj = DuckieObj(obj_desc, self.domain_rand, ROAD_TILE_SIZE)
 
             self.objects.append(obj)
 
@@ -739,10 +736,15 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
-    def _safety_penalty(self):
+    def _proximity_penalty(self):
         """
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
+
+        Describes the amount of overlap between the "safety circles" (circles
+        that extend further out than BBoxes, giving an earlier collision 'signal'
+        The number is max(0, prox.penalty), where a lower (more negative) penalty
+        means that more of the circles are overlapping
         """
 
         static_dist = 0
@@ -762,7 +764,7 @@ class SimpleSimEnv(gym.Env):
         total_safety_pen = static_dist
         for obj in self.objects:
             # Find safety penalty w.r.t dynamic obstacles
-            total_safety_pen += obj.safe_driving(pos, AGENT_SAFETY_RAD)
+            total_safety_pen += obj.proximity(pos, AGENT_SAFETY_RAD)
 
         return total_safety_pen
 
@@ -780,9 +782,9 @@ class SimpleSimEnv(gym.Env):
         Check that agent spawn is not too close to any object
         """
 
-        results = [np.linalg.norm(x['pos'] - self.cur_pos) <
-            max(x['max_coords']) * 0.5 * x['scale'] + MIN_SPAWN_OBJ_DIST
-            for x in self.objects if x['visible']
+        results = [np.linalg.norm(x.pos - self.cur_pos) <
+            max(x.max_coords) * 0.5 * x.scale + MIN_SPAWN_OBJ_DIST
+            for x in self.objects if x.visible
         ]
         return np.any(results)
 
@@ -885,7 +887,7 @@ class SimpleSimEnv(gym.Env):
             return obs, reward, done, {}
 
         # Compute the collision avoidance penalty
-        penalty = self._safety_penalty()
+        penalty = self._proximity_penalty()
 
         # Get the position relative to the right lane tangent
         dist, dot_dir, angle = self.get_lane_pos()
@@ -1015,7 +1017,7 @@ class SimpleSimEnv(gym.Env):
 
         # For each object
         for idx, obj in enumerate(self.objects):
-            obj.render()
+            obj.render(self.draw_bbox)
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
