@@ -6,6 +6,9 @@ from pyglet.gl import *
 
 class WorldObj:
     def __init__(self, obj, domain_rand, draw_bbox):
+        """
+        Initializes the object and its properties
+        """
         self.obj = obj
         self.domain_rand = domain_rand
         self.draw_bbox = draw_bbox
@@ -25,6 +28,9 @@ class WorldObj:
         self.obj_norm = generate_norm(self.obj_corners)
 
     def render(self):
+        """
+        Renders the object to screen
+        """
         if not self.obj['visible']:
             return
 
@@ -52,19 +58,35 @@ class WorldObj:
     # Below are the functions that need to 
     # be reimplemented for any dynamic object    
     def check_collision(self, agent_corners, agent_norm):
+        """
+        See if the agent collided with this object
+        For static, return false (static collisions checked w
+        numpy in a batch operation)
+        """
         if not self.obj['static']: 
             raise NotImplementedError
         return False
 
     def safe_driving(self, agent_pos, agent_safety_rad):
+        """
+        See if the agent is too close to this object
+        For static, return 0 (static safedriving checked w
+        numpy in a batch operation)
+        """
         if not self.obj['static']: 
             raise NotImplementedError
         return 0.0
 
     def step(self):
+        """
+        Use a motion model to move the object in the world
+        """
         if not self.obj['static']: 
             raise NotImplementedError
 
     def update_rendering(self):
+        """
+        After moving, update any OpenGL attrib. for rendering
+        """
         if not self.obj['static']: 
             raise NotImplementedError

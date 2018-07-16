@@ -742,11 +742,11 @@ class SimpleSimEnv(gym.Env):
         """
 
         static_dist = 0
+        pos = self._actual_center()
         if len(self.collidable_centers) == 0:
             static_dist = 0
 
         else:
-            pos = self._actual_center()
             d = np.linalg.norm(self.collidable_centers - pos, axis=1)
 
             if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
@@ -756,7 +756,7 @@ class SimpleSimEnv(gym.Env):
 
         total_safety_pen = static_dist
         for obj in self.objects:
-            total_safety_pen += obj.safe_driving(obj['pos'], AGENT_SAFETY_RAD)
+            total_safety_pen += obj.safe_driving(pos, AGENT_SAFETY_RAD)
 
         return total_safety_pen
 
@@ -1001,30 +1001,6 @@ class SimpleSimEnv(gym.Env):
         # For each object
         for idx, obj in enumerate(self.objects):
             obj.render()
-            # if not obj['visible']:
-            #     continue
-
-            # # Draw the bounding box
-            # if self.draw_bbox:
-            #     corners = self.object_corners[idx].T
-            #     glColor3f(1, 0, 0)
-            #     glBegin(GL_LINE_LOOP)
-            #     glVertex3f(corners[0, 0], 0.01, corners[1, 0])
-            #     glVertex3f(corners[0, 1], 0.01, corners[1, 1])
-            #     glVertex3f(corners[0, 2], 0.01, corners[1, 2])
-            #     glVertex3f(corners[0, 3], 0.01, corners[1, 3])
-            #     glEnd()
-
-            # scale = obj['scale']
-            # y_rot = obj['y_rot']
-            # mesh = obj['mesh']
-            # glPushMatrix()
-            # glTranslatef(*obj['pos'])
-            # glScalef(scale, scale, scale)
-            # glRotatef(y_rot, 0, 1, 0)
-            # glColor3f(*obj['color'])
-            # mesh.render()
-            # glPopMatrix()
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
