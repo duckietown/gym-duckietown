@@ -7,6 +7,8 @@ using a Logitech Game Controller, as well as record trajectories.
 
 import sys
 import argparse
+import math
+import json
 import pyglet
 from pyglet.window import key
 import numpy as np
@@ -14,66 +16,61 @@ import gym
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
 from gym_duckietown.wrappers import HeadingWrapper
-import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default='SimpleSim-v0')
 parser.add_argument('--map-name', default='udem1')
 parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
-parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
-parser.add_argument('--save-all', action='store_true', help='Write all trajectories rather than just the most recent one to the file', default=False)
 args = parser.parse_args()
 
 if args.env_name == 'SimpleSim-v0':
     env = SimpleSimEnv(
         map_name = args.map_name,
-        draw_curve = args.draw_curve,
-        draw_bbox = args.draw_bbox,
-        domain_rand = args.domain_rand
+        domain_rand = args.domain_rand,
+        max_steps = math.inf
     )
 else:
     env = gym.make(args.env_name)
-
 env = HeadingWrapper(env)
 
 env.reset()
 env.render()
 
-# global variables for recording
+# global variables for demo recording
 positions = []
 actions = []
 demos = []
 recording = False
 
-
 def write_to_file(demos):
-    # Store the trajectories in a JSON file
-    # Only add the last demo
-    print('lenDemos2', len(demos))
-    if args.save_all:
-        with open('experiments/demos_{}.json'.format(args.map_name), 'w') as outfile:
-            json.dump({ 'demos': demos }, outfile)
-    else:
-        with open('experiments/demos_{}.json'.format(args.map_name), 'w') as outfile:
-            json.dump({ 'demos': demos }, outfile)
+    num_steps = 0
+    for demo in demos:
+        num_steps += len(demo['actions'])
+    print('num demos:', len(demos))
+    print('num steps:', num_steps)
 
+    # Store the trajectories in a JSON file
+    with open('experiments/demos_{}.json'.format(args.map_name), 'w') as outfile:
+        json.dump({ 'demos': demos }, outfile)
 
 def process_recording():
     global positions, actions, demos
 
-    if len(positions) == 0 and args.save_all:
+    if len(positions) == 0:
         # Nothing to delete
-        if len(demos) == 0: 
+        if len(demos) == 0:
             return
 
         # Remove the last recorded demo
-        demos.pop()   
+        demos.pop()
         write_to_file(demos)
         return
 
     p = list(map(lambda p: [ p[0].tolist(), p[1] ], positions))
     a = list(map(lambda a: a.tolist(), actions))
+
+    print(len(p), len(a))
 
     demo = {
         'positions': p,
@@ -81,14 +78,27 @@ def process_recording():
     }
 
     demos.append(demo)
-    
-    # Write all demos to this moment
-    if args.save_all:
-        write_to_file(demos)
 
-    # Write only last recorded demo
-    else:
-        write_to_file(demo)
+    # Write all demos to this moment
+    write_to_file(demos)
+
+@env.unwrapped.window.event
+def on_key_press(symbol, modifiers):
+    """
+    This handler processes keyboard commands that
+    control the simulation
+    """
+
+    if symbol == key.BACKSPACE or symbol == key.SLASH:
+        print('RESET')
+        env.reset()
+        env.render()
+    elif symbol == key.PAGEUP:
+        env.unwrapped.cam_angle = 0
+        env.render()
+    elif symbol == key.ESCAPE:
+        env.close()
+        sys.exit(0)
 
 @env.unwrapped.window.event
 def on_joybutton_press(joystick, button):
@@ -104,30 +114,26 @@ def on_joybutton_press(joystick, button):
     global recording, positions, actions
 
     # A Button
-    if button == 1 and not recording: 
-        print('Start Recording, Press A again to Finish')
-        recording = True
-        positions.append((env.unwrapped.cur_pos, env.unwrapped.cur_angle))       
-
-    # B Button
-    elif button == 1 and recording:
-        recording = False
-        process_recording()
-        print('Saved Recording')
-
-        positions = []
-        actions = []
+    if button == 1:
+        if not recording:
+            print('Start Recording, Press A again to Finish')
+            recording = True
+        else:
+            recording = False
+            process_recording()
+            positions = []
+            actions = []
+            print('Saved Recording')
 
     # X Button
     elif button == 0 and not recording:
         positions = []
         actions = []
         process_recording()
-
         print('Deleted Last Recording')
 
     # Y Button
-    elif button == 3: 
+    elif button == 3:
         print('RESET')
         env.reset()
         env.render()
@@ -139,7 +145,6 @@ def on_joybutton_press(joystick, button):
 
         print("Help:\n{}{}".format(helpstr1, helpstr2))
 
-            
 def update(dt):
     """
     This function is called at every frame to handle
@@ -155,15 +160,16 @@ def update(dt):
 
     action = np.array([-x, -z])
 
-    if joystick.buttons[5]: # RTrigger, Boost
+    # Right trigger, speed boost
+    if joystick.buttons[5]:
         action *= 1.5
-
-    obs, reward, done, info = env.step(action)
-    print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
     if recording:
         positions.append((env.unwrapped.cur_pos, env.unwrapped.cur_angle))
         actions.append(action)
+
+    obs, reward, done, info = env.step(action)
+    print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
     if done:
         print('done!')
