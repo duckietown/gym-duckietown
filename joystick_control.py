@@ -70,8 +70,6 @@ def process_recording():
     p = list(map(lambda p: [ p[0].tolist(), p[1] ], positions))
     a = list(map(lambda a: a.tolist(), actions))
 
-    print(len(p), len(a))
-
     demo = {
         'positions': p,
         'actions': a
@@ -116,21 +114,21 @@ def on_joybutton_press(joystick, button):
     # A Button
     if button == 1:
         if not recording:
-            print('Start Recording, Press A again to Finish')
+            print('Start recording, Press A again to finish')
             recording = True
         else:
             recording = False
             process_recording()
             positions = []
             actions = []
-            print('Saved Recording')
+            print('Saved recording')
 
     # X Button
     elif button == 0 and not recording:
         positions = []
         actions = []
         process_recording()
-        print('Deleted Last Recording')
+        print('Deleted last recording')
 
     # Y Button
     elif button == 3:
