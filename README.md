@@ -94,10 +94,10 @@ export PYTHONPATH="${PYTHONPATH}:`pwd`"
 
 ### Docker Image
 
-There is a prebuilt docker image available [on dockerhub](https://hub.docker.com/r/maximecb/gym-duckietown/). This image also contains an installation of PyTorch. Alternatively, you can also build this image from the latest version of this repository as follows:
+There is a pre-built Docker image available [on Docker Hub](https://hub.docker.com/r/maximecb/gym-duckietown/), which also contains an installation of PyTorch. Alternatively, you can also build an image from the latest version of this repository as follows:
 
 ```
-sudo docker build --no-cache=true --network=host --tag gym-duckietown .
+sudo docker build --file ./docker/standalone/Dockerfile --no-cache=true --network=host --tag gym-duckietown .
 ```
 
 Note that in order to get GPU acceleration, you should install and use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
