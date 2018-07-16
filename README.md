@@ -73,11 +73,7 @@ pip3 install -e .
 
 Reinforcement learning code forked from [this repository](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr)
 is included under [/pytorch_rl](/pytorch_rl). If you wish to use this code, you
-should install [PyTorch](http://pytorch.org/) as follows:
-
-```
-conda install pytorch torchvision -c pytorch
-```
+should install [PyTorch](http://pytorch.org/).
 
 ### Installation Using Conda (Alternative Method)
 
