@@ -17,6 +17,9 @@ from ..graphics import *
 from ..objmesh import *
 from ..collision import *
 
+# Objects utility code
+from ..objects.world_obj import WorldObj
+
 # Rendering window size
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
@@ -420,31 +423,6 @@ class SimpleSimEnv(gym.Env):
         # (N): Safety radius for object used in calculating reward
         self.collidable_safety_radii = []
 
-        # Holds the indices (in self.objects) of static obstacles
-        self.static_indices = []
-
-        # Dictionary mapping from the a dynamic obstacle idx 
-        # (used for all arrays below) to indices in (self.objects, self.collidable)
-        self.dynamic_obj_indices = {}
-
-        # Stores whether or not this particular dynamic object is a pedestrian
-        self.pedestrians = []
-
-        # Whether or not a particular ped is active (in a walk)
-        self.pedestrian_active = []
-
-        # How long the Pedestrian will wait before starting its walk
-        self.pedestrian_wait_time = []
-
-        # Information arrays used by dynamic objects -- currently only pedestrians
-        self.dynamic_vels = []
-        self.dynamic_headings = []
-        self.dynamic_starts = []
-        self.dynamic_centers = []
-        self.dynamic_rots = []
-
-        dyn_idx = 0
-
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
@@ -465,9 +443,9 @@ class SimpleSimEnv(gym.Env):
 
             safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
             static = desc.get('static', True)
-            pedestrian = desc.get('pedestrian', False)
+            pedestrian = desc.get('pedestrian', not static) # TODO: Duckiebot incorportartion
 
-            obj = {
+            obj_desc = {
                 'kind': kind,
                 'mesh': mesh,
                 'pos': pos,
@@ -476,8 +454,16 @@ class SimpleSimEnv(gym.Env):
                 'optional': optional,
                 'min_coords': mesh.min_coords,
                 'max_coords': mesh.max_coords,
-                'static': static # TODO: load this from yml
+                'static': static
             }
+
+            if static:
+                obj = WorldObj(obj_desc, self.domain_rand)
+            else:
+                if pedestrian:
+                    obj = PedestrianObj(obj_desc, self.domain_rand)
+                else:
+                    pass # TODO: DuckiebotObj
 
             self.objects.append(obj)
 
@@ -486,57 +472,19 @@ class SimpleSimEnv(gym.Env):
             angle = rotate * (math.pi / 180)
 
             # Find drivable tiles object could intersect with
-            obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
-                pos,
-                mesh,
-                angle,
-                scale,
-                ROAD_TILE_SIZE
-            )
+            possible_tiles = find_candidate_tiles(obj.obj_corners)
 
-            self.object_corners.append(obj_corners)
+            # TODO: Render each object with its own method
+            # self.object_corners.append(obj.obj_corners)
 
             # If the object intersects with a drivable tile
-            if self._collidable_object(obj_corners, obj_norm, possible_tiles):
+            if static and self._collidable_object(
+                obj.obj_corners, obj.obj_norm, possible_tiles
+            ):
                 self.collidable_centers.append(pos)
                 self.collidable_corners.append(obj_corners.T)
                 self.collidable_norms.append(obj_norm)
-
                 self.collidable_safety_radii.append(safety_radius)
-
-                if static:
-                    self.static_indices.append(obj_idx)
-                else:
-                    col_idx = len(self.collidable_centers) - 1
-                    self.dynamic_obj_indices[dyn_idx] = (obj_idx, col_idx)
-                    dyn_idx += 1
-
-                    self.pedestrians.append(pedestrian)
-                    self.pedestrian_active.append(False)
-
-                    # Randomize velocity and wait time
-                    if self.domain_rand:
-                        self.pedestrian_wait_time.append(np.random.randint(1, 30) * 10)
-                        self.dynamic_vels.append(np.abs(np.random.normal(0.2, 0.02)))
-                    else:
-                        self.pedestrian_wait_time.append(100)
-                        self.dynamic_vels.append(0.02)
-                    
-                    self.dynamic_rots.append(angle)
-                    self.dynamic_headings.append(heading_vec(angle))
-                    self.dynamic_starts.append(self.collidable_centers[-1])
-                    self.dynamic_centers.append(self.collidable_centers[-1])
-
-        # Numpy arrays for faster indexing later
-        self.pedestrians = np.array(self.pedestrians)
-        self.pedestrian_active = np.array(self.pedestrian_active)
-        self.pedestrian_wait_time = np.array(self.pedestrian_wait_time)
-        self.pedestrians = np.array(self.pedestrians)
-        self.dynamic_vels = np.array(self.dynamic_vels)
-        self.dynamic_rots = np.array(self.dynamic_rots)
-        self.dynamic_headings = np.array(self.dynamic_headings)
-        self.dynamic_starts = np.array(self.dynamic_starts)
-        self.dynamic_centers = np.array(self.dynamic_centers)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:

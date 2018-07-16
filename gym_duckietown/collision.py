@@ -87,15 +87,11 @@ def generate_norm(corners):
     _, vect = np.linalg.eig(ca)
     return vect.T
 
-def find_candidate_tiles(pos, mesh, angle, scale, tile_size):
+def find_candidate_tiles(obj_corners):
     """
     Finds all of the tiles that a object could intersect with
     Returns the norms and corners of any of those that are drivable
     """
-
-    # Find corners and normal vectors assoc w. object
-    obj_corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
-    obj_norm = generate_norm(obj_corners)
 
     # Find min / max x&y tile coordinates of object
     minx, miny = np.floor(
@@ -112,7 +108,7 @@ def find_candidate_tiles(pos, mesh, angle, scale, tile_size):
     yr = list(range(miny, maxy+1))
 
     possible_tiles = np.array([(x, y) for x in xr for y in yr])
-    return obj_corners, obj_norm, possible_tiles
+    return possible_tiles
 
 def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     """
