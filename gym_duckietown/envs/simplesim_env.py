@@ -19,6 +19,7 @@ from ..collision import *
 
 # Objects utility code
 from ..objects.world_obj import WorldObj
+from ..objects.pedestrian_obj import PedestrianObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -454,14 +455,15 @@ class SimpleSimEnv(gym.Env):
                 'optional': optional,
                 'min_coords': mesh.min_coords,
                 'max_coords': mesh.max_coords,
-                'static': static
+                'static': static,
+                'safety_radius': safety_radius,
             }
 
             if static:
-                obj = WorldObj(obj_desc, self.domain_rand)
+                obj = WorldObj(obj_desc, self.domain_rand, self.draw_bbox)
             else:
                 if pedestrian:
-                    obj = PedestrianObj(obj_desc, self.domain_rand)
+                    obj = PedestrianObj(obj_desc, self.domain_rand, self.draw_bbox, ROAD_TILE_SIZE)
                 else:
                     pass # TODO: DuckiebotObj
 
@@ -472,7 +474,7 @@ class SimpleSimEnv(gym.Env):
             angle = rotate * (math.pi / 180)
 
             # Find drivable tiles object could intersect with
-            possible_tiles = find_candidate_tiles(obj.obj_corners)
+            possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
 
             # TODO: Render each object with its own method
             # self.object_corners.append(obj.obj_corners)
@@ -482,8 +484,8 @@ class SimpleSimEnv(gym.Env):
                 obj.obj_corners, obj.obj_norm, possible_tiles
             ):
                 self.collidable_centers.append(pos)
-                self.collidable_corners.append(obj_corners.T)
-                self.collidable_norms.append(obj_norm)
+                self.collidable_corners.append(obj.obj_corners.T)
+                self.collidable_norms.append(obj.obj_norm)
                 self.collidable_safety_radii.append(safety_radius)
 
         # If there are collidable objects
@@ -724,100 +726,6 @@ class SimpleSimEnv(gym.Env):
         # Update the robot's direction angle
         self.cur_angle += rotAngle
 
-    def _update_dynamic_obs(self):
-        if len(self.pedestrians) == 0: return
-
-        # Trigger pedestrian movement every certain number of timesteps
-        self.pedestrian_active = np.logical_or(
-            self.step_count % self.pedestrian_wait_time == 0,
-            self.pedestrian_active)
-
-        self._update_pedestrians(dt=0.1)
-
-    def _update_pedestrians(self, dt):
-        """
-        Updates pedestrians with a simple motion model, and changes relevant
-        characteristics of each ped. when its current walk is over
-
-        dt = timestep
-        """
-        
-        # Numpy Arrays for batch updates of centers / bboxes
-        obj_indices = []
-        col_indices = []
-
-        for dyn_idx, active in enumerate(self.pedestrian_active):
-            indices = self.dynamic_obj_indices[dyn_idx]
-            obj_indices.append(indices[0])
-            col_indices.append(indices[1])
-
-        obj_indices = np.array(obj_indices)
-        col_indices = np.array(col_indices)
-        
-        a = self.dynamic_vels[np.where(self.pedestrian_active)] * dt
-        a = a[:, np.newaxis]
-        b = self.dynamic_headings[np.where(self.pedestrian_active)]
-
-        # How much each dimension of position will adjust due to velocity
-        velocity_adjustment = b * a
-
-        # Adjust each dynamic center
-        self.dynamic_centers[np.where(self.pedestrian_active)] += velocity_adjustment
-
-        # Set the collision centers assoc. with moving dyn. obstacles to be the ones
-        # set above
-        self.collidable_centers[col_indices[np.where(self.pedestrian_active)]] =\
-            self.dynamic_centers[np.where(self.pedestrian_active)]
-
-        # Move the corners (only (x,z) so needs some shape fixes) by the same amount
-        self.collidable_corners[col_indices[np.where(self.pedestrian_active)]] =\
-             (self.collidable_corners[col_indices[np.where(self.pedestrian_active)]].T \
-                + velocity_adjustment[:, (0, -1)].T).T
-
-        # Update the features of bboxes / rendering that can't be done in batch
-        self._update_dynamic_bbox(dt=0.1)
-
-        # Distance between start and current
-        distances = np.linalg.norm(self.dynamic_centers - self.dynamic_starts, axis=1)
-        updates_mask = np.greater(distances, ROAD_TILE_SIZE)
-
-        # Turn it around
-        self.dynamic_rots[updates_mask] = self.dynamic_rots[updates_mask] + np.pi
-        
-        # Set its new start pos to be its current
-        self.dynamic_starts[updates_mask] = self.dynamic_centers[updates_mask]
-
-        # Make them all inactive
-        self.pedestrian_active[updates_mask] = False
-
-        if self.domain_rand:
-            # Assign a random velocity (in opp. direction) and a wait time
-            self.dynamic_vels[updates_mask] = -1 * np.sign(self.dynamic_vels[updates_mask]) * np.abs(np.random.normal(0.2, 0.02))
-            self.pedestrian_wait_time[updates_mask] = np.random.randint(1, 30) * 10
-        else:
-            # Just give it the negative of its current velocuty
-            self.dynamic_vels[updates_mask] *= -1
-
-
-    def _update_dynamic_bbox(self, dt):
-        """
-        Updates each dynamic bounding box
-        """
-        for dyn_idx, active in enumerate(self.pedestrian_active):
-            indices = self.dynamic_obj_indices[dyn_idx]
-            obj_idx = indices[0]
-            col_idx = indices[1]
-
-            self.objects[obj_idx]['pos'] = self.dynamic_centers[dyn_idx] 
-            self.objects[obj_idx]['y_rot'] = self.dynamic_rots[dyn_idx] * (180 / np.pi)
-
-            # self.collidable_corners[col_idx] = corners.T
-            self.collidable_norms[col_idx] = generate_norm(
-                self.collidable_corners[col_idx].T)
-            
-            # Corners for --draw-bbox flag
-            self.object_corners[obj_idx] = self.collidable_corners[col_idx].T
-
     def _drivable_pos(self, pos):
         """
         Check that the given (x,y,z) position is on a drivable tile
@@ -832,16 +740,25 @@ class SimpleSimEnv(gym.Env):
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
         """
+
+        static_dist = 0
         if len(self.collidable_centers) == 0:
-            return 0
+            static_dist = 0
 
-        pos = self._actual_center()
-        d = np.linalg.norm(self.collidable_centers - pos, axis=1)
-
-        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
-            return 0
         else:
-            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.collidable_safety_radii)
+            pos = self._actual_center()
+            d = np.linalg.norm(self.collidable_centers - pos, axis=1)
+
+            if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
+                static_dist = 0
+            else:
+                static_dist = safety_circle_overlap(d, AGENT_SAFETY_RAD, self.collidable_safety_radii)
+
+        total_safety_pen = static_dist
+        for obj in self.objects:
+            total_safety_pen += obj.safe_driving(obj['pos'], AGENT_SAFETY_RAD)
+
+        return total_safety_pen
 
     def _actual_center(self):
         """
@@ -875,12 +792,24 @@ class SimpleSimEnv(gym.Env):
         # Generate the norms corresponding to each face of BB
         self.agent_norm = generate_norm(self.agent_corners)
 
-        return intersects(
+        # Check collisions with static objects
+        collision = intersects(
             self.agent_corners,
             self.collidable_corners,
             self.agent_norm,
             self.collidable_norms
         )
+
+        if collision:
+            return True
+        
+        # Check collisions with Dynamic Objects
+        for obj in self.objects:
+            if obj.check_collision(self.agent_corners, self.agent_norm):
+                return True
+
+        # No collision with any object
+        return False
 
     def _valid_pose(self, safety_factor=1):
         """
@@ -921,8 +850,9 @@ class SimpleSimEnv(gym.Env):
         self.step_count += 1
 
         # Update the robot's position
-        self._update_dynamic_obs()
         self._update_pos(action * ROBOT_SPEED * 1, 0.1)
+        for obj in self.objects:
+            obj.step()
 
         # Generate the current camera image
         obs = self.render_obs()
@@ -1070,30 +1000,31 @@ class SimpleSimEnv(gym.Env):
 
         # For each object
         for idx, obj in enumerate(self.objects):
-            if not obj['visible']:
-                continue
+            obj.render()
+            # if not obj['visible']:
+            #     continue
 
-            # Draw the bounding box
-            if self.draw_bbox:
-                corners = self.object_corners[idx].T
-                glColor3f(1, 0, 0)
-                glBegin(GL_LINE_LOOP)
-                glVertex3f(corners[0, 0], 0.01, corners[1, 0])
-                glVertex3f(corners[0, 1], 0.01, corners[1, 1])
-                glVertex3f(corners[0, 2], 0.01, corners[1, 2])
-                glVertex3f(corners[0, 3], 0.01, corners[1, 3])
-                glEnd()
+            # # Draw the bounding box
+            # if self.draw_bbox:
+            #     corners = self.object_corners[idx].T
+            #     glColor3f(1, 0, 0)
+            #     glBegin(GL_LINE_LOOP)
+            #     glVertex3f(corners[0, 0], 0.01, corners[1, 0])
+            #     glVertex3f(corners[0, 1], 0.01, corners[1, 1])
+            #     glVertex3f(corners[0, 2], 0.01, corners[1, 2])
+            #     glVertex3f(corners[0, 3], 0.01, corners[1, 3])
+            #     glEnd()
 
-            scale = obj['scale']
-            y_rot = obj['y_rot']
-            mesh = obj['mesh']
-            glPushMatrix()
-            glTranslatef(*obj['pos'])
-            glScalef(scale, scale, scale)
-            glRotatef(y_rot, 0, 1, 0)
-            glColor3f(*obj['color'])
-            mesh.render()
-            glPopMatrix()
+            # scale = obj['scale']
+            # y_rot = obj['y_rot']
+            # mesh = obj['mesh']
+            # glPushMatrix()
+            # glTranslatef(*obj['pos'])
+            # glScalef(scale, scale, scale)
+            # glRotatef(y_rot, 0, 1, 0)
+            # glColor3f(*obj['color'])
+            # mesh.render()
+            # glPopMatrix()
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
