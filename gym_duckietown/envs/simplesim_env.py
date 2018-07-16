@@ -75,14 +75,17 @@ SAFETY_RAD_MULT = 1.8
 # Robot safety circle radius
 AGENT_SAFETY_RAD = (max(ROBOT_LENGTH, ROBOT_WIDTH) / 2) * SAFETY_RAD_MULT
 
+# Minimum distance spawn position needs to be from all objects
+MIN_SPAWN_OBJ_DIST = 0.25
+
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
 
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.45
 
-# Minimum distance spawn position needs to be from all objects
-MIN_SPAWN_OBJ_DIST = 0.25
+# Length of one time step in the simulator
+TIME_STEP = 0.1
 
 class SimpleSimEnv(gym.Env):
     """
@@ -215,6 +218,9 @@ class SimpleSimEnv(gym.Env):
 
         # Step count since episode start
         self.step_count = 0
+
+        # Robot's current speed
+        self.speed = 0
 
         # Horizon color
         # Note: we explicitly sample white and grey/black because
@@ -701,7 +707,7 @@ class SimpleSimEnv(gym.Env):
 
         # If the wheel velocities are the same, then there is no rotation
         if Vl == Vr:
-            self.cur_pos += deltaTime * Vl * self.get_dir_vec()
+            self.cur_pos = self.cur_pos + deltaTime * Vl * self.get_dir_vec()
             return
 
         # Compute the angular rotation velocity about the ICC (center of curvature)
@@ -849,10 +855,19 @@ class SimpleSimEnv(gym.Env):
 
         self.step_count += 1
 
+        prev_pos = self.cur_pos
+
         # Update the robot's position
-        self._update_pos(action * ROBOT_SPEED * 1, 0.1)
+        self._update_pos(action * ROBOT_SPEED * 1, TIME_STEP)
+
+        # Compute the robot's speed
+        delta_pos = self.cur_pos - prev_pos
+        self.speed = np.linalg.norm(delta_pos) / TIME_STEP
+        
         for obj in self.objects:
             obj.step()
+  
+
 
         # Generate the current camera image
         obs = self.render_obs()
@@ -1110,10 +1125,11 @@ class SimpleSimEnv(gym.Env):
 
         # Display position/state information
         x, y, z = self.cur_pos
-        self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d" % (
+        self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
             x, y, z,
             int(self.cur_angle * 180 / math.pi),
-            self.step_count
+            self.step_count,
+            self.speed
         )
         self.text_label.draw()
 
