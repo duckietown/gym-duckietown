@@ -60,6 +60,7 @@ Requirements:
 - SciPy
 - Pyglet
 - PyYAML
+- cloudpickle
 - PyTorch
 
 You can install all the dependencies except PyTorch with `pip3`:

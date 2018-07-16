@@ -12,6 +12,7 @@ setup(
         'scikit-image>=0.13.1',
         'opencv-python>=3.4',
         'pyyaml>=3.12',
+        'cloudpickle',
         'duckietown_slimremote>=1.1'
     ],
     entry_points={
