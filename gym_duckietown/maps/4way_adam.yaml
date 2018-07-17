@@ -1,5 +1,8 @@
 # 5x5 counter-clockwise loop with a 4-way intersection in the middle
 # Designed to test the 4-way intersection tile
+#
+# Note: this map also serves as a regression test for #48
+
 tiles:
 - [floor, floor        , floor     , floor         , floor     , floor       , floor]
 - [floor, curve_left/W , straight/W, 3way_left/W   , straight/W, curve_left/N, floor]
