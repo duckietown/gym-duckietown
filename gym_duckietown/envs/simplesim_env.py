@@ -542,15 +542,21 @@ class SimpleSimEnv(gym.Env):
         drivable tiles, which would mean our agent could run into them.
         Helps optimize collision checking with agent during runtime
         """
-        drivable_mask = np.array([
-            self._get_tile(
-                c[0],
-                c[1],
-            )['drivable'] for c in possible_tiles
-        ])
+        
+        if possible_tiles.shape == 0:
+            return False
 
-        # mask away tiles that aren't drivable
-        drivable_tiles = possible_tiles[drivable_mask]
+        drivable_tiles = []
+        for c in possible_tiles:
+            tile = self._get_tile(c[0], c[1])
+            if tile and tile['drivable']:
+                drivable_tiles.append((c[0], c[1]))
+
+        if drivable_tiles == []:
+            return False
+
+        drivable_tiles = np.array(drivable_tiles)
+
         # Tiles are axis aligned, so add normal vectors in bulk
         tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
 

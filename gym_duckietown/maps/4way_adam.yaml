@@ -1,0 +1,111 @@
+# 5x5 counter-clockwise loop with a 4-way intersection in the middle
+# Designed to test the 4-way intersection tile
+#
+# Note: this map also serves as a regression test for #48
+
+tiles:
+- [floor, floor        , floor     , floor         , floor     , floor       , floor]
+- [floor, curve_left/W , straight/W, 3way_left/W   , straight/W, curve_left/N, floor]
+- [floor, straight/S   , asphalt   , straight/N    , asphalt   , straight/N  , floor]
+- [floor, 3way_left/S  , straight/W, 4way          , straight/E, 3way_left/N , floor]
+- [floor, straight/S   , asphalt   , straight/S    , asphalt   , straight/N  , floor]
+- [floor, curve_left/S , straight/E, 3way_left/E   , straight/E, curve_left/E, floor]
+- [floor, floor        , floor     , floor         , floor     , floor       , floor]
+
+objects:
+
+- kind: sign_4_way_intersect
+  pos: [2.95, 2.95]
+  rotate: 0
+  height: 0.18
+
+- kind: sign_t_light_ahead
+  pos: [2.85, 2.95]
+  rotate: 90
+  height: 0.18
+
+- kind: sign_4_way_intersect
+  pos: [4.05, 2.95]
+  rotate: 90
+  height: 0.18
+
+- kind: sign_t_light_ahead
+  pos: [4.05, 2.85]
+  rotate: 180
+  height: 0.18
+
+- kind: sign_4_way_intersect
+  pos: [2.95, 4.05]
+  rotate: 270
+  height: 0.18
+
+- kind: sign_t_light_ahead
+  pos: [2.95, 4.15]
+  rotate: 0
+  height: 0.18
+
+- kind: sign_4_way_intersect
+  pos: [4.05, 4.05]
+  rotate: 180
+  height: 0.18
+
+- kind: sign_t_light_ahead
+  pos: [4.15, 4.05]
+  rotate: 270
+  height: 0.18
+
+- kind: duckie
+  pos: [2.02, 2.83]
+  rotate: 168.18
+  height: 0.08
+
+- kind: building
+  pos: [2.46, 2.67]
+  rotate: 180
+  height: 0.6
+
+- kind: cone
+  pos: [0.73, 0.5]
+  rotate: 172.63
+  height: 0.08
+
+- kind: house
+  pos: [6.96, 6.93]
+  rotate: 90
+  height: 0.5
+
+- kind: duckie
+  pos: [0.43, 0.75]
+  rotate: 19.93
+  height: 0.08
+
+- kind: barrier
+  pos: [0.08, 0.16]
+  rotate: 182.56
+  height: 0.08
+
+- kind: barrier
+  pos: [2.74, 5.25]
+  rotate: 90
+  height: 0.08
+
+- kind: barrier
+  pos: [5.75, 6.02]
+  rotate: 128.23
+  height: 0.08
+
+- kind: cone
+  pos: [2.76, 1.95]
+  rotate: 85.59
+  height: 0.08
+
+- kind: barrier
+  pos: [6.0, 2.0]
+  rotate: 237.6
+  height: 0.08
+
+- kind: duckie
+  pos: [6.0, 2.0]
+  rotate: 7.2
+  height: 0.08
+
