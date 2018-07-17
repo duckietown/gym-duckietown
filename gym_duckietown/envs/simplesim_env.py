@@ -542,8 +542,7 @@ class SimpleSimEnv(gym.Env):
         drivable tiles, which would mean our agent could run into them.
         Helps optimize collision checking with agent during runtime
         """
-
-        print(possible_tiles)
+        
         if possible_tiles.shape == 0:
             return False
 
@@ -556,7 +555,6 @@ class SimpleSimEnv(gym.Env):
         if drivable_tiles == []:
             return False
 
-        print(drivable_tiles)
         drivable_tiles = np.array(drivable_tiles)
 
         # Tiles are axis aligned, so add normal vectors in bulk
