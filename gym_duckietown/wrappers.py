@@ -19,7 +19,7 @@ class HeadingWrapper(gym.ActionWrapper):
         limit = 1.0
     ):
         super().__init__(env)
-        self.action_space = spaces.Box(low=np.array([0,-1]), high=np.array([1,1]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([-1,-1]), high=np.array([1,1]), dtype=np.float32)
 
         # should be adjusted so that the effective speed of the robot is 0.2 m/s
         self.gain = gain
