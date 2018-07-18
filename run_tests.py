@@ -8,9 +8,8 @@ from gym_duckietown.envs import SimpleSimEnv, MultiMapEnv
 
 env = gym.make('SimpleSim-v0')
 
-first_obs = env.reset()
-
 # Check that the human rendering resembles the agent's view
+first_obs = env.reset()
 first_render = env.render('rgb_array')
 m0 = first_obs.mean()
 m1 = first_render.mean()
@@ -25,9 +24,12 @@ for i in range(0, 10):
 for map_file in os.listdir('gym_duckietown/maps'):
     map_name = map_file.split('.')[0]
     env = SimpleSimEnv(map_name=map_name)
+    env.reset()
 
 # Test the multi-map environment
 env = MultiMapEnv()
+for i in range(0, 50):
+    env.reset()
 
 # Check that we do not spawn too close to obstacles
 env = SimpleSimEnv(map_name='loop_obstacles')

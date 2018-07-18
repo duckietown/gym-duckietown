@@ -1,0 +1,3 @@
+# Regression test for issue #53
+tiles:
+- [4way]
