@@ -381,6 +381,10 @@ class SimpleSimEnv(gym.Env):
                     orient = orient.strip(' ')
                     angle = ['S', 'E', 'N', 'W'].index(orient)
                     drivable = True
+                elif '4' in tile:
+                    kind = '4way'
+                    angle = 2
+                    drivable = True
                 else:
                     kind = tile
                     angle = 0
