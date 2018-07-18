@@ -1,7 +1,4 @@
-# 5x5 counter-clockwise loop with a 4-way intersection in the middle
-# Designed to test the 4-way intersection tile
-#
-# Note: this map also serves as a regression test for #48
+# This map is a regression test for issue #48
 
 tiles:
 - [floor, floor        , floor     , floor         , floor     , floor       , floor]
@@ -108,4 +105,3 @@ objects:
   pos: [6.0, 2.0]
   rotate: 7.2
   height: 0.08
-
