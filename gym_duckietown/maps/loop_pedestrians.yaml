@@ -44,13 +44,13 @@ objects:
   height: 0.08
 
 - kind: duckie
-  pos: [3.0, 6.0]
+  pos: [3.0, 6.25]
   rotate: 90
   height: 0.08
   static: False
 
 - kind: duckie
-  pos: [4.0, 6.0]
+  pos: [4.0, 6.25]
   rotate: 90
   height: 0.08
   static: False

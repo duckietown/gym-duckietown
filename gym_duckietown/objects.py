@@ -6,11 +6,11 @@ from pyglet.gl import *
 
 
 class WorldObj:
-    def __init__(self, obj, domain_rand):
+    def __init__(self, obj, domain_rand, safety_radius_mult):
         """
         Initializes the object and its properties
         """
-        self.process_obj_dict(obj)
+        self.process_obj_dict(obj, safety_radius_mult)
 
         self.domain_rand = domain_rand
         self.angle = self.y_rot * (math.pi / 180)
@@ -23,17 +23,18 @@ class WorldObj:
             self.min_coords, self.max_coords, self.angle, self.scale)
         self.obj_norm = generate_norm(self.obj_corners)
 
-    def process_obj_dict(self, obj):
+    def process_obj_dict(self, obj, safety_radius_mult):
         self.kind = obj['kind']
         self.mesh = obj['mesh']
         self.pos = obj['pos']
         self.scale = obj['scale']
         self.y_rot = obj['y_rot']
         self.optional = obj['optional']
-        self.min_coords = obj['min_coords']
-        self.max_coords = obj['max_coords']
+        self.min_coords = obj['mesh'].min_coords
+        self.max_coords = obj['mesh'].max_coords
         self.static = obj['static']
-        self.safety_radius = obj['safety_radius']
+        self.safety_radius = safety_radius_mult *\
+            calculate_safety_radius(self.mesh, self.scale)
         self.optional = obj['optional']
             
     def render(self, draw_bbox):
@@ -92,9 +93,10 @@ class WorldObj:
 
 
 class DuckieObj(WorldObj):
-    def __init__(self, obj, domain_rand, road_tile_sz, dt=0.05):
-        super().__init__(obj, domain_rand)
-        self.road_tile_sz = road_tile_sz
+    def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance, dt=0.05):
+        super().__init__(obj, domain_rand, safety_radius_mult)
+        
+        self.walk_distance = walk_distance + 0.25
 
         # Dynamic duckie stuff
 
@@ -160,7 +162,7 @@ class DuckieObj(WorldObj):
 
         distance = np.linalg.norm(self.center - self.start)
 
-        if distance > self.road_tile_sz:
+        if distance > self.walk_distance:
             self.finish_walk()
 
         self.pos = self.center

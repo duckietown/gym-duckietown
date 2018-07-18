@@ -448,7 +448,6 @@ class SimpleSimEnv(gym.Env):
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
-            safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
             static = desc.get('static', True)
 
             obj_desc = {
@@ -458,18 +457,15 @@ class SimpleSimEnv(gym.Env):
                 'scale': scale,
                 'y_rot': rotate,
                 'optional': optional,
-                'min_coords': mesh.min_coords,
-                'max_coords': mesh.max_coords,
                 'static': static,
-                'safety_radius': safety_radius,
                 'optional': optional,
             }
 
             obj = None
             if static:
-                obj = WorldObj(obj_desc, self.domain_rand)
+                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
-                obj = DuckieObj(obj_desc, self.domain_rand, ROAD_TILE_SIZE)
+                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
             self.objects.append(obj)
 
@@ -487,7 +483,7 @@ class SimpleSimEnv(gym.Env):
                 self.collidable_centers.append(pos)
                 self.collidable_corners.append(obj.obj_corners.T)
                 self.collidable_norms.append(obj.obj_norm)
-                self.collidable_safety_radii.append(safety_radius)
+                self.collidable_safety_radii.append(obj.safety_radius)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
