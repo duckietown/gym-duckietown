@@ -49,12 +49,14 @@ def load_model():
     model = Model()
 
     try:
-        model.load_state_dict(torch.load('trained_models/imitate.pt'))
+        state_dict = torch.load('trained_models/imitate.pt', map_location=lambda storage, loc: storage)
+        model.load_state_dict(state_dict)
     except:
         print('failed to load model')
 
     model.eval()
-    model.cuda()
+    if torch.cuda.is_available():
+        model.cuda()
 
 load_model()
 
