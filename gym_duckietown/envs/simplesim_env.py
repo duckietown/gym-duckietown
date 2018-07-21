@@ -104,7 +104,8 @@ class SimpleSimEnv(gym.Env):
         max_steps=600,
         draw_curve=False,
         draw_bbox=False,
-        domain_rand=True
+        domain_rand=True,
+        frame_skip=1
     ):
         # Maximum number of steps per episode
         self.max_steps = max_steps
@@ -117,6 +118,9 @@ class SimpleSimEnv(gym.Env):
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
+
+        # Number of frames to skip per action
+        self.frame_skip = frame_skip
 
         # Produce graphical output
         self.graphics = True
@@ -853,19 +857,18 @@ class SimpleSimEnv(gym.Env):
 
         self.step_count += 1
 
-        prev_pos = self.cur_pos
+        for _ in range(self.frame_skip):
+            prev_pos = self.cur_pos
 
-        # Update the robot's position
-        self._update_pos(action * ROBOT_SPEED * 1, TIME_STEP)
+            # Update the robot's position
+            self._update_pos(action * ROBOT_SPEED * 1, TIME_STEP)
 
-        # Compute the robot's speed
-        delta_pos = self.cur_pos - prev_pos
-        self.speed = np.linalg.norm(delta_pos) / TIME_STEP
-        
-        for obj in self.objects:
-            obj.step()
-  
-
+            # Compute the robot's speed
+            delta_pos = self.cur_pos - prev_pos
+            self.speed = np.linalg.norm(delta_pos) / TIME_STEP
+            
+            for obj in self.objects:
+                obj.step()
 
         # Generate the current camera image
         obs = self.render_obs()
