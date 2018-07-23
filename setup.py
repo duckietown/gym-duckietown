@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='gym_duckietown',
-    version='0.0.2',
+    version='0.0.4',
     keywords='duckietown, environment, agent, rl, openaigym, openai-gym, gym',
     install_requires=[
         'gym>=0.9.0',
@@ -13,7 +13,7 @@ setup(
         'opencv-python>=3.4',
         'pyyaml>=3.12',
         'cloudpickle',
-        'duckietown_slimremote>=1.1'
+        'duckietown_slimremote>=1.4.3'
     ],
     entry_points={
         'console_scripts': [
