@@ -40,13 +40,13 @@ RUN conda install numpy pyyaml scipy pyzmq && \
 WORKDIR /workspace
 RUN chmod -R a+w /workspace
 
+ADD . gym-duckietown
+RUN pip install -e gym-duckietown
+
 # TODO: This should be possible, but fails with ModuleNotFoundException at runtime.
 # Need to figure out why this doesn't work at some point.
-#RUN pip install https://github.com/duckietown/duckietown-slimremote/zipball/master \
-#                https://github.com/duckietown/gym-duckietown/zipball/master
-
+#RUN pip install https://github.com/duckietown/duckietown-slimremote/zipball/master
 RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote 
-RUN pip install -e git+https://github.com/duckietown/gym-duckietown.git#egg=gym-duckietown
 
 COPY launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 RUN chmod +x /usr/bin/launch-gym-server-with-xvfb
