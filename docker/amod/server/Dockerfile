@@ -17,10 +17,10 @@ FROM ubuntu:16.04
 # TODO: double-check that we really need all of these for just the server
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
          git \
+         xvfb \
          bzip2 \
          psmisc \
          ca-certificates \
-         xvfb \
          mesa-utils \
          freeglut3-dev && \
      rm -rf /var/lib/apt/lists/*
