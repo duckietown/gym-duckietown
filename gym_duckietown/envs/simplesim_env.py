@@ -17,6 +17,9 @@ from ..graphics import *
 from ..objmesh import *
 from ..collision import *
 
+# Objects utility code
+from ..objects import WorldObj, DuckieObj
+
 # Rendering window size
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
@@ -101,7 +104,8 @@ class SimpleSimEnv(gym.Env):
         max_steps=600,
         draw_curve=False,
         draw_bbox=False,
-        domain_rand=True
+        domain_rand=True,
+        frame_skip=1
     ):
         # Maximum number of steps per episode
         self.max_steps = max_steps
@@ -114,6 +118,9 @@ class SimpleSimEnv(gym.Env):
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
+
+        # Number of frames to skip per action
+        self.frame_skip = frame_skip
 
         # Produce graphical output
         self.graphics = True
@@ -294,13 +301,13 @@ class SimpleSimEnv(gym.Env):
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
-            obj['color'] = self._perturb([1, 1, 1], 0.3)
+            obj.color = self._perturb([1, 1, 1], 0.3)
 
             # Randomize whether the object is visible or not
-            if obj['optional'] and self.domain_rand:
-                obj['visible'] = self.np_random.randint(0, 2) == 0
+            if obj.optional and self.domain_rand:
+                obj.visible = self.np_random.randint(0, 2) == 0
             else:
-                obj['visible'] = True
+                obj.visible = True
 
         # If the map specifies a starting tile
         if self.start_tile is not None:
@@ -381,6 +388,10 @@ class SimpleSimEnv(gym.Env):
                     orient = orient.strip(' ')
                     angle = ['S', 'E', 'N', 'W'].index(orient)
                     drivable = True
+                elif '4' in tile:
+                    kind = '4way'
+                    angle = 2
+                    drivable = True
                 else:
                     kind = tile
                     angle = 0
@@ -398,6 +409,15 @@ class SimpleSimEnv(gym.Env):
 
                 self._set_tile(i, j, tile)
 
+        self._load_objects(map_data)
+
+        # Get the starting tile from the map, if specified
+        self.start_tile = None
+        if 'start_tile' in map_data:
+            coords = map_data['start_tile']
+            self.start_tile = self._get_tile(*coords)
+
+    def _load_objects(self, map_data):
         # Create the objects array
         self.objects = []
 
@@ -405,21 +425,21 @@ class SimpleSimEnv(gym.Env):
         self.object_corners = []
 
         # Arrays for checking collisions with N static objects
-
+        # (Dynamic objects done separately)
         # (N x 2): Object position used in calculating reward
-        self.static_centers = []
+        self.collidable_centers = []
 
         # (N x 2 x 4): 4 corners - (x, z) - for object's boundbox
-        self.static_corners = []
+        self.collidable_corners = []
 
         # (N x 2 x 2): two 2D norms for each object (1 per axis of boundbox)
-        self.static_norms = []
+        self.collidable_norms = []
 
         # (N): Safety radius for object used in calculating reward
-        self.safety_radii = []
+        self.collidable_safety_radii = []
 
         # For each object
-        for desc in map_data.get('objects', []):
+        for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
             x, z = desc['pos']
             rotate = desc['rotate']
@@ -436,66 +456,56 @@ class SimpleSimEnv(gym.Env):
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
-            safety_radius = SAFETY_RAD_MULT * calculate_safety_radius(mesh, scale)
+            static = desc.get('static', True)
 
-            obj = {
+            obj_desc = {
                 'kind': kind,
                 'mesh': mesh,
                 'pos': pos,
                 'scale': scale,
                 'y_rot': rotate,
                 'optional': optional,
-                'min_coords': mesh.min_coords,
-                'max_coords': mesh.max_coords,
-                'static': True # TODO: load this from yml
+                'static': static,
+                'optional': optional,
             }
+
+            obj = None
+            if static:
+                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+            else:
+                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
             self.objects.append(obj)
 
             # Compute collision detection information
-            if obj['static']:
-                angle = rotate * (math.pi / 180)
 
-                # Find drivable tiles object could intersect with
-                obj_corners, obj_norm, possible_tiles = find_candidate_tiles(
-                    pos,
-                    mesh,
-                    angle,
-                    scale,
-                    ROAD_TILE_SIZE
-                )
+            angle = rotate * (math.pi / 180)
 
-                # For drawing purposes
-                self.object_corners.append(obj_corners.T)
+            # Find drivable tiles object could intersect with
+            possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
 
-                # If the object intersects with a drivable tile
-                if self._collidable_object(obj_corners, obj_norm, possible_tiles):
-                    self.static_centers.append(pos)
-                    self.static_corners.append(obj_corners.T)
-                    self.static_norms.append(obj_norm)
-                    self.safety_radii.append(safety_radius)
+            # If the object intersects with a drivable tile
+            if static and self._collidable_object(
+                obj.obj_corners, obj.obj_norm, possible_tiles
+            ):
+                self.collidable_centers.append(pos)
+                self.collidable_corners.append(obj.obj_corners.T)
+                self.collidable_norms.append(obj.obj_norm)
+                self.collidable_safety_radii.append(obj.safety_radius)
 
-        # If there are static objects
-        if len(self.static_corners) > 0:
-            self.static_corners = np.stack(self.static_corners, axis=0)
-            self.static_norms = np.stack(self.static_norms, axis=0)
+        # If there are collidable objects
+        if len(self.collidable_corners) > 0:
+            self.collidable_corners = np.stack(self.collidable_corners, axis=0)
+            self.collidable_norms = np.stack(self.collidable_norms, axis=0)
 
             # Stack doesn't do anything if there's only one object,
             # So we add an extra dimension to avoid shape errors later
-            if len(self.static_corners.shape) == 2:
-                self.static_corners = self.static_corners[np.newaxis]
-                self.static_norms = self.static_norms[np.newaxis]
+            if len(self.collidable_corners.shape) == 2:
+                self.collidable_corners = self.collidable_corners[np.newaxis]
+                self.collidable_norms = self.collidable_norms[np.newaxis]
 
-        print('num collidable objects:', len(self.static_corners))
-
-        # Get the starting tile from the map, if specified
-        self.start_tile = None
-        if 'start_tile' in map_data:
-            coords = map_data['start_tile']
-            self.start_tile = self._get_tile(*coords)
-
-        self.static_centers = np.array(self.static_centers)
-        self.safety_radii = np.array(self.safety_radii)
+        self.collidable_centers = np.array(self.collidable_centers)
+        self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
     def close(self):
         pass
@@ -542,15 +552,21 @@ class SimpleSimEnv(gym.Env):
         drivable tiles, which would mean our agent could run into them.
         Helps optimize collision checking with agent during runtime
         """
-        drivable_mask = np.array([
-            self._get_tile(
-                c[0],
-                c[1],
-            )['drivable'] for c in possible_tiles
-        ])
+        
+        if possible_tiles.shape == 0:
+            return False
 
-        # mask away tiles that aren't drivable
-        drivable_tiles = possible_tiles[drivable_mask]
+        drivable_tiles = []
+        for c in possible_tiles:
+            tile = self._get_tile(c[0], c[1])
+            if tile and tile['drivable']:
+                drivable_tiles.append((c[0], c[1]))
+
+        if drivable_tiles == []:
+            return False
+
+        drivable_tiles = np.array(drivable_tiles)
+
         # Tiles are axis aligned, so add normal vectors in bulk
         tile_norms = np.array([[1, 0], [0, 1]] * len(drivable_tiles))
 
@@ -730,21 +746,37 @@ class SimpleSimEnv(gym.Env):
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
-    def _safety_penalty(self):
+    def _proximity_penalty(self):
         """
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
+
+        Describes the amount of overlap between the "safety circles" (circles
+        that extend further out than BBoxes, giving an earlier collision 'signal'
+        The number is max(0, prox.penalty), where a lower (more negative) penalty
+        means that more of the circles are overlapping
         """
-        if len(self.static_centers) == 0:
-            return 0
 
+        static_dist = 0
         pos = self._actual_center()
-        d = np.linalg.norm(self.static_centers - pos, axis=1)
+        if len(self.collidable_centers) == 0:
+            static_dist = 0
 
-        if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.safety_radii):
-            return 0
+        # Find safety penalty w.r.t static obstacles
         else:
-            return safety_circle_overlap(d, AGENT_SAFETY_RAD, self.safety_radii)
+            d = np.linalg.norm(self.collidable_centers - pos, axis=1)
+
+            if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
+                static_dist = 0
+            else:
+                static_dist = safety_circle_overlap(d, AGENT_SAFETY_RAD, self.collidable_safety_radii)
+
+        total_safety_pen = static_dist
+        for obj in self.objects:
+            # Find safety penalty w.r.t dynamic obstacles
+            total_safety_pen += obj.proximity(pos, AGENT_SAFETY_RAD)
+
+        return total_safety_pen
 
     def _actual_center(self):
         """
@@ -760,9 +792,9 @@ class SimpleSimEnv(gym.Env):
         Check that agent spawn is not too close to any object
         """
 
-        results = [np.linalg.norm(x['pos'] - self.cur_pos) <
-            max(x['max_coords']) * 0.5 * x['scale'] + MIN_SPAWN_OBJ_DIST
-            for x in self.objects if x['visible']
+        results = [np.linalg.norm(x.pos - self.cur_pos) <
+            max(x.max_coords) * 0.5 * x.scale + MIN_SPAWN_OBJ_DIST
+            for x in self.objects if x.visible
         ]
         return np.any(results)
 
@@ -772,18 +804,30 @@ class SimpleSimEnv(gym.Env):
         """
 
         # If there are no objects to collide against, stop
-        if len(self.static_corners) == 0:
+        if len(self.collidable_corners) == 0:
             return False
 
         # Generate the norms corresponding to each face of BB
         self.agent_norm = generate_norm(self.agent_corners)
 
-        return intersects(
+        # Check collisions with static objects
+        collision = intersects(
             self.agent_corners,
-            self.static_corners,
+            self.collidable_corners,
             self.agent_norm,
-            self.static_norms
+            self.collidable_norms
         )
+
+        if collision:
+            return True
+        
+        # Check collisions with Dynamic Objects
+        for obj in self.objects:
+            if obj.check_collision(self.agent_corners, self.agent_norm):
+                return True
+
+        # No collision with any object
+        return False
 
     def _valid_pose(self, safety_factor=1):
         """
@@ -823,14 +867,18 @@ class SimpleSimEnv(gym.Env):
 
         self.step_count += 1
 
-        prev_pos = self.cur_pos
+        for _ in range(self.frame_skip):
+            prev_pos = self.cur_pos
 
-        # Update the robot's position
-        self._update_pos(action * ROBOT_SPEED * 1, TIME_STEP)
+            # Update the robot's position
+            self._update_pos(action * ROBOT_SPEED * 1, TIME_STEP)
 
-        # Compute the robot's speed
-        delta_pos = self.cur_pos - prev_pos
-        self.speed = np.linalg.norm(delta_pos) / TIME_STEP
+            # Compute the robot's speed
+            delta_pos = self.cur_pos - prev_pos
+            self.speed = np.linalg.norm(delta_pos) / TIME_STEP
+            
+            for obj in self.objects:
+                obj.step()
 
         # Generate the current camera image
         obs = self.render_obs()
@@ -848,11 +896,11 @@ class SimpleSimEnv(gym.Env):
             return obs, reward, done, {}
 
         # Compute the collision avoidance penalty
-        penalty = self._safety_penalty()
+        penalty = self._proximity_penalty()
 
         # Get the position relative to the right lane tangent
         dist, dot_dir, angle = self.get_lane_pos()
-        reward = 1.0 * dot_dir - 10.00 * abs(dist) + 40 * penalty
+        reward = 1.0 * dot_dir - 10.00 * np.abs(dist) + 40 * penalty
         done = False
 
         return obs, reward, done, {}
@@ -978,30 +1026,7 @@ class SimpleSimEnv(gym.Env):
 
         # For each object
         for idx, obj in enumerate(self.objects):
-            if not obj['visible']:
-                continue
-
-            # Draw the bounding box
-            if self.draw_bbox:
-                corners = self.object_corners[idx]
-                glColor3f(1, 0, 0)
-                glBegin(GL_LINE_LOOP)
-                glVertex3f(corners[0, 0], 0.01, corners[1, 0])
-                glVertex3f(corners[0, 1], 0.01, corners[1, 1])
-                glVertex3f(corners[0, 2], 0.01, corners[1, 2])
-                glVertex3f(corners[0, 3], 0.01, corners[1, 3])
-                glEnd()
-
-            scale = obj['scale']
-            y_rot = obj['y_rot']
-            mesh = obj['mesh']
-            glPushMatrix()
-            glTranslatef(*obj['pos'])
-            glScalef(scale, scale, scale)
-            glRotatef(y_rot, 0, 1, 0)
-            glColor3f(*obj['color'])
-            mesh.render()
-            glPopMatrix()
+            obj.render(self.draw_bbox)
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
