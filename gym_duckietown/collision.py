@@ -87,15 +87,11 @@ def generate_norm(corners):
     _, vect = np.linalg.eig(ca)
     return vect.T
 
-def find_candidate_tiles(pos, mesh, angle, scale, tile_size):
+def find_candidate_tiles(obj_corners, tile_size):
     """
     Finds all of the tiles that a object could intersect with
     Returns the norms and corners of any of those that are drivable
     """
-
-    # Find corners and normal vectors assoc w. object
-    obj_corners = generate_corners(pos, mesh.min_coords, mesh.max_coords, angle, scale)
-    obj_norm = generate_norm(obj_corners)
 
     # Find min / max x&y tile coordinates of object
     minx, miny = np.floor(
@@ -112,7 +108,7 @@ def find_candidate_tiles(pos, mesh, angle, scale, tile_size):
     yr = list(range(miny, maxy+1))
 
     possible_tiles = np.array([(x, y) for x in xr for y in yr])
-    return obj_corners, obj_norm, possible_tiles
+    return possible_tiles
 
 def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     """
@@ -147,6 +143,37 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
 
     return False
 
+def intersects_single_obj(duckie, obj, duckie_norm, norm):
+    """
+    Helper function for Single Object OBB intersection.
+    Variable naming: SAT requires checking of the projection of all normals
+    to all sides, which is where we use tensor_sat_test (gives the mins and maxs)
+    of each projection pair. The variables are named as:
+    {x's norm + projected on + min/max}.
+    """
+    duckduck_min, duckduck_max = tensor_sat_test(duckie_norm, duckie.T)
+    objduck_min, objduck_max = tensor_sat_test(duckie_norm, obj)
+    duckobj_min, duckobj_max = tensor_sat_test(norm, duckie.T)
+    objobj_min, objobj_max = tensor_sat_test(norm, obj)
+
+    # If any interval doesn't overlap, immediately know objects don't intersect
+    if not overlaps(
+        duckduck_min[0], duckduck_max[0], objduck_min[0], objduck_max[0]):
+        return False
+    if not overlaps(
+        duckduck_min[1], duckduck_max[1], objduck_min[1], objduck_max[1]):
+        return False
+    if not overlaps(
+        duckobj_min[0], duckobj_max[0], objobj_min[0], objobj_max[0]):
+        return False
+    if not overlaps(
+        duckobj_min[1], duckobj_max[1], objobj_min[1], objobj_max[1]):
+        return False
+
+    # All projection intervals overlap, collision with an object
+    return True
+
+    
 def safety_circle_intersection(d, r1, r2):
     """
     Checks if  two circles with centers separated by d and centered
@@ -177,3 +204,12 @@ def calculate_safety_radius(mesh, scale):
     """
     x, _, z = np.max([abs(mesh.min_coords), abs(mesh.max_coords)], axis=0)
     return np.linalg.norm([x, z]) * scale 
+
+def heading_vec(angle):
+    """
+    Vector pointing in the direction the agent is looking
+    """
+
+    x = math.cos(angle)
+    z = -math.sin(angle)
+    return np.array([x, 0, z])

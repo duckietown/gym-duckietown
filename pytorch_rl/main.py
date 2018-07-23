@@ -196,7 +196,7 @@ def main():
             (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
 
             if args.algo == 'a2c':
-                nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
+                nn.utils.clip_grad_norm_(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
 
@@ -267,9 +267,9 @@ def main():
                     total_num_steps,
                     int(total_num_steps / (end - start)),
                     reward_avg,
-                    dist_entropy.data[0],
-                    value_loss.data[0],
-                    action_loss.data[0]
+                    dist_entropy.item(),
+                    value_loss.item(),
+                    action_loss.item()
                 )
             )
 

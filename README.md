@@ -60,6 +60,7 @@ Requirements:
 - SciPy
 - Pyglet
 - PyYAML
+- cloudpickle
 - PyTorch
 
 You can install all the dependencies except PyTorch with `pip3`:
@@ -72,11 +73,7 @@ pip3 install -e .
 
 Reinforcement learning code forked from [this repository](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr)
 is included under [/pytorch_rl](/pytorch_rl). If you wish to use this code, you
-should install [PyTorch](http://pytorch.org/) as follows:
-
-```
-conda install pytorch torchvision -c pytorch
-```
+should install [PyTorch](http://pytorch.org/).
 
 ### Installation Using Conda (Alternative Method)
 
@@ -97,10 +94,10 @@ export PYTHONPATH="${PYTHONPATH}:`pwd`"
 
 ### Docker Image
 
-There is a prebuilt docker image available [on dockerhub](https://hub.docker.com/r/maximecb/gym-duckietown/). This image also contains an installation of PyTorch. Alternatively, you can also build this image from the latest version of this repository as follows:
+There is a pre-built Docker image available [on Docker Hub](https://hub.docker.com/r/maximecb/gym-duckietown/), which also contains an installation of PyTorch. Alternatively, you can also build an image from the latest version of this repository as follows:
 
 ```
-sudo docker build --no-cache=true --network=host --tag gym-duckietown .
+sudo docker build --file ./docker/standalone/Dockerfile --no-cache=true --network=host --tag gym-duckietown .
 ```
 
 Note that in order to get GPU acceleration, you should install and use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
@@ -187,11 +184,9 @@ The available object types are:
 - truck (delivery-style truck)
 - bus
 - building (multi-floor building)
-- sign_blank (a blank sign post)
+- sign_stop, sign_T_intersect, sign_yield, etc. (see [meshes subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/meshes))
 
 Although the environment is rendered in 3D, the map is essentially two-dimensional. As such, objects coordinates are specified along two axes. The coordinates are rescaled based on the tile size, such that coordinates [0.5, 1.5] would mean middle of the first column of tiles, middle of the second row. Objects can have an `optional` flag set, which means that they randomly may or may not appear during training, as a form of domain randomization.
-
-In the future, we will add support for more sign objects matching the [Duckietown appearance specification](https://docs.duckietown.org/opmanual_duckietown/out/duckietown_specs.html).
 
 ### Observations
 

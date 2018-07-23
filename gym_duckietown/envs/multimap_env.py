@@ -21,7 +21,10 @@ class MultiMapEnv(gym.Env):
         # Try loading each of the available map files
         for map_file in os.listdir(maps_dir):
             map_name = map_file.split('.')[0]
-            #print(map_name)
+
+            # Do not load the regression test maps
+            if map_name.startswith('regress'):
+                continue
 
             env = SimpleSimEnv(map_name=map_name)
 

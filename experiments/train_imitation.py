@@ -86,6 +86,8 @@ def load_data(map_name):
     positions = sum(positions, [])
     actions = sum(actions, [])
 
+    assert len(positions) == len(actions)
+
 def gen_data():
     idx = random.randint(0, len(positions) - 1)
     cur_pos = np.array(positions[idx][0])

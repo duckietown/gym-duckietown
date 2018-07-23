@@ -1,38 +1,29 @@
-FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
          build-essential \
          cmake \
          git \
-         curl \
-         vim \
          ca-certificates \
          libjpeg-dev \
-         libpng-dev &&\
+         libpng-dev \
+         xvfb \
+         freeglut3-dev && \
      rm -rf /var/lib/apt/lists/*
 
-RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
-     chmod +x ~/miniconda.sh && \
-     ~/miniconda.sh -b -p /opt/conda && \
-     rm ~/miniconda.sh && \
-     /opt/conda/bin/conda install numpy pyyaml scipy ipython mkl mkl-include && \
-     /opt/conda/bin/conda install -c pytorch magma-cuda90 && \
-     /opt/conda/bin/conda clean -ya
+ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh miniconda.sh
+RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
+RUN conda install numpy pyyaml scipy ipython mkl mkl-include && \
+    conda install -c pytorch magma-cuda91 torchvision && \
+    conda clean -ya
+
 # This must be done before pip so that requirements.txt is available
-WORKDIR /opt/pytorch
-COPY ../.. .
+WORKDIR /gym-duckietown
+COPY . .
 
-RUN git submodule update --init
-RUN TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX" TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
+RUN TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX" \
+    TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
-    pip install -v .
-
-RUN git clone https://github.com/pytorch/vision.git && cd vision && pip install -v .
-
-WORKDIR /workspace
-RUN chmod -R a+w /workspace
-
-RUN apt-get update -y && apt-get install -y --no-install-recommends xvfb freeglut3-dev
-RUN git clone https://github.com/duckietown/gym-duckietown && cd gym-duckietown && pip install -e .
+    pip install -v -e .
