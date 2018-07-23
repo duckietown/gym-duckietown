@@ -3,7 +3,6 @@ FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
          build-essential \
          cmake \
-         git \
          ca-certificates \
          libjpeg-dev \
          libpng-dev \
