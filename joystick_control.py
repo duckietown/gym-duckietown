@@ -124,7 +124,8 @@ def on_joybutton_press(joystick, button):
             print('Saved recording')
 
     # X Button
-    elif button == 0 and not recording:
+    elif button == 0:
+        recording = False
         positions = []
         actions = []
         process_recording()
@@ -148,6 +149,7 @@ def update(dt):
     This function is called at every frame to handle
     movement/stepping and redrawing
     """
+    global recording, positions, actions
 
     # No actions took place
     if round(joystick.x, 2) == 0.0 and round(joystick.y, 2) == 0.0:
@@ -173,6 +175,12 @@ def update(dt):
         print('done!')
         env.reset()
         env.render()
+        
+        if recording:
+            process_recording()
+            positions = []
+            actions = []
+            print('Saved Recoding')
 
     env.render()
 
