@@ -49,7 +49,7 @@ RUN chmod -R a+w /workspace
 ENV force-docker-rebuild 7
 
 RUN git clone https://github.com/duckietown/duckietown-slimremote && cd duckietown-slimremote && pip install -e . && cd ..
-RUN git clone https://github.com/duckietown/gym-duckietown.git && cd gym-duckietown && git checkout amod-dev && pip install -e . && cd ..
+RUN git clone https://github.com/duckietown/gym-duckietown.git && cd gym-duckietown && pip install -e . && cd ..
 COPY launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 RUN chmod +x /usr/bin/launch-gym-server-with-xvfb
 
