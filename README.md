@@ -17,7 +17,7 @@ Please use this bibtex if you want to cite this repository in your publications:
 }
 ```
 
-This simulator was created as part of work done at the [MILA](https://mila.quebec/).
+This simulator was created as part of work done at [Mila](https://mila.quebec/).
 
 ## Introduction
 
