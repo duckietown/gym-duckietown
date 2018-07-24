@@ -1,6 +1,6 @@
 # Linear stretch of road. Basic test case.
 tiles:
-- [straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E]
+- [straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E]
 
 # Always start driving on the leftmost tile
 # The position and direction of the agent on the tile will be randomized

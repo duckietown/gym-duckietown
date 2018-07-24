@@ -12,13 +12,13 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 
 # Graphics utility code
-from ..utils import *
-from ..graphics import *
-from ..objmesh import *
-from ..collision import *
+from .utils import *
+from .graphics import *
+from .objmesh import *
+from .collision import *
 
 # Objects utility code
-from ..objects import WorldObj, DuckieObj
+from .objects import WorldObj, DuckieObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -81,12 +81,12 @@ MIN_SPAWN_OBJ_DIST = 0.25
 ROAD_TILE_SIZE = 0.61
 
 # Maximum forward robot speed in meters/second
-ROBOT_SPEED = 0.45
+ROBOT_SPEED = 0.40
 
 # Length of one time step in the simulator
 TIME_STEP = 0.1
 
-class SimpleSimEnv(gym.Env):
+class Simulator(gym.Env):
     """
     Simple road simulator to test RL training.
     Draws a road with turns using OpenGL, and simulates
@@ -163,7 +163,7 @@ class SimpleSimEnv(gym.Env):
         self.multi_fbo, self.final_fbo = create_frame_buffers(
             CAMERA_WIDTH,
             CAMERA_HEIGHT,
-            32
+            16
         )
 
         # Array to render the image into (for observation rendering)

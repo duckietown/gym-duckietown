@@ -12,8 +12,7 @@ import argparse
 import math
 import json
 import gym_duckietown
-from gym_duckietown.envs import SimpleSimEnv
-from gym_duckietown.wrappers import HeadingWrapper
+from gym_duckietown.envs import DuckietownEnv
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -117,8 +116,7 @@ def gen_trajectory(env, seed, num_actions, num_itrs):
 
     return best_positions, best_actions
 
-env = SimpleSimEnv(map_name=args.map_name)
-env = HeadingWrapper(env)
+env = DuckietownEnv(map_name=args.map_name)
 
 demos = []
 total_steps = 0

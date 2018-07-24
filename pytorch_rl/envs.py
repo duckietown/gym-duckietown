@@ -11,25 +11,8 @@ from gym_duckietown.envs import *
 
 def make_env(env_id, seed, rank, log_dir, start_container):
     def _thunk():
-        if env_id.startswith('Duckietown'):
-            basePort = DuckietownEnv.SERVER_PORT
-            if start_container:
-                basePort += random.randint(0, 20000)
-            env = DuckietownEnv(
-                serverPort= basePort + rank,
-                startContainer=start_container
-            )
-            if "Discrete" in env_id:
-                env = DiscreteWrapper(env)
-        elif "SimpleSim" in env_id:
-            env = SimpleSimEnv()
-            if "Discrete" in env_id:
-                env = DiscreteWrapper(env)
-            elif "Heading" in env_id:
-                env = HeadingWrapper(env)
-        else:
-            env = gym.make(env_id)
-            env = DiscreteWrapper(env)
+        env = gym.make(env_id)
+        env = DiscreteWrapper(env)
 
         env.seed(seed + rank)
 

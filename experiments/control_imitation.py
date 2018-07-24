@@ -14,8 +14,7 @@ import torch
 
 import numpy as np
 import gym
-from gym_duckietown.envs import SimpleSimEnv
-from gym_duckietown.wrappers import HeadingWrapper
+from gym_duckietown.envs import DuckietownEnv
 
 from train_imitation import Model
 from utils import make_var
@@ -28,7 +27,7 @@ parser.add_argument('--no-pause', action='store_true', help="don't pause on fail
 args = parser.parse_args()
 
 if args.env_name == 'SimpleSim-v0':
-    env = SimpleSimEnv(
+    env = DuckietownEnv(
         map_name = args.map_name,
         domain_rand = not args.no_random
     )
@@ -36,7 +35,6 @@ if args.env_name == 'SimpleSim-v0':
     env.max_steps = 500
 else:
     env = gym.make(args.env_name)
-env = HeadingWrapper(env)
 
 obs = env.reset()
 env.render()

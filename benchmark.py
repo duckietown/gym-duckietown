@@ -6,11 +6,11 @@ import numpy as np
 
 import gym
 import gym_duckietown
-from gym_duckietown.envs import SimpleSimEnv
+from gym_duckietown.envs import DuckietownEnv
 
 # Benchmark loading time
 st = time.time()
-env = SimpleSimEnv(max_steps = 20000, map_name='loop_obstacles')
+env = DuckietownEnv(max_steps = 20000, map_name='loop_obstacles')
 env.seed(0)
 env.reset()
 load_time = 1000 * (time.time() - st)
@@ -32,7 +32,7 @@ while True:
         break
 
     # Slow speed to minimize resets
-    action = np.array([0.05, 0.05])
+    action = np.array([0.01, 0.01])
     obs, reward, done, info = env.step(action)
 
     if done:

@@ -2,7 +2,7 @@ import os
 import numpy as np
 import gym
 
-from .simplesim_env import SimpleSimEnv
+from .duckietown_env import DuckietownEnv
 from ..utils import get_subdir_path
 
 class MultiMapEnv(gym.Env):
@@ -11,7 +11,7 @@ class MultiMapEnv(gym.Env):
     multi-taks learning
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.env_list = []
 
         maps_dir = get_subdir_path('maps')
@@ -26,7 +26,7 @@ class MultiMapEnv(gym.Env):
             if map_name.startswith('regress'):
                 continue
 
-            env = SimpleSimEnv(map_name=map_name)
+            env = DuckietownEnv(map_name=map_name, **kwargs)
 
             self.action_space = env.action_space
             self.observation_space = env.observation_space

@@ -3,8 +3,7 @@ from duckietown_slimremote.networking import make_pull_socket, has_pull_message,
     send_gym
 import os
 
-from gym_duckietown.envs import SimpleSimEnv
-from gym_duckietown.wrappers import HeadingWrapper
+from gym_duckietown.envs import DuckietownEnv
 
 DEBUG = False
 
@@ -18,14 +17,13 @@ def main():
     domain_rand = bool(os.getenv('DUCKIETOWN_DOMAIN_RAND', DEFAULTS["domain_rand"]))
     max_steps = os.getenv('DUCKIETOWN_MAX_STEPS', DEFAULTS["max_steps"])
 
-    env = SimpleSimEnv(
+    env = DuckietownEnv(
         map_name=map,
         # draw_curve = args.draw_curve,
         # draw_bbox = args.draw_bbox,
         max_steps=max_steps,
         domain_rand=domain_rand
     )
-    env = HeadingWrapper(env) # to convert the (vel_left, vel_right) to (vel, steering)
     print ("### STARTING WITH v/omega control")
     obs = env.reset()
     # env.render("rgb_array") # TODO: do we need this? does this initialize anything?
@@ -64,4 +62,3 @@ def main():
 
             if data["topic"] in [0, 1]:
                 send_gym(publisher_socket, obs, reward, done)
-

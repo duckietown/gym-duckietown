@@ -21,8 +21,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from gym_duckietown.envs import SimpleSimEnv
-from gym_duckietown.wrappers import HeadingWrapper
+from gym_duckietown.envs import DuckietownEnv
 
 from utils import *
 
@@ -109,8 +108,7 @@ if __name__ == "__main__":
 
     load_data(args.map_name)
 
-    env = SimpleSimEnv(map_name=args.map_name)
-    env = HeadingWrapper(env)
+    env = DuckietownEnv(map_name=args.map_name)
 
     model = Model()
     model.train()

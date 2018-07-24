@@ -12,11 +12,10 @@ from pyglet.window import key
 import numpy as np
 import gym
 import gym_duckietown
-from gym_duckietown.envs import SimpleSimEnv
-from gym_duckietown.wrappers import HeadingWrapper
+from gym_duckietown.envs import DuckietownEnv
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--env-name', default='SimpleSim-v0')
+parser.add_argument('--env-name', default=None)
 parser.add_argument('--map-name', default='udem1')
 parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
 parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
@@ -24,8 +23,8 @@ parser.add_argument('--domain-rand', action='store_true', help='enable domain ra
 parser.add_argument('--frame-skip', default=1, type=int, help='number of frames to skip')
 args = parser.parse_args()
 
-if args.env_name == 'SimpleSim-v0':
-    env = SimpleSimEnv(
+if args.env_name is None:
+    env = DuckietownEnv(
         map_name = args.map_name,
         draw_curve = args.draw_curve,
         draw_bbox = args.draw_bbox,
@@ -34,7 +33,6 @@ if args.env_name == 'SimpleSim-v0':
     )
 else:
     env = gym.make(args.env_name)
-env = HeadingWrapper(env)
 
 env.reset()
 env.render()
