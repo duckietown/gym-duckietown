@@ -21,18 +21,31 @@ This simulator was created as part of work done at the [MILA](https://mila.quebe
 
 ## Introduction
 
-This repository contains three gym environments: `SimpleSim-v0`, `Duckiebot-v0` and `MultiMap-v0`.
-
 <p align="center">
 <img src="media/simplesim_1.png" width="300px"><br>
-SimpleSim-v0
+Gym-duckietown
 </p>
 
-The `SimpleSim-v0` environment is a simple lane-following simulator
-written in Python/OpenGL (Pyglet). It draws a loop of road with left and right turns,
+Gym-duckietown is a lane-following simulator written in pure Python/OpenGL (Pyglet).
+It draws a loop of road with left and right turns,
 along with objects in the background. It implements various forms of
 [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
 and basic differential-drive physics (without acceleration).
+
+There are multiple registered gym environments, each corresponding to a different [map file](https://github.com/duckietown/gym-duckietown/tree/master/gym_duckietown/maps):
+- `Duckietown-straight_road-v0`
+- `Duckietown-4way-v0`
+- `Duckietown-udem1-v0`
+- `Duckietown-small_loop-v0`
+- `Duckietown-small_loop_cw-v0`
+- `Duckietown-zigzag_dists-v0`
+- `Duckietown-loop_obstacles-v0` (static obstacles in the road)
+- `Duckietown-loop_pedestrians-v0` (moving obstacles in the road)
+
+The `MultiMap-v0` environment is essentially a [wrapper](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/multimap_env.py) for the simulator which
+will automatically cycle through all available [map files](https://github.com/duckietown/gym-duckietown/tree/master/gym_duckietown/maps). This makes it possible to train on
+a variety of different maps at the same time, with the idea that training on a variety of
+different scenarios will make for a more robust policy/model.
 
 <p align="center">
 <img src="media/duckiebot_1.png" width="300px"><br>
@@ -45,11 +58,6 @@ trained in simulation can transfer to the real robot. If you want to
 control your robot remotely with the `Duckiebot-v0` environment, you will need to
 install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
 repository on your Duckiebot.
-
-The `MultiMap-v0` environment is essentially a [wrapper](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/envs/multimap_env.py) for `SimpleSim-v0` which
-will automatically cycle through all available [map files](https://github.com/duckietown/gym-duckietown/tree/master/gym_duckietown/maps). This makes it possible to train on
-a variety of different maps at the same time, with the idea that training on a variety of
-different scenarios will make for a more robust policy/model.
 
 ## Installation
 
@@ -196,7 +204,7 @@ the images. The choice of 8-bit integer values over floating-point values was ma
 
 ### Actions
 
-The Duckiebot is a differential drive robot. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to velocities for the left and right wheel motors of the robot, respectively. There is also a [Gym wrapper class](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py#L42) named `DiscreteWrapper` which allows you to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
+The simulator uses continuous actions by default. Actions passed to the `step()` function should be numpy arrays containining two numbers between -1 and 1. These two numbers correspond to forward velocity, and a steering angle, respectively. A positive velocity makes the robot go forward, and a positive steering angle makes the robot turn left. There is also a [Gym wrapper class](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/wrappers.py) named `DiscreteWrapper` which allows you to use discrete actions (turn left, move forward, turn right) instead of continuous actions if you prefer.
 
 ### Reward Function
 
