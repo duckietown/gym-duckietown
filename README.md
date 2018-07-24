@@ -114,16 +114,10 @@ Note that in order to get GPU acceleration, you should install and use [nvidia-d
 
 ### Testing
 
-There is a simple UI application which allows you to control the simulation or real robot manually:
+There is a simple UI application which allows you to control the simulation or real robot manually. The `manual_control.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
 
 ```
-./manual_control.py --env-name SimpleSim-v0
-```
-
-The `manual_control.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
-
-```
-./manual_control.py --env-name SimpleSim-v0 --map-name small_loop
+./manual_control.py --env-name Duckietown-udem1-v0
 ```
 
 There is also a script to run automated tests (`run_tests.py`) and a script to gather performance metrics (`benchmark.py`).
