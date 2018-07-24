@@ -552,7 +552,7 @@ class SimpleSimEnv(gym.Env):
         drivable tiles, which would mean our agent could run into them.
         Helps optimize collision checking with agent during runtime
         """
-        
+
         if possible_tiles.shape == 0:
             return False
 
@@ -820,7 +820,7 @@ class SimpleSimEnv(gym.Env):
 
         if collision:
             return True
-        
+
         # Check collisions with Dynamic Objects
         for obj in self.objects:
             if obj.check_collision(self.agent_corners, self.agent_norm):
@@ -863,11 +863,12 @@ class SimpleSimEnv(gym.Env):
         )
 
     def step(self, action):
-        action = np.array(action) # just making sure, because this could theoretically be a python list
-
-        self.step_count += 1
+        # Actions could be a Python list
+        action = np.array(action)
 
         for _ in range(self.frame_skip):
+            self.step_count += 1
+
             prev_pos = self.cur_pos
 
             # Update the robot's position
@@ -876,7 +877,8 @@ class SimpleSimEnv(gym.Env):
             # Compute the robot's speed
             delta_pos = self.cur_pos - prev_pos
             self.speed = np.linalg.norm(delta_pos) / TIME_STEP
-            
+
+            # Update world objects
             for obj in self.objects:
                 obj.step()
 
@@ -896,11 +898,17 @@ class SimpleSimEnv(gym.Env):
             return obs, reward, done, {}
 
         # Compute the collision avoidance penalty
-        penalty = self._proximity_penalty()
+        col_penalty = self._proximity_penalty()
 
         # Get the position relative to the right lane tangent
         dist, dot_dir, angle = self.get_lane_pos()
-        reward = 1.0 * dot_dir - 10.00 * np.abs(dist) + 40 * penalty
+
+        # Compute the reward
+        reward = (
+            +1.0 * self.speed * dot_dir +
+            -10 * np.abs(dist) +
+            +40 * col_penalty
+        )
         done = False
 
         return obs, reward, done, {}
