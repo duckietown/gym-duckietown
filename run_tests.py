@@ -6,7 +6,7 @@ import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv, MultiMapEnv
 
-env = gym.make('SimpleSim-v0')
+env = gym.make('Duckietown-udem1-v0')
 
 # Check that the human rendering resembles the agent's view
 first_obs = env.reset()
