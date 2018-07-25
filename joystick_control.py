@@ -182,7 +182,7 @@ def update(dt):
 
     env.render()
 
-pyglet.clock.schedule_interval(update, 0.1)
+pyglet.clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
 
 # Registers joysticks and recording controls
 joysticks = pyglet.input.get_joysticks()

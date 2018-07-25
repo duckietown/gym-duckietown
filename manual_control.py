@@ -65,7 +65,7 @@ def update(dt):
     movement/stepping and redrawing
     """
 
-    action = None
+    action = np.array([0.0, 0.0])
 
     if key_handler[key.UP]:
         action = np.array([0.7, 0.0])
@@ -78,22 +78,21 @@ def update(dt):
     if key_handler[key.SPACE]:
         action = np.array([0, 0])
 
-    if action is not None:
-        # Speed boost
-        if key_handler[key.LSHIFT]:
-            action *= 1.5
+    # Speed boost
+    if key_handler[key.LSHIFT]:
+        action *= 1.5
 
-        obs, reward, done, info = env.step(action)
-        print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
+    obs, reward, done, info = env.step(action)
+    print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
-        if done:
-            print('done!')
-            env.reset()
-            env.render()
+    if done:
+        print('done!')
+        env.reset()
+        env.render()
 
     env.render()
 
-pyglet.clock.schedule_interval(update, 0.1)
+pyglet.clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
 
 # Enter main event loop
 pyglet.app.run()

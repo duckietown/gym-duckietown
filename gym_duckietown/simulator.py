@@ -83,9 +83,6 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 ROBOT_SPEED = 0.40
 
-# Length of one time step in the simulator
-TIME_STEP = 0.1
-
 class Simulator(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -101,10 +98,11 @@ class Simulator(gym.Env):
     def __init__(
         self,
         map_name='udem1',
-        max_steps=600,
+        max_steps=1500,
         draw_curve=False,
         draw_bbox=False,
         domain_rand=True,
+        frame_rate=30,
         frame_skip=1
     ):
         # Maximum number of steps per episode
@@ -118,6 +116,9 @@ class Simulator(gym.Env):
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
+
+        # Frame rate to run at
+        self.frame_rate = frame_rate
 
         # Number of frames to skip per action
         self.frame_skip = frame_skip
@@ -866,21 +867,23 @@ class Simulator(gym.Env):
         # Actions could be a Python list
         action = np.array(action)
 
+        delta_time = 1 / self.frame_rate
+
         for _ in range(self.frame_skip):
             self.step_count += 1
 
             prev_pos = self.cur_pos
 
             # Update the robot's position
-            self._update_pos(action * ROBOT_SPEED * 1, TIME_STEP)
+            self._update_pos(action * ROBOT_SPEED * 1, delta_time)
 
             # Compute the robot's speed
             delta_pos = self.cur_pos - prev_pos
-            self.speed = np.linalg.norm(delta_pos) / TIME_STEP
+            self.speed = np.linalg.norm(delta_pos) / delta_time
 
             # Update world objects
             for obj in self.objects:
-                obj.step()
+                obj.step(delta_time)
 
         # Generate the current camera image
         obs = self.render_obs()
