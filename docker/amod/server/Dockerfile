@@ -2,11 +2,11 @@
 
 #### To use the last Docker Hub upload:
 
-# docker run -ti --name gym-duckietown -p 8902:8902 -p 5558:5558 -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix duckietown/gym-duckietown-server
+# docker run -ti --name gym-duckietown -p 8902:8902 -p 5558:5558 -e DISPLAY=$DISPLAY -e DUCKIETOWN_CHALLENGE=LF -v /tmp/.X11-unix:/tmp/.X11-unix duckietown/gym-duckietown-server
 
-#### To build it yourself:
+#### To build it yourself cd into the root directory of this repo and:
 
-# docker build -t gym-duckietown-server3 .
+# docker build --file ./docker/amod/server/Dockerfile --tag gym-duckietown-server3 .
 
 #### then run with
 
@@ -14,7 +14,6 @@
 
 FROM ubuntu:16.04
 
-# TODO: double-check that we really need all of these for just the server
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
          git \
          xvfb \
@@ -43,12 +42,9 @@ RUN chmod -R a+w /workspace
 ADD . gym-duckietown
 RUN pip install -e gym-duckietown
 
-# TODO: This should be possible, but fails with ModuleNotFoundException at runtime.
-# Need to figure out why this doesn't work at some point.
-#RUN pip install https://github.com/duckietown/duckietown-slimremote/zipball/master
-RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote 
+RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote
 
-COPY launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
+COPY docker/amod/server/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 RUN chmod +x /usr/bin/launch-gym-server-with-xvfb
 
 #RUN Xvfb :1 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log & export DISPLAY=:1
