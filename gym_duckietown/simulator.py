@@ -930,6 +930,11 @@ class Simulator(gym.Env):
         )
 
     def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
+        """
+        Render an image of the environment into a frame buffer
+        Produce a numpy RGB array image as output
+        """
+
         if self.graphics == False:
             return
 
