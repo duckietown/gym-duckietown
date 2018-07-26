@@ -17,6 +17,15 @@ def main():
     domain_rand = bool(os.getenv('DUCKIETOWN_DOMAIN_RAND', DEFAULTS["domain_rand"]))
     max_steps = os.getenv('DUCKIETOWN_MAX_STEPS', DEFAULTS["max_steps"])
 
+    # if a challenge is set, it overrides the map selection
+
+    challenge = os.getenv('DUCKIETOWN_CHALLENGE', "")
+    if challenge in ["LF", "LFV"]:
+        print("Launching challenge:", challenge)
+        map = DEFAULTS["challenges"][challenge]
+
+    print("Using map:", map)
+
     env = DuckietownEnv(
         map_name=map,
         # draw_curve = args.draw_curve,
@@ -24,9 +33,7 @@ def main():
         max_steps=max_steps,
         domain_rand=domain_rand
     )
-    print ("### STARTING WITH v/omega control")
     obs = env.reset()
-    # env.render("rgb_array") # TODO: do we need this? does this initialize anything?
 
     publisher_socket = None
     command_socket, command_poll = make_pull_socket()
@@ -40,8 +47,8 @@ def main():
                 print(data)  # in error case, this will contain the err msg
                 continue
 
-            reward = 0 # in case it's just a ping, not a motor command, we are sending a 0 reward
-            done = False # same thing... just for gym-compatibility
+            reward = 0  # in case it's just a ping, not a motor command, we are sending a 0 reward
+            done = False  # same thing... just for gym-compatibility
 
             if data["topic"] == 0:
                 obs, reward, done, misc = env.step(data["msg"])
