@@ -140,7 +140,7 @@ class Simulator(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(CAMERA_HEIGHT, CAMERA_WIDTH, 3),
+            shape=(3, CAMERA_HEIGHT, CAMERA_WIDTH),
             dtype=np.uint8
         )
 
