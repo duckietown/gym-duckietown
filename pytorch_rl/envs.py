@@ -49,7 +49,7 @@ class WrapPyTorch(gym.ObservationWrapper):
         self.observation_space = Box(
             self.observation_space.low[0,0,0],
             self.observation_space.high[0,0,0],
-            [obs_shape[2], obs_shape[1], obs_shape[0]],
+            [obs_shape[0], obs_shape[1], obs_shape[2]],
             dtype=np.float32
         )
 
