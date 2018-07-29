@@ -77,10 +77,7 @@ def load_data(indir, smooth, bin_size):
 
     if smooth == 1:
         x, y = smooth_reward_curve(x, y)
-
-    if smooth == 2:
-        assert False
-        y = medfilt(y, kernel_size=9)
+    assert smooth != 2
 
     x, y = fix_point(x, y, bin_size)
     return [x, y]
@@ -96,7 +93,7 @@ color_defaults = [
     '#e377c2',  # raspberry yogurt pink
     '#7f7f7f',  # middle gray
     '#bcbd22',  # curry yellow-green
-    '#17becf'  # blue-teal
+    '#17becf'   # blue-teal
 ]
 
 

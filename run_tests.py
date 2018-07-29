@@ -18,6 +18,8 @@ assert abs(m0 - m1) < 5
 
 # Check that the observation shapes match
 second_obs, _, _, _ = env.step(np.array([0.0, 0.0]))
+assert first_obs.shape == env.observation_space.shape
+assert second_obs.shape == env.observation_space.shape
 assert first_obs.shape == second_obs.shape
 
 # Try stepping a few times
