@@ -16,6 +16,10 @@ m1 = first_render.mean()
 assert m0 > 0 and m0 < 255
 assert abs(m0 - m1) < 5
 
+# Check that the observation shapes match
+second_obs, _, _, _ = env.step(np.array([0.0, 0.0]))
+assert first_obs.shape == second_obs.shape
+
 # Try stepping a few times
 for i in range(0, 10):
     obs, _, _, _ = env.step(np.array([0.1, 0.1]))

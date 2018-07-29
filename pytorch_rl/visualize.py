@@ -10,7 +10,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import medfilt
 matplotlib.rcParams.update({'font.size': 8})
 
 
@@ -80,6 +79,7 @@ def load_data(indir, smooth, bin_size):
         x, y = smooth_reward_curve(x, y)
 
     if smooth == 2:
+        assert False
         y = medfilt(y, kernel_size=9)
 
     x, y = fix_point(x, y, bin_size)

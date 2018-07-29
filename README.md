@@ -65,7 +65,6 @@ Requirements:
 - Python 3.5+
 - OpenAI gym
 - NumPy
-- SciPy
 - Pyglet
 - PyYAML
 - cloudpickle
