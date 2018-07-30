@@ -5,8 +5,13 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv, MultiMapEnv
+from gym_duckietown.wrappers import PyTorchObsWrapper
 
 env = gym.make('Duckietown-udem1-v0')
+
+# Try stepping a few times
+for i in range(0, 10):
+    obs, _, _, _ = env.step(np.array([0.1, 0.1]))
 
 # Check that the human rendering resembles the agent's view
 first_obs = env.reset()
@@ -17,14 +22,16 @@ assert m0 > 0 and m0 < 255
 assert abs(m0 - m1) < 5
 
 # Check that the observation shapes match
-second_obs, _, _, _ = env.step(np.array([0.0, 0.0]))
+second_obs, _, _, _ = env.step([0.0, 0.0])
 assert first_obs.shape == env.observation_space.shape
-assert second_obs.shape == env.observation_space.shape
 assert first_obs.shape == second_obs.shape
 
-# Try stepping a few times
-for i in range(0, 10):
-    obs, _, _, _ = env.step(np.array([0.1, 0.1]))
+# Test the PyTorch observation wrapper
+env = PyTorchObsWrapper(env)
+first_obs = env.reset()
+second_obs, _, _, _ = env.step([0, 0])
+assert first_obs.shape == env.observation_space.shape
+assert first_obs.shape == second_obs.shape
 
 # Try loading each of the available map files
 for map_file in os.listdir('gym_duckietown/maps'):

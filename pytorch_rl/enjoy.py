@@ -72,11 +72,10 @@ try:
         cpu_actions = action.data.squeeze(1).cpu().numpy()
 
         print(cpu_actions)
-        #print(np.tanh(cpu_actions[0]))
 
         # Obser reward and next obs
         obs, reward, done, _ = env.step(cpu_actions)
-        time.sleep(0.08)
+        time.sleep(1 / env.envs[0].unwrapped.frame_rate)
 
         masks.fill_(0.0 if done else 1.0)
 

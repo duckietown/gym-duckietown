@@ -8,6 +8,7 @@ from gym.spaces.box import Box
 
 import gym_duckietown
 from gym_duckietown.envs import *
+from gym_duckietown.wrappers import *
 
 def make_env(env_id, seed, rank, log_dir, start_container):
     def _thunk():
@@ -20,7 +21,7 @@ def make_env(env_id, seed, rank, log_dir, start_container):
         obs_shape = env.observation_space.shape
 
         if len(obs_shape) == 3 and obs_shape[2] == 3:
-            env = WrapPyTorch(env)
+            env = PyTorchObsWrapper(env)
 
         env = ScaleObservations(env)
 
@@ -41,17 +42,3 @@ class ScaleObservations(gym.ObservationWrapper):
             return obs
         else:
             return (obs - self.obs_lo) / (self.obs_hi - self.obs_lo)
-
-class WrapPyTorch(gym.ObservationWrapper):
-    def __init__(self, env=None):
-        super(WrapPyTorch, self).__init__(env)
-        obs_shape = self.observation_space.shape
-        self.observation_space = Box(
-            self.observation_space.low[0,0,0],
-            self.observation_space.high[0,0,0],
-            [obs_shape[2], obs_shape[1], obs_shape[0]],
-            dtype=np.float32
-        )
-
-    def observation(self, observation):
-        return observation.transpose(2, 1, 0)
