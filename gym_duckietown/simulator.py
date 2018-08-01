@@ -105,6 +105,12 @@ class Simulator(gym.Env):
         frame_rate=30,
         frame_skip=1
     ):
+        # Map name, set in _load_map()
+        self.map_name = None
+
+        # Full map file path, set in _load_map()
+        self.map_file_path = None
+
         # Maximum number of steps per episode
         self.max_steps = max_steps
 
@@ -353,11 +359,15 @@ class Simulator(gym.Env):
         Load the map layout from a CSV file
         """
 
-        file_path = get_file_path('maps', map_name, 'yaml')
+        # Store the map name
+        self.map_name = map_name
 
-        print('loading map file "%s"' % file_path)
+        # Get the full map file path
+        self.map_file_path = get_file_path('maps', map_name, 'yaml')
 
-        with open(file_path, 'r') as f:
+        print('loading map file "%s"' % self.map_file_path)
+
+        with open(self.map_file_path, 'r') as f:
             map_data = yaml.load(f)
 
         tiles = map_data['tiles']
