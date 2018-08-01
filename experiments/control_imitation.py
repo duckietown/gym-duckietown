@@ -20,18 +20,18 @@ from train_imitation import Model
 from utils import make_var
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--env-name', default='SimpleSim-v0')
-parser.add_argument('--map-name', required=True)
+parser.add_argument('--env-name', default=None)
+parser.add_argument('--map-name', default=None)
 parser.add_argument('--no-random', action='store_true', help='disable domain randomization')
 parser.add_argument('--no-pause', action='store_true', help="don't pause on failure")
 args = parser.parse_args()
 
-if args.env_name == 'SimpleSim-v0':
+assert args.env_name or args.map_name, "must specify env name or map name"
+if args.env_name is None:
     env = DuckietownEnv(
         map_name = args.map_name,
         domain_rand = not args.no_random
     )
-    #env.max_steps = math.inf
     env.max_steps = 500
 else:
     env = gym.make(args.env_name)
