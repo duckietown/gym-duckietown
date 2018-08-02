@@ -1,21 +1,3 @@
-## WORKING NON-NVIDIA IMAGE
-
-#### To use the last Docker Hub upload:
-
-# docker run -ti --name gym-duckietown -p 8902:8902 -p 5558:5558 \
-# -e DISPLAY=$DISPLAY -e DUCKIETOWN_CHALLENGE=LF \
-# -v /tmp/.X11-unix:/tmp/.X11-unix duckietown/gym-duckietown-server
-
-#### To build it yourself cd into the root directory of this repo and:
-
-# docker build --file ./docker/amod/server/Dockerfile --tag gym-duckietown-server3 .
-
-#### then run with
-
-# docker run -ti --name gym-duckietown -p 8902:8902 -p 5558:5558 \
-# -e DISPLAY=$DISPLAY -e DUCKIETOWN_CHALLENGE=LF \
-# -v /tmp/.X11-unix:/tmp/.X11-unix gym-duckietown-server3
-
 FROM ubuntu:16.04
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \

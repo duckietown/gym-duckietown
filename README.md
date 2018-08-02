@@ -1,6 +1,6 @@
 # Gym-Duckietown
 
-[![Build Status](https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield)](https://circleci.com/gh/duckietown/gym-duckietown/tree/master) [![Docker Build Status](https://img.shields.io/docker/build/maximecb/gym-duckietown.svg)](https://hub.docker.com/r/maximecb/gym-duckietown-server)
+[![Build Status](https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield)](https://circleci.com/gh/duckietown/gym-duckietown/tree/master) [![Docker Build Status](https://img.shields.io/docker/build/maximecb/gym-duckietown.svg)](https://hub.docker.com/r/maximecb/gym-duckietown)
 
 
 [Duckietown](http://duckietown.org/) self-driving car simulator environments for OpenAI Gym.
@@ -102,13 +102,36 @@ export PYTHONPATH="${PYTHONPATH}:`pwd`"
 
 ### Docker Image
 
-There is a pre-built Docker image available [on Docker Hub](https://hub.docker.com/r/maximecb/gym-duckietown/), which also contains an installation of PyTorch. Alternatively, you can also build an image from the latest version of this repository by running the following command from the project root directory:
+There is a pre-built Docker image available [on Docker Hub](https://hub.docker.com/r/maximecb/gym-duckietown/), which also contains an installation of PyTorch.
+
+*Note that in order to get GPU acceleration, you should install and use [nvidia-docker 2.0](https://github.com/nvidia/nvidia-docker/wiki/Installation-(version-2.0)).*
+
+#### Pull the docker image
+
+`docker pull maximecb/gym-duckietown`
+
+#### Enter the container
+
+`nvidia-docker run -it maximecb/gym-duckietown bash`
+
+#### Create a virtual display
 
 ```
-sudo docker build --file ./docker/standalone/Dockerfile --no-cache=true --network=host --tag gym-duckietown .
+Xvfb :0 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
+export DISPLAY=:0
 ```
 
-Note that in order to get GPU acceleration, you should install and use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
+#### Train a policy using RL
+
+`python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --num-steps 20`
+
+#### Build the Docker image
+
+You can also build an image from the latest version of this repository by running the following command from this repository's root directory:
+
+```
+docker build --file ./docker/standalone/Dockerfile --no-cache=true --network=host --tag gym-duckietown .
+```
 
 ## Usage
 
