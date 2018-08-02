@@ -106,9 +106,12 @@ There is a pre-built Docker image available [on Docker Hub](https://hub.docker.c
 
 *Note that in order to get GPU acceleration, you should install and use [nvidia-docker 2.0](https://github.com/nvidia/nvidia-docker/wiki/Installation-(version-2.0)).*
 
-To get started, open a shell in the container:
+To get started, pull the `duckietown/gym-duckietown` image from Docker Hub and open a shell in the container:
 
-`nvidia-docker run -it duckietown/gym-duckietown bash`
+```
+nvidia-docker pull duckietown/gym-duckietown && \
+nvidia-docker run -it duckietown/gym-duckietown bash
+```
 
 Then create a virtual display:
 
