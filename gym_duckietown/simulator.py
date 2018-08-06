@@ -16,9 +16,13 @@ from .utils import *
 from .graphics import *
 from .objmesh import *
 from .collision import *
-
+from .save_logs import SaveLogs
 # Objects utility code
 from .objects import WorldObj, DuckieObj
+
+# Log saver initialize
+datalogger = SaveLogs()
+STEPSPERSAVE = 10
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -335,7 +339,7 @@ class Simulator(gym.Env):
                 continue
 
             # If the angle is too far away from the driving direction, retry
-            dist, dot_dir, angle = self.get_lane_pos()
+            dist, dot_dir, angle, curve_position = self.get_lane_pos()
             if angle < -60 or angle > 60:
                 continue
 
@@ -703,7 +707,7 @@ class Simulator(gym.Env):
         if np.dot(dirVec, rightVec) < 0:
             angle *= -1
 
-        return signedDist, dotDir, angle
+        return signedDist, dotDir, angle, point
 
     def _update_pos(self, wheelVels, deltaTime):
         """
@@ -904,7 +908,7 @@ class Simulator(gym.Env):
         col_penalty = self._proximity_penalty()
 
         # Get the position relative to the right lane tangent
-        dist, dot_dir, angle = self.get_lane_pos()
+        dist, dot_dir, angle, curve_point = self.get_lane_pos()
 
         # Compute the reward
         reward = (
@@ -913,6 +917,12 @@ class Simulator(gym.Env):
             +40 * col_penalty
         )
         done = False
+
+        if self.step_count % STEPSPERSAVE == 0:
+            # Saving data
+            datalogger.add(img=obs, reward=reward, output=action,
+                           position=self.cur_pos, angle= self.cur_angle,
+                           velocity=self.speed, ref_pos=curve_point, n_chunk=1)
 
         return obs, reward, done, {}
 
