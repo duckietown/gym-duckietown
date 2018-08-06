@@ -68,4 +68,4 @@ def main():
                 publisher_socket = make_pub_socket(for_images=True)
 
             if data["topic"] in [0, 1]:
-                send_gym(publisher_socket, obs, reward, done)
+                send_gym(publisher_socket, obs, reward, done, {"challenge": challenge})
