@@ -52,8 +52,9 @@ CAMERA_FLOOR_DIST = 0.108
 # and the center of rotation (6.6cm)
 CAMERA_FORWARD_DIST = 0.066
 
-# Distance (diameter) between the center of the robot wheels (10.2cm)
-WHEEL_DIST = 0.102
+# Distance between the center of the robot wheels and the center of the
+# robot (5.1cm)
+WHEEL_DIST = 0.051
 
 # Total robot width at wheel base, used for collision detection
 # Note: the actual robot width is 13cm, but we add a litte bit of buffer
@@ -269,8 +270,9 @@ class Simulator(gym.Env):
         # Ground color
         self.ground_color = self._perturb(GROUND_COLOR, 0.3)
 
-        # Distance between the robot's wheels
-        self.wheel_dist = self._perturb(WHEEL_DIST)
+        # Distance from the center of the wheels to the center of the robot
+        self.wheel_dist_left = self._perturb(WHEEL_DIST, 0.01)
+        self.wheel_dist_right = self._perturb(WHEEL_DIST, 0.01)
 
         # Distance bewteen camera and ground
         self.cam_height = self._perturb(CAMERA_FLOOR_DIST, 0.08)
@@ -732,25 +734,26 @@ class Simulator(gym.Env):
 
     def _update_pos(self, wheelVels, deltaTime):
         """
-        Update the position of the robot, simulating differential drive
+        Update the position of the robot, simulating an asymmetric kinematic
+        model
         """
 
-        Vl, Vr = wheelVels
-        l = self.wheel_dist
+        vl, vr = wheelVels
+        bl, br = self.wheel_dist_left, self.wheel_dist_right
 
         # If the wheel velocities are the same, then there is no rotation
-        if Vl == Vr:
-            self.cur_pos = self.cur_pos + deltaTime * Vl * self.get_dir_vec()
+        if vl == vr:
+            self.cur_pos = self.cur_pos + deltaTime * vl * self.get_dir_vec()
             return
 
-        # Compute the angular rotation velocity about the ICC (center of curvature)
-        w = (Vr - Vl) / l
-
-        # Compute the distance to the center of curvature
-        r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
+        # Compute the angular rotation velocity
+        w = vr/br - vl/bl
 
         # Compute the rotation angle for this time step
         rotAngle = w * deltaTime
+
+        # Compute the distance to the center of curvature
+        r = (bl + br)/2 * (vl + vr)/(vl - vr)
 
         # Rotate the robot's position around the center of rotation
         r_vec = self.get_right_vec()
@@ -758,9 +761,8 @@ class Simulator(gym.Env):
         cx = px + r * r_vec[0]
         cz = pz + r * r_vec[2]
         npx, npz = rotate_point(px, pz, cx, cz, rotAngle)
-        self.cur_pos = np.array([npx, py, npz])
 
-        # Update the robot's direction angle
+        self.cur_pos = np.array([npx, py, npz])
         self.cur_angle += rotAngle
 
     def _drivable_pos(self, pos):
@@ -900,7 +902,7 @@ class Simulator(gym.Env):
             prev_pos = self.cur_pos
 
             # Update the robot's position
-            self._update_pos(action * ROBOT_SPEED * 1, delta_time)
+            self._update_pos(action * ROBOT_SPEED, delta_time)
 
             # Compute the robot's speed
             delta_pos = self.cur_pos - prev_pos

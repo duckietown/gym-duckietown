@@ -47,7 +47,7 @@ class DuckietownEnv(Simulator):
         vel, angle = action
 
         # Distance between the wheels
-        baseline = self.unwrapped.wheel_dist
+        baseline = self.unwrapped.wheel_dist_left + self.unwrapped.wheel_dist_right
 
         # assuming same motor constants k for both motors
         k_r = self.k
