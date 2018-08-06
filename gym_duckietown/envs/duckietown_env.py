@@ -28,13 +28,13 @@ class DuckietownEnv(Simulator):
             dtype=np.float32
         )
 
-        # should be adjusted so that the effective speed of the robot is 0.2 m/s
+        # Should be adjusted so that the effective speed of the robot is 0.2 m/s
         self.gain = gain
 
-        # directional trim adjustment
+        # Directional trim adjustment
         self.trim = trim
 
-        # Minimal turn radius
+        # Wheel radius
         self.radius = radius
 
         # Motor constant
@@ -61,9 +61,7 @@ class DuckietownEnv(Simulator):
         omega_l = (vel - 0.5 * angle * baseline) / self.radius
 
         # conversion from motor rotation rate to duty cycle
-        # u_r = (gain + trim) (v + 0.5 * omega * b) / (r * k_r)
         u_r = omega_r * k_r_inv
-        # u_l = (gain - trim) (v - 0.5 * omega * b) / (r * k_l)
         u_l = omega_l * k_l_inv
 
         # limiting output to limit, which is 1.0 for the duckiebot
