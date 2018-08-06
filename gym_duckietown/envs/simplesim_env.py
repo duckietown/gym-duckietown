@@ -608,7 +608,7 @@ class SimpleSimEnv(gym.Env):
         kind = tile['kind']
         angle = tile['angle']
 
-        if kind.startswith('straight') or kind.startswith('3way') or kind.startswith('4way'):
+        if kind.startswith('straight'):
             pts = np.array([
                 [-0.20, 0,-0.50],
                 [-0.20, 0,-0.25],
@@ -628,6 +628,43 @@ class SimpleSimEnv(gym.Env):
                 [-0.20, 0,-0.20],
                 [-0.30, 0,-0.20],
                 [-0.50, 0,-0.20],
+            ]) * ROAD_TILE_SIZE
+        elif kind.startswith('3way'):
+            # Correct
+            pts = np.array([
+                [-0.20, 0,-0.50],
+                [-0.20, 0, 0.00],
+                [ 0.00, 0, 0.20],
+                [ 0.50, 0, 0.20],
+            ]) * ROAD_TILE_SIZE
+            # Correct Turn
+            # pts = np.array([
+            #     [-0.20, 0,-0.50],
+            #     [-0.20, 0, 0.00],
+            #     [ 0.00, 0, 0.20],
+            #     [ 0.50, 0, 0.20],
+            # ]) * ROAD_TILE_SIZE
+        elif kind.startswith('4way'):
+            # Correct Turn
+            # pts = np.array([
+            #     [-0.20, 0,-0.50],
+            #     [-0.20, 0,-0.25],
+            #     [-0.20, 0, 0.25],
+            #     [-0.20, 0, 0.50],
+            # ]) * ROAD_TILE_SIZE
+            # Correct Right
+            # pts = np.array([
+            #     [0.20, 0,-0.50],
+            #     [0.20, 0,-0.20],
+            #     [0.30, 0,-0.20],
+            #     [0.50, 0,-0.20],
+            # ]) * ROAD_TILE_SIZE
+            # Correct Left
+            pts = np.array([
+                [-0.20, 0,-0.50],
+                [-0.20, 0, 0.00],
+                [ 0.00, 0, 0.20],
+                [ 0.50, 0, 0.20],
             ]) * ROAD_TILE_SIZE
         else:
             assert False, kind
