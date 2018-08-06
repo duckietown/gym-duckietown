@@ -1,6 +1,7 @@
 # Gym-Duckietown
 
-[![Build Status](https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield)](https://circleci.com/gh/duckietown/gym-duckietown/tree/master)
+[![Build Status](https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield)](https://circleci.com/gh/duckietown/gym-duckietown/tree/master) [![Docker Build Status](https://img.shields.io/docker/build/duckietown/gym-duckietown.svg)](https://hub.docker.com/r/duckietown/gym-duckietown)
+
 
 [Duckietown](http://duckietown.org/) self-driving car simulator environments for OpenAI Gym.
 
@@ -101,13 +102,45 @@ export PYTHONPATH="${PYTHONPATH}:`pwd`"
 
 ### Docker Image
 
-There is a pre-built Docker image available [on Docker Hub](https://hub.docker.com/r/maximecb/gym-duckietown/), which also contains an installation of PyTorch. Alternatively, you can also build an image from the latest version of this repository as follows:
+There is a pre-built Docker image available [on Docker Hub](https://hub.docker.com/r/duckietown/gym-duckietown), which also contains an installation of PyTorch.
+
+*Note that in order to get GPU acceleration, you should install and use [nvidia-docker 2.0](https://github.com/nvidia/nvidia-docker/wiki/Installation-(version-2.0)).*
+
+To get started, pull the `duckietown/gym-duckietown` image from Docker Hub and open a shell in the container:
 
 ```
-sudo docker build --file ./docker/standalone/Dockerfile --no-cache=true --network=host --tag gym-duckietown .
+nvidia-docker pull duckietown/gym-duckietown && \
+nvidia-docker run -it duckietown/gym-duckietown bash
 ```
 
-Note that in order to get GPU acceleration, you should install and use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
+Then create a virtual display:
+
+```
+Xvfb :0 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
+export DISPLAY=:0
+```
+
+Now, you are ready to start training a policy using RL:
+
+```
+python3 pytorch_rl/main.py \
+        --algo a2c \
+        --env-name Duckie-SimpleSim-Discrete-v0 \
+        --lr 0.0002 \
+        --max-grad-norm 0.5 \
+        --no-vis \
+        --num-steps 20
+```
+
+If you need to do so, you can build a Docker image by running the following command from the root directory of this repository:
+
+```
+docker build . \
+       --file ./docker/standalone/Dockerfile \
+       --no-cache=true \
+       --network=host \
+       --tag <YOUR_TAG_GOES_HERE>
+```
 
 ## Usage
 

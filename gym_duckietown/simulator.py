@@ -109,6 +109,12 @@ class Simulator(gym.Env):
         frame_rate=30,
         frame_skip=1
     ):
+        # Map name, set in _load_map()
+        self.map_name = None
+
+        # Full map file path, set in _load_map()
+        self.map_file_path = None
+
         # Maximum number of steps per episode
         self.max_steps = max_steps
 
@@ -357,11 +363,15 @@ class Simulator(gym.Env):
         Load the map layout from a CSV file
         """
 
-        file_path = get_file_path('maps', map_name, 'yaml')
+        # Store the map name
+        self.map_name = map_name
 
-        print('loading map file "%s"' % file_path)
+        # Get the full map file path
+        self.map_file_path = get_file_path('maps', map_name, 'yaml')
 
-        with open(file_path, 'r') as f:
+        print('loading map file "%s"' % self.map_file_path)
+
+        with open(self.map_file_path, 'r') as f:
             map_data = yaml.load(f)
 
         tiles = map_data['tiles']
@@ -598,7 +608,7 @@ class Simulator(gym.Env):
         # Only add it if one of the vertices is on a drivable tile
         return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
 
-    def _get_grid_coords(self, abs_pos):
+    def get_grid_coords(self, abs_pos):
         """
         Compute the tile indices (i,j) for a given (x,_,z) world position
 
@@ -675,21 +685,36 @@ class Simulator(gym.Env):
         z = math.cos(self.cur_angle)
         return np.array([x, 0, z])
 
+    def closest_curve_point(self, pos):
+        """
+        Get the closest point on the curve to a given point
+        Also returns the tangent at that point
+        """
+
+        i, j = self.get_grid_coords(pos)
+
+        if self._get_tile(i, j) is None:
+            return None, None
+
+        cps = self._get_curve(i, j)
+        t = bezier_closest(cps, self.cur_pos)
+        point = bezier_point(cps, t)
+        tangent = bezier_tangent(cps, t)
+
+        return point, tangent
+
     def get_lane_pos(self):
         """
         Get the position of the agent relative to the center of the right lane
         """
 
-        i, j = self._get_grid_coords(self.cur_pos)
-
-        # Get the closest point along the right lane's Bezier curve
-        cps = self._get_curve(i, j)
-        t = bezier_closest(cps, self.cur_pos)
-        point = bezier_point(cps, t)
+        # Get the closest point along the right lane's Bezier curve,
+        # and the tangent at that point
+        point, tangent = self.closest_curve_point(self.cur_pos)
+        assert point is not None
 
         # Compute the alignment of the agent direction with the curve tangent
         dirVec = self.get_dir_vec()
-        tangent = bezier_tangent(cps, t)
         dotDir = np.dot(dirVec, tangent)
         dotDir = max(-1, min(1, dotDir))
 
@@ -747,7 +772,7 @@ class Simulator(gym.Env):
         Check that the given (x,y,z) position is on a drivable tile
         """
 
-        coords = self._get_grid_coords(pos)
+        coords = self.get_grid_coords(pos)
         tile = self._get_tile(*coords)
         return tile != None and tile['drivable']
 
@@ -926,19 +951,6 @@ class Simulator(gym.Env):
 
         return obs, reward, done, {}
 
-    def render_obs(self):
-        """
-        Render an observation from the point of view of the agent
-        """
-
-        return self._render_img(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
-            self.multi_fbo,
-            self.final_fbo,
-            self.img_array
-        )
-
     def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
         """
         Render an image of the environment into a frame buffer
@@ -1100,7 +1112,24 @@ class Simulator(gym.Env):
 
         return img_array
 
+    def render_obs(self):
+        """
+        Render an observation from the point of view of the agent
+        """
+
+        return self._render_img(
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array
+        )
+
     def render(self, mode='human', close=False):
+        """
+        Render the environment for human viewing
+        """
+
         if close:
             if self.window:
                 self.window.close()
