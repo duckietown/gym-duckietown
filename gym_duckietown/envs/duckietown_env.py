@@ -73,3 +73,56 @@ class DuckietownEnv(Simulator):
         vels = np.array([u_l_limited, u_r_limited])
 
         return super().step(vels)
+
+class DuckietownLF(DuckietownEnv):
+    """
+    Environment for the Duckietown lane following task with
+    and without obstacles (LF and LFV tasks)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        return obs, reward, done, info
+
+class DuckietownNav(DuckietownEnv):
+    """
+    Environment for the Duckietown navigation task (NAV)
+    """
+
+    def __init__(self, **kwargs):
+        self.goal_tile = None
+        super().__init__(**kwargs)
+
+    def reset(self):
+        super().reset()
+
+        # Find the tile the agent starts on
+        start_tile_pos = self.get_grid_coords(self.cur_pos)
+        start_tile = self._get_tile(*start_tile_pos)
+
+        # Select a random goal tile to navigate to
+        assert len(self.drivable_tiles) > 1
+        while True:
+            tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
+            self.goal_tile = self.drivable_tiles[tile_idx]
+            if self.goal_tile is not start_tile:
+                break
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+
+        info['goal_tile'] = self.goal_tile
+
+        # TODO: add term to reward based on distance to goal?
+
+        cur_tile_coords = self.get_grid_coords(self.cur_pos)
+        cur_tile = self._get_tile(self.cur_tile_coords)
+
+        if cur_tile is self.goal_tile:
+            done = True
+            reward = 1000
+
+        return obs, reward, done, info
