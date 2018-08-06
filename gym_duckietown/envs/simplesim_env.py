@@ -741,15 +741,33 @@ class SimpleSimEnv(gym.Env):
             pts = np.array([
                 [
                     [-0.20, 0,-0.50],
-                    [-0.20, 0, 0.00],
-                    [ 0.00, 0, 0.20],
-                    [ 0.50, 0, 0.20],
+                    [-0.20, 0,-0.25],
+                    [-0.20, 0, 0.25],
+                    [-0.20, 0, 0.50],
                 ],
                 [
                     [-0.20, 0,-0.50],
                     [-0.20, 0, 0.00],
                     [ 0.00, 0, 0.20],
                     [ 0.50, 0, 0.20],
+                ],
+                [
+                    [0.20, 0,-0.50],
+                    [0.20, 0,-0.25],
+                    [0.20, 0, 0.25],
+                    [0.20, 0, 0.50],
+                ],
+                [
+                    [0.20, 0,-0.50],
+                    [0.20, 0,-0.20],
+                    [0.30, 0,-0.20],
+                    [0.50, 0,-0.20],
+                ],
+                [
+                    [0.20, 0, 0.50],
+                    [0.20, 0, 0.20],
+                    [0.30, 0, 0.20],
+                    [0.50, 0, 0.20],
                 ]
             ]) * ROAD_TILE_SIZE
 
@@ -787,16 +805,17 @@ class SimpleSimEnv(gym.Env):
 
             fourway_pts = np.reshape(np.array(fourway_pts), (12, 4, 3))
             return fourway_pts
-        if kind.startswith('3way'):
-            threeway_pts = []
-            for rot in range(0, 4):
-                if rot == 0: continue
-                mat = gen_rot_matrix(np.array([0, 1, 0]), rot * math.pi / 2)
-                pts_new = np.matmul(pts, mat)
-                pts_new += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
-                threeway_pts.append(pts_new)
 
-            threeway_pts = np.reshape(np.array(threeway_pts), (6, 4, 3))
+        elif kind.startswith('3way'):
+            threeway_pts = []
+            
+            mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
+            pts_new = np.matmul(pts, mat)
+            pts_new += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
+            threeway_pts.append(pts_new)
+
+            threeway_pts = np.array(threeway_pts)
+            threeway_pts = np.reshape(threeway_pts, (5, 4, 3))
             return threeway_pts
 
         else:
