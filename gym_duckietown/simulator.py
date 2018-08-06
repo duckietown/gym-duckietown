@@ -688,8 +688,9 @@ class Simulator(gym.Env):
         """
 
         i, j = self.get_grid_coords(pos)
+        tile = self._get_tile(i, j)
 
-        if self._get_tile(i, j) is None:
+        if tile is None or not tile['drivable']:
             return None, None
 
         cps = self._get_curve(i, j)

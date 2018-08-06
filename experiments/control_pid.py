@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Control the simulator or Duckiebot using a model trained with imitation
-learning, and visualize the result.
+Control the simulator or Duckiebot using a a PID controller (heuristic).
 """
 
 import time
@@ -16,14 +15,13 @@ from gym_duckietown.envs import DuckietownEnv
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
 parser.add_argument('--map-name', default='udem1')
-parser.add_argument('--no-random', action='store_true', help='disable domain randomization')
 parser.add_argument('--no-pause', action='store_true', help="don't pause on failure")
 args = parser.parse_args()
 
 if args.env_name is None:
     env = DuckietownEnv(
         map_name = args.map_name,
-        domain_rand = not args.no_random
+        domain_rand = False
     )
     env.max_steps = 500
 else:
@@ -34,25 +32,35 @@ env.render()
 
 while True:
 
-    # Positive distance means right side of the lane
-    # Positive angle means turning right
-    dist, dot_dir, angle = env.unwrapped.get_lane_pos()
-    abs_dist = abs(dist)
-    abs_angle = abs(angle)
+    dir_vec = env.get_dir_vec()
 
-    print(dist, dot_dir, angle)
+    follow_dist = 0.25
 
-    #steering = 0
+    while True:
+        follow_point = env.cur_pos + dir_vec * follow_dist
+        curve_point, _ = env.closest_curve_point(follow_point)
+        if curve_point is not None:
+            break
+        follow_dist *= 0.5
+
+    # Compute a normalized vector to the curve point
+    point_vec = curve_point - env.cur_pos
+    point_vec /= np.linalg.norm(point_vec)
+
+    #dot_dir_vec = np.dot(dir_vec, point_vec)
+
+    dot = np.dot(env.get_right_vec(), point_vec)
+
+    velocity = 0.35
+    steering = -dot
+
+    steering = max(dot, -0.5)
+
+    print(steering)
 
 
-    steering = 0
-    if dist < -0.2:
-        steering = 1
 
 
-
-
-    velocity = 0.6
     obs, reward, done, info = env.step([velocity, steering])
     #print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
