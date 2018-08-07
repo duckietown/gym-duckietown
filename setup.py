@@ -13,7 +13,7 @@ setup(
         'opencv-python>=3.4',
         'pyyaml>=3.12',
         'cloudpickle',
-        'duckietown_slimremote>=2018.8.1'
+        'duckietown_slimremote>=2018.8.2'
     ],
     entry_points={
         'console_scripts': [
