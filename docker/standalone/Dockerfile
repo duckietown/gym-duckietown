@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04
+FROM pytorch/pytorch
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
          build-essential \
@@ -10,13 +10,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
          freeglut3-dev && \
      rm -rf /var/lib/apt/lists/*
 
-ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh miniconda.sh
-RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
-ENV PATH /opt/conda/bin:$PATH
-
-RUN conda install numpy pyyaml scipy ipython mkl mkl-include && \
-    conda install -c pytorch magma-cuda91 torchvision && \
-    conda clean -ya
+RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 
 # This must be done before pip so that requirements.txt is available
 WORKDIR /gym-duckietown
