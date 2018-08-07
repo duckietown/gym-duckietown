@@ -53,6 +53,7 @@ def main():
             if data["topic"] == 0:
                 obs, reward, done, misc = env.step(data["msg"])
                 if DEBUG:
+                    print("last motor command: ",data["msg"])
                     print('step_count = %s, reward=%.3f, done = %s' % (env.unwrapped.step_count, reward, done))
                 if done:
                     env.reset()
