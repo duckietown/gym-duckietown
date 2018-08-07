@@ -2,7 +2,7 @@ from gym_duckietown.config import DEFAULTS
 from duckietown_slimremote.networking import make_pull_socket, has_pull_message, receive_data, make_pub_socket, \
     send_gym
 import os
-
+import numpy as np
 from gym_duckietown.envs import DuckietownEnv
 
 DEBUG = False
@@ -19,10 +19,13 @@ def main():
 
     # if a challenge is set, it overrides the map selection
 
+    misc = {}  # init of info field for additional gym data
+
     challenge = os.getenv('DUCKIETOWN_CHALLENGE', "")
     if challenge in ["LF", "LFV"]:
         print("Launching challenge:", challenge)
         map = DEFAULTS["challenges"][challenge]
+        misc["challenge"] = challenge
 
     print("Using map:", map)
 
@@ -49,11 +52,17 @@ def main():
 
             reward = 0  # in case it's just a ping, not a motor command, we are sending a 0 reward
             done = False  # same thing... just for gym-compatibility
+            misc_ = {} # same same
 
             if data["topic"] == 0:
-                obs, reward, done, misc = env.step(data["msg"])
+                obs, reward, done, misc_ = env.step(data["msg"])
                 if DEBUG:
-                    print('step_count = %s, reward=%.3f, done = %s' % (env.unwrapped.step_count, reward, done))
+                    print("challenge={}, step_count={}, reward={}, done={}".format(
+                        challenge,
+                        env.unwrapped.step_count,
+                        np.around(reward,3),
+                        done)
+                    )
                 if done:
                     env.reset()
 
@@ -68,4 +77,5 @@ def main():
                 publisher_socket = make_pub_socket(for_images=True)
 
             if data["topic"] in [0, 1]:
-                send_gym(publisher_socket, obs, reward, done, {"challenge": challenge})
+                misc.update(misc_)
+                send_gym(publisher_socket, obs, reward, done, misc)
