@@ -21,9 +21,9 @@ args = parser.parse_args()
 if args.env_name is None:
     env = DuckietownEnv(
         map_name = args.map_name,
-        domain_rand = False
+        domain_rand = False,
+        draw_bbox = False
     )
-    env.max_steps = 500
 else:
     env = gym.make(args.env_name)
 
@@ -32,34 +32,30 @@ env.render()
 
 while True:
 
-    dir_vec = env.get_dir_vec()
+    follow_dist = 0.4
 
-    follow_dist = 0.25
+    # Find the curve point closest to the agent, and the tangent at that point
+    closest_point, closest_tangent = env.closest_curve_point(env.cur_pos)
 
     while True:
-        follow_point = env.cur_pos + dir_vec * follow_dist
+        # Project a point ahead along the curve tangent,
+        # then find the closest point to to that
+        follow_point = closest_point + closest_tangent * follow_dist
         curve_point, _ = env.closest_curve_point(follow_point)
+
+        # If we have a valid point on the curve, stop
         if curve_point is not None:
             break
+
         follow_dist *= 0.5
 
     # Compute a normalized vector to the curve point
     point_vec = curve_point - env.cur_pos
     point_vec /= np.linalg.norm(point_vec)
 
-    #dot_dir_vec = np.dot(dir_vec, point_vec)
-
     dot = np.dot(env.get_right_vec(), point_vec)
-
     velocity = 0.35
-    steering = -dot
-
-    steering = max(dot, -0.5)
-
-    print(steering)
-
-
-
+    steering = 2 * -dot
 
     obs, reward, done, info = env.step([velocity, steering])
     #print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))

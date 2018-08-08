@@ -694,7 +694,7 @@ class Simulator(gym.Env):
             return None, None
 
         cps = self._get_curve(i, j)
-        t = bezier_closest(cps, self.cur_pos)
+        t = bezier_closest(cps, pos)
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
 
