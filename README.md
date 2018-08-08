@@ -125,7 +125,7 @@ Now, you are ready to start training a policy using RL:
 ```
 python3 pytorch_rl/main.py \
         --algo a2c \
-        --env-name Duckie-SimpleSim-Discrete-v0 \
+        --env-name Duckietown-loop_obstacles-v0 \
         --lr 0.0002 \
         --max-grad-norm 0.5 \
         --no-vis \

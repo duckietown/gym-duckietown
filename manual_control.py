@@ -68,13 +68,13 @@ def update(dt):
     action = np.array([0.0, 0.0])
 
     if key_handler[key.UP]:
-        action = np.array([0.7, 0.0])
+        action = np.array([0.44, 0.0])
     if key_handler[key.DOWN]:
-        action = np.array([-0.4, 0])
+        action = np.array([-0.44, 0])
     if key_handler[key.LEFT]:
-        action = np.array([0.6, +1])
+        action = np.array([0.35, +1])
     if key_handler[key.RIGHT]:
-        action = np.array([0.6, -1])
+        action = np.array([0.35, -1])
     if key_handler[key.SPACE]:
         action = np.array([0, 0])
 
