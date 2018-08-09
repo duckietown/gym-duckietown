@@ -1,6 +1,6 @@
 # Gym-Duckietown
 
-[![Build Status](https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield)](https://circleci.com/gh/duckietown/gym-duckietown/tree/master) [![Docker Build Status](https://img.shields.io/docker/build/duckietown/gym-duckietown.svg)](https://hub.docker.com/r/duckietown/gym-duckietown)
+[![Build Status](https://circleci.com/gh/duckietown/gym-duckietown/tree/master.svg?style=shield)](https://circleci.com/gh/duckietown/gym-duckietown/tree/master) [![Docker Hub](https://img.shields.io/docker/pulls/duckietown/gym-duckietown.svg)](https://hub.docker.com/r/duckietown/gym-duckietown)
 
 
 [Duckietown](http://duckietown.org/) self-driving car simulator environments for OpenAI Gym.
