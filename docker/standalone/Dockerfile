@@ -1,11 +1,6 @@
 FROM pytorch/pytorch
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
-         build-essential \
-         cmake \
-         ca-certificates \
-         libjpeg-dev \
-         libpng-dev \
          xvfb \
          freeglut3-dev && \
      rm -rf /var/lib/apt/lists/*
