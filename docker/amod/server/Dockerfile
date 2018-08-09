@@ -31,7 +31,6 @@ RUN pip install -e gym-duckietown
 RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote
 
 COPY docker/amod/server/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
-RUN chmod +x /usr/bin/launch-gym-server-with-xvfb
 
 #RUN Xvfb :1 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log & export DISPLAY=:1
 

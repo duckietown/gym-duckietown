@@ -25,4 +25,3 @@ gym=$!
 
 wait $gym
 wait $xvfb
-
