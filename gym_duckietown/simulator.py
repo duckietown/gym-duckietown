@@ -455,11 +455,11 @@ class Simulator(gym.Env):
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
-            x, z = desc['pos']
+            x, z, *y = desc['pos']
             rotate = desc['rotate']
             optional = desc.get('optional', False)
 
-            pos = ROAD_TILE_SIZE * np.array((x, 0, z))
+            pos = ROAD_TILE_SIZE * np.array((x, y[0] if len(y) else 0, z))
 
             # Load the mesh
             mesh = ObjMesh.get(kind)
