@@ -275,8 +275,8 @@ class Simulator(gym.Env):
         # Distance bewteen camera and ground
         self.cam_height = self._perturb(CAMERA_FLOOR_DIST, 0.08)
 
-        # Angle at which the camera is pitched downwards
-        self.cam_angle = self._perturb(CAMERA_ANGLE, 0.2)
+        # Angle at which the camera is rotated
+        self.cam_angle = [self._perturb(CAMERA_ANGLE, 0.2), 0, 0]
 
         # Field of view angle of the camera
         self.cam_fov_y = self._perturb(CAMERA_FOV_Y, 0.2)
@@ -991,7 +991,9 @@ class Simulator(gym.Env):
             glRotatef(90, 1, 0, 0)
         else:
             y += self.cam_height
-            glRotatef(self.cam_angle, 1, 0, 0)
+            glRotatef(self.cam_angle[0], 1, 0, 0)
+            glRotatef(self.cam_angle[1], 0, 1, 0)
+            glRotatef(self.cam_angle[2], 0, 0, 1)
             glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
         gluLookAt(
