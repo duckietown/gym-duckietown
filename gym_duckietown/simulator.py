@@ -18,7 +18,7 @@ from .objmesh import *
 from .collision import *
 
 # Objects utility code
-from .objects import WorldObj, DuckieObj
+from .objects import WorldObj, DuckieObj, TrafficLightObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -485,7 +485,10 @@ class Simulator(gym.Env):
 
             obj = None
             if static:
-                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+                if kind == "trafficlight":
+                    obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+                else:
+                    obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
                 obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
