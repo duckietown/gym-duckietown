@@ -990,7 +990,7 @@ class Simulator(gym.Env):
             y += 0.8
             glRotatef(90, 1, 0, 0)
         else:
-            y += CAMERA_FLOOR_DIST
+            y += self.cam_height
             glRotatef(self.cam_angle, 1, 0, 0)
             glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
