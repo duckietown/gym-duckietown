@@ -281,6 +281,9 @@ class Simulator(gym.Env):
         # Field of view angle of the camera
         self.cam_fov_y = self._perturb(CAMERA_FOV_Y, 0.2)
 
+        # Camera offset for use in free camera mode
+        self.cam_offset = [0, 0, 0]
+
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
         numTris = 12
@@ -981,7 +984,7 @@ class Simulator(gym.Env):
         pos = self.cur_pos
         if self.domain_rand:
             pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
-        x, y, z = pos
+        x, y, z = pos + self.cam_offset
         dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
