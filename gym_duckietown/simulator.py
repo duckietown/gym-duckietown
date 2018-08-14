@@ -1186,14 +1186,15 @@ class Simulator(gym.Env):
         )
 
         # Display position/state information
-        x, y, z = self.cur_pos
-        self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
-            x, y, z,
-            int(self.cur_angle * 180 / math.pi),
-            self.step_count,
-            self.speed
-        )
-        self.text_label.draw()
+        if mode != "free_cam":
+            x, y, z = self.cur_pos
+            self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
+                x, y, z,
+                int(self.cur_angle * 180 / math.pi),
+                self.step_count,
+                self.speed
+            )
+            self.text_label.draw()
 
         # Force execution of queued commands
         glFlush()

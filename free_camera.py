@@ -81,8 +81,12 @@ def on_key_press(symbol, modifiers):
         cam_offset[2] += .1
 
 
+def update(dt):
+    env.render('free_cam')
+
+
 # Main event loop
-clock.schedule_interval(env.render, 1 / env.unwrapped.frame_rate)
+clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
 app.run()
 
 env.close()
