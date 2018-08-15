@@ -53,6 +53,8 @@ def get_args():
                         help='directory to save agent logs (default: /tmp/gym)')
     parser.add_argument('--save-dir', default='./trained_models/',
                         help='directory to save agent logs (default: ./trained_models/)')
+    parser.add_argument('--save-str', default='a2c_1',
+                        help='additional stuff that adds to the saved string (default: a2c)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
