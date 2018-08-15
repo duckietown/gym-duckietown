@@ -222,3 +222,16 @@ class TrafficLightObj(WorldObj):
         if round(self.time, 3) % self.freq == 0:  # Swap patterns
             self.pattern ^= 1
             self.mesh.textures[0] = self.texs[self.pattern]
+
+    def is_green(self, direction='N'):
+        if direction == 'N' or direction == 'S':
+            if self.y_rot == 45 or self.y_rot == 135:
+                return self.pattern == 0
+            elif self.y_rot == 225 or self.y_rot == 315:
+                return self.pattern == 1
+        elif direction == 'E' or direction == 'W':
+            if self.y_rot == 45 or self.y_rot == 135:
+                return self.pattern == 1
+            elif self.y_rot == 225 or self.y_rot == 315:
+                return self.pattern == 0
+        return False
