@@ -60,7 +60,7 @@ class ResizeWrapper(gym.ObservationWrapper):
             dtype=self.observation_space.dtype)
 
     def observation(self, observation):
-        return observation.transpose(2, 1, 0)
+        return observation
 
     def reset(self):
         obs = super().reset()
@@ -70,3 +70,14 @@ class ResizeWrapper(gym.ObservationWrapper):
         obs, reward, done, info = super().step(actions)
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2), reward, done, info
 
+
+class RewardWrapper(gym.ObservationWrapper):
+    def __init__(self, env=None):
+        super().__init__(env)
+
+    def step(self, actions):
+        obs, reward, done, info = super().step(actions)
+        return obs, np.clip(reward, a_min=-10, a_max=1), done, info
+
+    def observation(self, observation):
+        return observation
