@@ -1,8 +1,8 @@
-# Blender MTL File: 'None'
-# Material Count: 2
+# Blender MTL File: 'trafficlight.blend'
+# Material Count: 3
 
-newmtl TrafficLight0
-Ns 92.156863
+newmtl Cardboard
+Ns 94.117647
 Ka 1.000000 1.000000 1.000000
 Kd 0.800000 0.800000 0.800000
 Ks 0.500000 0.500000 0.500000
@@ -12,8 +12,8 @@ d 1.000000
 illum 2
 map_Kd ../textures/trafficlight_card.jpg
 
-newmtl TrafficLight1
-Ns 92.156863
+newmtl LightCover
+Ns 94.117647
 Ka 1.000000 1.000000 1.000000
 Kd 0.800000 0.800000 0.800000
 Ks 0.500000 0.500000 0.500000
@@ -22,3 +22,13 @@ Ni 1.000000
 d 1.000000
 illum 2
 map_Kd ../textures/trafficlight_cover.jpg
+
+newmtl Metal
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.321582 0.321582 0.321582
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2

@@ -9,7 +9,7 @@ tiles:
 
 objects:
 - kind: trafficlight
-  pos: [2.5, 2.5, 0.11]
-  rotate: 0
-  height: 0.08
+  pos: [2.2, 2.2]
+  rotate: 45
+  height: 0.4
   optional: true
