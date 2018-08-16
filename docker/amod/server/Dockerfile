@@ -11,8 +11,6 @@ ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh minico
 RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
-RUN conda install numpy pyyaml scipy ipython mkl mkl-include pyzmq && conda clean -ya
-
 WORKDIR /workspace
 RUN chmod -R a+w /workspace
 
