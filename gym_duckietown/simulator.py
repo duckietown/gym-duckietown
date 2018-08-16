@@ -18,7 +18,7 @@ from .objmesh import *
 from .collision import *
 
 # Objects utility code
-from .objects import WorldObj, DuckieObj
+from .objects import WorldObj, DuckieObj, TrafficLightObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -455,11 +455,11 @@ class Simulator(gym.Env):
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
-            x, z = desc['pos']
+            x, z, *y = desc['pos']
             rotate = desc['rotate']
             optional = desc.get('optional', False)
 
-            pos = ROAD_TILE_SIZE * np.array((x, 0, z))
+            pos = ROAD_TILE_SIZE * np.array((x, y[0] if len(y) else 0, z))
 
             # Load the mesh
             mesh = ObjMesh.get(kind)
@@ -485,7 +485,10 @@ class Simulator(gym.Env):
 
             obj = None
             if static:
-                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+                if kind == "trafficlight":
+                    obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+                else:
+                    obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
                 obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
@@ -499,7 +502,7 @@ class Simulator(gym.Env):
             possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
 
             # If the object intersects with a drivable tile
-            if static and self._collidable_object(
+            if static and kind != "trafficlight" and self._collidable_object(
                 obj.obj_corners, obj.obj_norm, possible_tiles
             ):
                 self.collidable_centers.append(pos)
