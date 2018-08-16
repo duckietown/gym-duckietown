@@ -11,13 +11,7 @@ ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh minico
 RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
-# I moved the pip requirements up here so we can cache them in this layer and don't
-# need to rebuild them when the git repo has changed. Also I don't know why the conda pkg
-# "pyzmq" isn't doing anything. Pip doesn't recognize it and installs the pkg 'zmq'.
-
-RUN conda install numpy pyyaml scipy pyzmq && \
-    pip install zmq pyglet opencv-python scikit-image gym && \
-    conda clean -ya
+RUN conda install numpy pyyaml scipy ipython mkl mkl-include pyzmq && conda clean -ya
 
 WORKDIR /workspace
 RUN chmod -R a+w /workspace
