@@ -18,7 +18,7 @@ from .objmesh import *
 from .collision import *
 
 # Objects utility code
-from .objects import WorldObj, DuckieObj
+from .objects import WorldObj, DuckieObj, TrafficLightObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -275,11 +275,14 @@ class Simulator(gym.Env):
         # Distance bewteen camera and ground
         self.cam_height = self._perturb(CAMERA_FLOOR_DIST, 0.08)
 
-        # Angle at which the camera is pitched downwards
-        self.cam_angle = self._perturb(CAMERA_ANGLE, 0.2)
+        # Angle at which the camera is rotated
+        self.cam_angle = [self._perturb(CAMERA_ANGLE, 0.2), 0, 0]
 
         # Field of view angle of the camera
         self.cam_fov_y = self._perturb(CAMERA_FOV_Y, 0.2)
+
+        # Camera offset for use in free camera mode
+        self.cam_offset = [0, 0, 0]
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
@@ -452,11 +455,11 @@ class Simulator(gym.Env):
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
-            x, z = desc['pos']
+            x, z, *y = desc['pos']
             rotate = desc['rotate']
             optional = desc.get('optional', False)
 
-            pos = ROAD_TILE_SIZE * np.array((x, 0, z))
+            pos = ROAD_TILE_SIZE * np.array((x, y[0] if len(y) else 0, z))
 
             # Load the mesh
             mesh = ObjMesh.get(kind)
@@ -482,7 +485,10 @@ class Simulator(gym.Env):
 
             obj = None
             if static:
-                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+                if kind == "trafficlight":
+                    obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+                else:
+                    obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
                 obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
@@ -496,7 +502,7 @@ class Simulator(gym.Env):
             possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
 
             # If the object intersects with a drivable tile
-            if static and self._collidable_object(
+            if static and kind != "trafficlight" and self._collidable_object(
                 obj.obj_corners, obj.obj_norm, possible_tiles
             ):
                 self.collidable_centers.append(pos)
@@ -981,7 +987,7 @@ class Simulator(gym.Env):
         pos = self.cur_pos
         if self.domain_rand:
             pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
-        x, y, z = pos
+        x, y, z = pos + self.cam_offset
         dx, dy, dz = self.get_dir_vec()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -990,8 +996,10 @@ class Simulator(gym.Env):
             y += 0.8
             glRotatef(90, 1, 0, 0)
         else:
-            y += CAMERA_FLOOR_DIST
-            glRotatef(self.cam_angle, 1, 0, 0)
+            y += self.cam_height
+            glRotatef(self.cam_angle[0], 1, 0, 0)
+            glRotatef(self.cam_angle[1], 0, 1, 0)
+            glRotatef(self.cam_angle[2], 0, 0, 1)
             glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
         gluLookAt(
@@ -1181,14 +1189,15 @@ class Simulator(gym.Env):
         )
 
         # Display position/state information
-        x, y, z = self.cur_pos
-        self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
-            x, y, z,
-            int(self.cur_angle * 180 / math.pi),
-            self.step_count,
-            self.speed
-        )
-        self.text_label.draw()
+        if mode != "free_cam":
+            x, y, z = self.cur_pos
+            self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
+                x, y, z,
+                int(self.cur_angle * 180 / math.pi),
+                self.step_count,
+                self.speed
+            )
+            self.text_label.draw()
 
         # Force execution of queued commands
         glFlush()
