@@ -1,4 +1,3 @@
-import cv2
 import math
 import numpy as np
 import gym
@@ -63,21 +62,11 @@ class ResizeWrapper(gym.ObservationWrapper):
         return observation
 
     def reset(self):
+        import cv2
         obs = super().reset()
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2)
 
     def step(self, actions):
+        import cv2
         obs, reward, done, info = super().step(actions)
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2), reward, done, info
-
-
-class RewardWrapper(gym.ObservationWrapper):
-    def __init__(self, env=None):
-        super().__init__(env)
-
-    def step(self, actions):
-        obs, reward, done, info = super().step(actions)
-        return obs, np.clip(reward, a_min=-10, a_max=1), done, info
-
-    def observation(self, observation):
-        return observation
