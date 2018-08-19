@@ -1,5 +1,7 @@
 import numpy as np
 from .collision import *
+from .graphics import load_texture
+from .utils import get_file_path
 
 import pyglet
 from pyglet.gl import *
@@ -188,3 +190,48 @@ class DuckieObj(WorldObj):
             # Just give it the negative of its current velocity
             self.vel *= -1
             self.pedestrian_wait_time = 8
+
+
+class TrafficLightObj(WorldObj):
+    def __init__(self, obj, domain_rand, safety_radius_mult):
+        super().__init__(obj, domain_rand, safety_radius_mult)
+
+        self.texs = [
+            load_texture(get_file_path("textures", "trafficlight_card0", "jpg")),
+            load_texture(get_file_path("textures", "trafficlight_card1", "jpg"))
+        ]
+        self.time = 0
+
+        # Frequency and current pattern of the lights
+        if self.domain_rand:
+            self.freq = np.random.randint(4, 7)
+            self.pattern = np.random.randint(0, 2)
+        else:
+            self.freq = 5
+            self.pattern = 0
+
+        # Use the selected pattern
+        self.mesh.textures[0] = self.texs[self.pattern]
+
+    def step(self, delta_time):
+        """
+        Changes the light color periodically
+        """
+
+        self.time += delta_time
+        if round(self.time, 3) % self.freq == 0:  # Swap patterns
+            self.pattern ^= 1
+            self.mesh.textures[0] = self.texs[self.pattern]
+
+    def is_green(self, direction='N'):
+        if direction == 'N' or direction == 'S':
+            if self.y_rot == 45 or self.y_rot == 135:
+                return self.pattern == 0
+            elif self.y_rot == 225 or self.y_rot == 315:
+                return self.pattern == 1
+        elif direction == 'E' or direction == 'W':
+            if self.y_rot == 45 or self.y_rot == 135:
+                return self.pattern == 1
+            elif self.y_rot == 225 or self.y_rot == 315:
+                return self.pattern == 0
+        return False
