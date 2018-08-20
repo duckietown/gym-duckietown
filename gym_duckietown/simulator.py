@@ -639,6 +639,9 @@ class Simulator(gym.Env):
         kind = tile['kind']
         angle = tile['angle']
 
+        # Each tile will have a unique set of control points,
+        # Corresponding to each of its possible turns
+
         if kind.startswith('straight'):
             pts = np.array([
                 [
@@ -688,8 +691,8 @@ class Simulator(gym.Env):
                 ]
             ]) * ROAD_TILE_SIZE
 
+        # Hardcoded all curves for 3way intersection
         elif kind.startswith('3way'):
-            # TODO
             pts = np.array([
                 [
                     [-0.20, 0,-0.50],
@@ -729,6 +732,7 @@ class Simulator(gym.Env):
                 ],
             ]) * ROAD_TILE_SIZE
 
+        # Template for each side of 4way intersection
         elif kind.startswith('4way'):
             pts = np.array([
                 [
@@ -767,6 +771,7 @@ class Simulator(gym.Env):
             fourway_pts = np.reshape(np.array(fourway_pts), (12, 4, 3))
             return fourway_pts
 
+        # Hardcoded each curve; just rotate and shift
         elif kind.startswith('3way'):
             threeway_pts = []
             
@@ -824,8 +829,10 @@ class Simulator(gym.Env):
 
         dot_prods = np.dot(curve_headings, dirVec)
 
-        # Closest curve
+        # Closest curve = one with largest dotprod
         cps = curves[np.argmax(dot_prods)]
+
+        # Find closest point and tangent to this curve
         t = bezier_closest(cps, self.cur_pos)
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
@@ -1192,7 +1199,7 @@ class Simulator(gym.Env):
 
                     dot_prods = np.dot(curve_headings, dirVec)
 
-                    # Current curve drawn in Red
+                    # Current ("closest") curve drawn in Red
                     pts = curves[np.argmax(dot_prods)]
                     bezier_draw(pts, n = 20, red=True)
 
