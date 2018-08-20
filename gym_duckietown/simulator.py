@@ -699,8 +699,17 @@ class Simulator(gym.Env):
         if tile is None or not tile['drivable']:
             return None, None
 
-        cps = self._get_curve(i, j)
-        t = bezier_closest(cps, pos)
+        # Find curve with largest dotproduct with heading
+        curves = self._get_tile(i, j)['curves']
+        curve_headings = curves[:, -1, :] - curves[:, 0, :]
+        curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+        dirVec = self.get_dir_vec()
+
+        dot_prods = np.dot(curve_headings, dirVec)
+
+        # Closest curve
+        cps = curves[np.argmax(dot_prods)]
+        t = bezier_closest(cps, self.cur_pos)
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
 
@@ -1058,8 +1067,24 @@ class Simulator(gym.Env):
                 glPopMatrix()
 
                 if self.draw_curve and tile['drivable']:
+                    # Find curve with largest dotproduct with heading
+                    curves = self._get_tile(i, j)['curves']
+                    curve_headings = curves[:, -1, :] - curves[:, 0, :]
+                    curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+                    dirVec = self.get_dir_vec()
+
+                    dot_prods = np.dot(curve_headings, dirVec)
+
+                    # Current curve drawn in Red
+                    pts = curves[np.argmax(dot_prods)]
+                    bezier_draw(pts, n = 20, red=True)
+
                     pts = self._get_curve(i, j)
-                    bezier_draw(pts, n = 20)
+                    for idx, pt in enumerate(pts):
+                        # Don't draw current curve in blue
+                        if idx == np.argmax(dot_prods): 
+                            continue
+                        bezier_draw(pt, n = 20)
 
         # For each object
         for idx, obj in enumerate(self.objects):
