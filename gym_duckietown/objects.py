@@ -94,6 +94,69 @@ class WorldObj:
             raise NotImplementedError
 
 
+class DuckiebotObj(WorldObj):
+    def __init__(self, obj, domain_rand, safety_radius_mult):
+        super().__init__(obj, domain_rand, safety_radius_mult)
+
+        if self.domain_rand:
+            self.follow_dist = np.random.uniform(0.3, 0.5)
+            self.velocity = np.random.uniform(0.25, 0.45)
+        else:
+            self.follow_dist = 0.4
+            self.velocity = 0.35
+
+    def step(self, delta_time):
+        # Find the curve point closest to the agent, and the tangent at that point
+        closest_point, closest_tangent = env.closest_curve_point(self.pos)
+
+        while True:
+            # Project a point ahead along the curve tangent,
+            # then find the closest point to to that
+            follow_point = closest_point + closest_tangent * follow_dist
+            curve_point, _ = env.closest_curve_point(follow_point)
+
+            # If we have a valid point on the curve, stop
+            if curve_point is not None:
+                break
+
+            follow_dist *= 0.5
+
+        # Compute a normalized vector to the curve point
+        point_vec = curve_point - self.pos
+        point_vec /= np.linalg.norm(point_vec)
+
+        dot = np.dot(env.get_right_vec(), point_vec)
+        velocity = 0.35
+        steering = 2 * -dot
+
+        self._update_pos([velocity, steering])
+
+    def _update_pos(self, action):
+        # Distance between the wheels
+        baseline = self.unwrapped.wheel_dist
+
+        # assuming same motor constants k for both motors
+        k_r = self.k
+        k_l = self.k
+
+        # adjusting k by gain and trim
+        k_r_inv = (self.gain + self.trim) / k_r
+        k_l_inv = (self.gain - self.trim) / k_l
+
+        omega_r = (vel + 0.5 * angle * baseline) / self.radius
+        omega_l = (vel - 0.5 * angle * baseline) / self.radius
+
+        # conversion from motor rotation rate to duty cycle
+        u_r = omega_r * k_r_inv
+        u_l = omega_l * k_l_inv
+
+        # limiting output to limit, which is 1.0 for the duckiebot
+        u_r_limited = max(min(u_r, self.limit), -self.limit)
+        u_l_limited = max(min(u_l, self.limit), -self.limit)
+
+        vels = np.array([u_l_limited, u_r_limited])
+
+
 class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
         super().__init__(obj, domain_rand, safety_radius_mult)
