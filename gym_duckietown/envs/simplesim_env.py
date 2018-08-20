@@ -388,13 +388,14 @@ class SimpleSimEnv(gym.Env):
                     'coords': (i, j),
                     'kind': kind,
                     'angle': angle,
-                    'drivable': drivable
+                    'drivable': drivable,
                 }
 
-                if drivable:
-                    self.drivable_tiles.append(tile)
-
                 self._set_tile(i, j, tile)
+
+                if drivable:
+                    tile['curves'] = self._get_curve(i, j)
+                    self.drivable_tiles.append(tile)
 
         self._load_objects(map_data)
 
@@ -610,132 +611,53 @@ class SimpleSimEnv(gym.Env):
 
         if kind.startswith('straight'):
             pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0,-0.25],
-                [-0.20, 0, 0.25],
-                [-0.20, 0, 0.50],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.25],
+                    [-0.20, 0, 0.25],
+                    [-0.20, 0, 0.50],
+                ],
+                [
+                    [0.20, 0, 0.50],
+                    [0.20, 0, 0.25],
+                    [0.20, 0, -0.25],
+                    [0.20, 0, -0.50],
+                ]
             ]) * ROAD_TILE_SIZE
+
         elif kind == 'curve_left':
             pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0, 0.00],
-                [ 0.00, 0, 0.20],
-                [ 0.50, 0, 0.20],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0, 0.00],
+                    [ 0.00, 0, 0.20],
+                    [ 0.50, 0, 0.20],
+                ],
+                [
+                    [ 0.20, 0, -0.50],
+                    [ 0.20, 0, -0.30],
+                    [ 0.30, 0, -0.20],
+                    [ 0.50, 0, -0.20],
+                ]
             ]) * ROAD_TILE_SIZE
+
         elif kind == 'curve_right':
             pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0,-0.20],
-                [-0.30, 0,-0.20],
-                [-0.50, 0,-0.20],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.20],
+                    [-0.30, 0,-0.20],
+                    [-0.50, 0,-0.20],
+                ],
+
+                [
+                    [-0.50, 0, 0.20],
+                    [-0.30, 0, 0.20],
+                    [ 0.30, 0, 0.00],
+                    [ 0.20, 0,-0.50],
+                ]
             ]) * ROAD_TILE_SIZE
-        elif kind.startswith('3way'):
-            # Correct
-            pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0, 0.00],
-                [ 0.00, 0, 0.20],
-                [ 0.50, 0, 0.20],
-            ]) * ROAD_TILE_SIZE
-            # Correct Turn
-            # pts = np.array([
-            #     [-0.20, 0,-0.50],
-            #     [-0.20, 0, 0.00],
-            #     [ 0.00, 0, 0.20],
-            #     [ 0.50, 0, 0.20],
-            # ]) * ROAD_TILE_SIZE
-        elif kind.startswith('4way'):
-            # Correct Turn
-            # pts = np.array([
-            #     [-0.20, 0,-0.50],
-            #     [-0.20, 0,-0.25],
-            #     [-0.20, 0, 0.25],
-            #     [-0.20, 0, 0.50],
-            # ]) * ROAD_TILE_SIZE
-            # Correct Right
-            # pts = np.array([
-            #     [0.20, 0,-0.50],
-            #     [0.20, 0,-0.20],
-            #     [0.30, 0,-0.20],
-            #     [0.50, 0,-0.20],
-            # ]) * ROAD_TILE_SIZE
-            # Correct Left
-            pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0, 0.00],
-                [ 0.00, 0, 0.20],
-                [ 0.50, 0, 0.20],
-            ]) * ROAD_TILE_SIZE
-        else:
-            assert False, kind
 
-        mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
-
-        pts = np.matmul(pts, mat)
-        pts += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
-
-        return pts
-
-    def _get_curve_draw(self, i, j):
-        """
-        Get the Bezier curve control points for a given tile
-        """
-
-        tile = self._get_tile(i, j)
-        assert tile is not None
-
-        kind = tile['kind']
-        angle = tile['angle']
-
-        if kind.startswith('straight'):
-            pts = np.array([
-            [
-                [-0.20, 0,-0.50],
-                [-0.20, 0,-0.25],
-                [-0.20, 0, 0.25],
-                [-0.20, 0, 0.50],
-            ],
-
-            [
-                [0.20, 0,-0.50],
-                [0.20, 0,-0.25],
-                [0.20, 0, 0.25],
-                [0.20, 0, 0.50],
-            ]
-            ]) * ROAD_TILE_SIZE
-        elif kind == 'curve_left':
-            pts = np.array([
-
-            [
-                [-0.20, 0,-0.50],
-                [-0.20, 0, 0.00],
-                [ 0.00, 0, 0.20],
-                [ 0.50, 0, 0.20],
-            ],
-
-            [
-                [ 0.20, 0, -0.50],
-                [ 0.20, 0, -0.30],
-                [ 0.30, 0, -0.20],
-                [ 0.50, 0, -0.20],
-            ]
-            ]) * ROAD_TILE_SIZE
-        elif kind == 'curve_right':
-            pts = np.array([
-            [
-                [-0.20, 0,-0.50],
-                [-0.20, 0,-0.20],
-                [-0.30, 0,-0.20],
-                [-0.50, 0,-0.20],
-            ],
-
-            [
-                [ 0.20, 0,-0.50],
-                [ 0.30, 0, 0.00],
-                [-0.30, 0, 0.20],
-                [-0.50, 0, 0.20],
-            ]
-            ]) * ROAD_TILE_SIZE
         elif kind.startswith('3way'):
             # TODO
             pts = np.array([
@@ -752,23 +674,29 @@ class SimpleSimEnv(gym.Env):
                     [ 0.50, 0, 0.20],
                 ],
                 [
-                    [0.20, 0,-0.50],
-                    [0.20, 0,-0.25],
-                    [0.20, 0, 0.25],
                     [0.20, 0, 0.50],
-                ],
-                [
+                    [0.20, 0, 0.25],
+                    [0.20, 0,-0.25],
                     [0.20, 0,-0.50],
-                    [0.20, 0,-0.20],
-                    [0.30, 0,-0.20],
-                    [0.50, 0,-0.20],
                 ],
                 [
+                    [0.50, 0,-0.20],
+                    [0.30, 0,-0.20],
+                    [0.20, 0,-0.20],
+                    [0.20, 0,-0.50],
+                ],
+                [   
                     [0.20, 0, 0.50],
                     [0.20, 0, 0.20],
                     [0.30, 0, 0.20],
-                    [0.50, 0, 0.20],
-                ]
+                    [0.50, 0, 0.20],                   
+                ],
+                [
+                    [0.50, 0,-0.20],
+                    [0.30, 0, -0.20],
+                    [-0.20, 0, 0.00],
+                    [-0.20, 0, 0.50],
+                ],
             ]) * ROAD_TILE_SIZE
 
         elif kind.startswith('4way'):
@@ -795,8 +723,11 @@ class SimpleSimEnv(gym.Env):
         else:
             assert False, kind
 
+        # Rotate and align each curve with its place in global frame
         if kind.startswith('4way'):
             fourway_pts = []
+            # Generate all four sides' curves, 
+            # with 3-points template above
             for rot in np.arange(0,4):
                 mat = gen_rot_matrix(np.array([0, 1, 0]), rot * math.pi / 2)
                 pts_new = np.matmul(pts, mat)
@@ -815,7 +746,7 @@ class SimpleSimEnv(gym.Env):
             threeway_pts.append(pts_new)
 
             threeway_pts = np.array(threeway_pts)
-            threeway_pts = np.reshape(threeway_pts, (5, 4, 3))
+            threeway_pts = np.reshape(threeway_pts, (6, 4, 3))
             return threeway_pts
 
         else:
@@ -847,11 +778,18 @@ class SimpleSimEnv(gym.Env):
         """
         Get the position of the agent relative to the center of the right lane
         """
-
         i, j = self._get_grid_coords(self.cur_pos)
 
-        # Get the closest point along the right lane's Bezier curve
-        cps = self._get_curve(i, j)
+        # Find curve with largest dotproduct with heading
+        curves = self._get_tile(i, j)['curves']
+        curve_headings = curves[:, -1, :] - curves[:, 0, :]
+        curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+        dirVec = self.get_dir_vec()
+
+        dot_prods = np.dot(curve_headings, dirVec)
+
+        # Closest curve
+        cps = curves[np.argmax(dot_prods)]
         t = bezier_closest(cps, self.cur_pos)
         point = bezier_point(cps, t)
 
@@ -1181,15 +1119,25 @@ class SimpleSimEnv(gym.Env):
                 glPopMatrix()
 
                 if self.draw_curve and tile['drivable']:
-                    pts = self._get_curve_draw(i, j)
+                    # Find curve with largest dotproduct with heading
+                    curves = self._get_tile(i, j)['curves']
+                    curve_headings = curves[:, -1, :] - curves[:, 0, :]
+                    curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+                    dirVec = self.get_dir_vec()
 
-                    if len(pts.shape) == 3:
-                        # print(pts.shape)
-                        for pt in pts:
-                            bezier_draw(pt, n = 20)
-                    else:
-                        bezier_draw(pts, n = 20)
+                    dot_prods = np.dot(curve_headings, dirVec)
 
+                    # Current curve drawn in Red
+                    pts = curves[np.argmax(dot_prods)]
+                    bezier_draw(pts, n = 20, red=True)
+
+                    pts = self._get_curve(i, j)
+                    for idx, pt in enumerate(pts):
+                        # Don't draw current curve in blue
+                        if idx == np.argmax(dot_prods): 
+                            continue
+                        bezier_draw(pt, n = 20)
+                    
         # For each object
         for idx, obj in enumerate(self.objects):
             obj.render()
