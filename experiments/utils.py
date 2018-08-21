@@ -54,12 +54,12 @@ def make_var(arr):
 def save_img(file_name, img):
     from skimage import io
 
-    img = img.squeeze(0)
-    img = img.clamp(0, 1)
-    img = img.data
-    img = img.transpose(0, 2).transpose(0, 1)
-    img = np.flip(img, 0)
-    img = img * 255
+    if isinstance(img, Variable):
+        img = img.data.numpy()
+
+    if len(img.shape) == 4:
+        img = img.squeeze(0)
+
     img = img.astype(np.uint8)
 
     io.imsave(file_name, img)
