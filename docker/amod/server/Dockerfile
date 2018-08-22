@@ -12,7 +12,6 @@ RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
 WORKDIR /workspace
-RUN chmod -R a+w /workspace
 
 ADD . gym-duckietown
 RUN pip install -e gym-duckietown

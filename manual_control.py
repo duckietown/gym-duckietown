@@ -13,6 +13,7 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
+from experiments.utils import save_img
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
@@ -53,6 +54,12 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.ESCAPE:
         env.close()
         sys.exit(0)
+
+    # Take a screenshot
+    elif symbol == key.RETURN:
+        print('saving screenshot')
+        img = env.render('rgb_array')
+        save_img('screenshot.png', img)
 
 # Register a keyboard handler
 key_handler = key.KeyStateHandler()
