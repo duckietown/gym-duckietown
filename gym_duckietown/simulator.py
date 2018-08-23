@@ -18,7 +18,7 @@ from .objmesh import *
 from .collision import *
 
 # Objects utility code
-from .objects import WorldObj, DuckieObj, TrafficLightObj
+from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -491,7 +491,10 @@ class Simulator(gym.Env):
                 else:
                     obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
-                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
+                if kind == "duckiebot":
+                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST)
+                elif kind == "duckie":
+                    obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
             self.objects.append(obj)
 
@@ -791,13 +794,15 @@ class Simulator(gym.Env):
 
         return pts
 
-    def get_dir_vec(self):
+    def get_dir_vec(self, angle=None):
         """
         Vector pointing in the direction the agent is looking
         """
+        if angle == None:
+            angle = self.cur_angle
 
-        x = math.cos(self.cur_angle)
-        z = -math.sin(self.cur_angle)
+        x = math.cos(angle)
+        z = -math.sin(angle)
         return np.array([x, 0, z])
 
     def get_right_vec(self):
@@ -809,7 +814,7 @@ class Simulator(gym.Env):
         z = math.cos(self.cur_angle)
         return np.array([x, 0, z])
 
-    def closest_curve_point(self, pos):
+    def closest_curve_point(self, pos, angle=None):
         """
         Get the closest point on the curve to a given point
         Also returns the tangent at that point
@@ -825,7 +830,8 @@ class Simulator(gym.Env):
         curves = self._get_tile(i, j)['curves']
         curve_headings = curves[:, -1, :] - curves[:, 0, :]
         curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
-        dirVec = self.get_dir_vec()
+
+        dirVec = self.get_dir_vec(angle)
 
         dot_prods = np.dot(curve_headings, dirVec)
 
@@ -833,7 +839,7 @@ class Simulator(gym.Env):
         cps = curves[np.argmax(dot_prods)]
 
         # Find closest point and tangent to this curve
-        t = bezier_closest(cps, self.cur_pos)
+        t = bezier_closest(cps, pos)
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
 
@@ -1048,7 +1054,10 @@ class Simulator(gym.Env):
 
             # Update world objects
             for obj in self.objects:
-                obj.step(delta_time)
+                if not obj.static and obj.kind == "duckiebot":
+                    obj.step(delta_time, self.closest_curve_point)    
+                else:
+                    obj.step(delta_time)
 
         # Generate the current camera image
         obs = self.render_obs()
