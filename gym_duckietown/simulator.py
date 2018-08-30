@@ -418,10 +418,11 @@ class Simulator(gym.Env):
                     'drivable': drivable
                 }
 
-                if drivable:
-                    self.drivable_tiles.append(tile)
-
                 self._set_tile(i, j, tile)
+
+                if drivable:
+                    tile['curves'] = self._get_curve(i, j)
+                    self.drivable_tiles.append(tile)
 
         self._load_objects(map_data)
 
@@ -638,34 +639,155 @@ class Simulator(gym.Env):
         kind = tile['kind']
         angle = tile['angle']
 
-        if kind.startswith('straight') or kind.startswith('3way') or kind.startswith('4way'):
+        # Each tile will have a unique set of control points,
+        # Corresponding to each of its possible turns
+
+        if kind.startswith('straight'):
             pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0,-0.25],
-                [-0.20, 0, 0.25],
-                [-0.20, 0, 0.50],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.25],
+                    [-0.20, 0, 0.25],
+                    [-0.20, 0, 0.50],
+                ],
+                [
+                    [0.20, 0, 0.50],
+                    [0.20, 0, 0.25],
+                    [0.20, 0, -0.25],
+                    [0.20, 0, -0.50],
+                ]
             ]) * ROAD_TILE_SIZE
+
         elif kind == 'curve_left':
             pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0, 0.00],
-                [ 0.00, 0, 0.20],
-                [ 0.50, 0, 0.20],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0, 0.00],
+                    [ 0.00, 0, 0.20],
+                    [ 0.50, 0, 0.20],
+                ],
+                [
+                    [ 0.20, 0, -0.50],
+                    [ 0.20, 0, -0.30],
+                    [ 0.30, 0, -0.20],
+                    [ 0.50, 0, -0.20],
+                ]
             ]) * ROAD_TILE_SIZE
+
         elif kind == 'curve_right':
             pts = np.array([
-                [-0.20, 0,-0.50],
-                [-0.20, 0,-0.20],
-                [-0.30, 0,-0.20],
-                [-0.50, 0,-0.20],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.20],
+                    [-0.30, 0,-0.20],
+                    [-0.50, 0,-0.20],
+                ],
+
+                [
+                    [-0.50, 0, 0.20],
+                    [-0.30, 0, 0.20],
+                    [ 0.30, 0, 0.00],
+                    [ 0.20, 0,-0.50],
+                ]
+            ]) * ROAD_TILE_SIZE
+
+        # Hardcoded all curves for 3way intersection
+        elif kind.startswith('3way'):
+            pts = np.array([
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.25],
+                    [-0.20, 0, 0.25],
+                    [-0.20, 0, 0.50],
+                ],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0, 0.00],
+                    [ 0.00, 0, 0.20],
+                    [ 0.50, 0, 0.20],
+                ],
+                [
+                    [0.20, 0, 0.50],
+                    [0.20, 0, 0.25],
+                    [0.20, 0,-0.25],
+                    [0.20, 0,-0.50],
+                ],
+                [
+                    [0.50, 0,-0.20],
+                    [0.30, 0,-0.20],
+                    [0.20, 0,-0.20],
+                    [0.20, 0,-0.50],
+                ],
+                [   
+                    [0.20, 0, 0.50],
+                    [0.20, 0, 0.20],
+                    [0.30, 0, 0.20],
+                    [0.50, 0, 0.20],                   
+                ],
+                [
+                    [0.50, 0,-0.20],
+                    [0.30, 0, -0.20],
+                    [-0.20, 0, 0.00],
+                    [-0.20, 0, 0.50],
+                ],
+            ]) * ROAD_TILE_SIZE
+
+        # Template for each side of 4way intersection
+        elif kind.startswith('4way'):
+            pts = np.array([
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0, 0.00],
+                    [ 0.00, 0, 0.20],
+                    [ 0.50, 0, 0.20],
+                ], 
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.25],
+                    [-0.20, 0, 0.25],
+                    [-0.20, 0, 0.50],
+                ],
+                [
+                    [-0.20, 0,-0.50],
+                    [-0.20, 0,-0.20],
+                    [-0.30, 0,-0.20],
+                    [-0.50, 0,-0.20],
+                ]
             ]) * ROAD_TILE_SIZE
         else:
             assert False, kind
 
-        mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
+        # Rotate and align each curve with its place in global frame
+        if kind.startswith('4way'):
+            fourway_pts = []
+            # Generate all four sides' curves, 
+            # with 3-points template above
+            for rot in np.arange(0,4):
+                mat = gen_rot_matrix(np.array([0, 1, 0]), rot * math.pi / 2)
+                pts_new = np.matmul(pts, mat)
+                pts_new += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
+                fourway_pts.append(pts_new)
 
-        pts = np.matmul(pts, mat)
-        pts += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
+            fourway_pts = np.reshape(np.array(fourway_pts), (12, 4, 3))
+            return fourway_pts
+
+        # Hardcoded each curve; just rotate and shift
+        elif kind.startswith('3way'):
+            threeway_pts = []
+            
+            mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
+            pts_new = np.matmul(pts, mat)
+            pts_new += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
+            threeway_pts.append(pts_new)
+
+            threeway_pts = np.array(threeway_pts)
+            threeway_pts = np.reshape(threeway_pts, (6, 4, 3))
+            return threeway_pts
+
+        else:
+            mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
+            pts = np.matmul(pts, mat)
+            pts += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
 
         return pts
 
@@ -699,8 +821,19 @@ class Simulator(gym.Env):
         if tile is None or not tile['drivable']:
             return None, None
 
-        cps = self._get_curve(i, j)
-        t = bezier_closest(cps, pos)
+        # Find curve with largest dotproduct with heading
+        curves = self._get_tile(i, j)['curves']
+        curve_headings = curves[:, -1, :] - curves[:, 0, :]
+        curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+        dirVec = self.get_dir_vec()
+
+        dot_prods = np.dot(curve_headings, dirVec)
+
+        # Closest curve = one with largest dotprod
+        cps = curves[np.argmax(dot_prods)]
+
+        # Find closest point and tangent to this curve
+        t = bezier_closest(cps, self.cur_pos)
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
 
@@ -1058,8 +1191,24 @@ class Simulator(gym.Env):
                 glPopMatrix()
 
                 if self.draw_curve and tile['drivable']:
+                    # Find curve with largest dotproduct with heading
+                    curves = self._get_tile(i, j)['curves']
+                    curve_headings = curves[:, -1, :] - curves[:, 0, :]
+                    curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+                    dirVec = self.get_dir_vec()
+
+                    dot_prods = np.dot(curve_headings, dirVec)
+
+                    # Current ("closest") curve drawn in Red
+                    pts = curves[np.argmax(dot_prods)]
+                    bezier_draw(pts, n = 20, red=True)
+
                     pts = self._get_curve(i, j)
-                    bezier_draw(pts, n = 20)
+                    for idx, pt in enumerate(pts):
+                        # Don't draw current curve in blue
+                        if idx == np.argmax(dot_prods): 
+                            continue
+                        bezier_draw(pt, n = 20)
 
         # For each object
         for idx, obj in enumerate(self.objects):
