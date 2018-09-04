@@ -37,10 +37,36 @@ class PyTorchObsWrapper(gym.ObservationWrapper):
         obs_shape = self.observation_space.shape
         self.observation_space = spaces.Box(
             self.observation_space.low[0,0,0],
-            self.observation_space.high[0,0,0],
-            [obs_shape[2], obs_shape[1], obs_shape[0]],
+            self.observation_space.high[1,1,1],
+            [obs_shape[2], obs_shape[0], obs_shape[1]],
             dtype=self.observation_space.dtype
         )
 
     def observation(self, observation):
-        return observation.transpose(2, 1, 0)
+        return observation.transpose(2, 0, 1)
+
+
+class ResizeWrapper(gym.ObservationWrapper):
+    def __init__(self, env=None, resize_w=80, resize_h=80):
+        super().__init__(env)
+        self.resize_h = resize_h
+        self.resize_w = resize_w
+        obs_shape = self.observation_space.shape
+        self.observation_space = spaces.Box(
+            self.observation_space.low[0, 0, 0],
+            self.observation_space.high[1, 1, 1],
+            [obs_shape[0], resize_h, resize_w],
+            dtype=self.observation_space.dtype)
+
+    def observation(self, observation):
+        return observation
+
+    def reset(self):
+        import cv2
+        obs = super().reset()
+        return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2)
+
+    def step(self, actions):
+        import cv2
+        obs, reward, done, info = super().step(actions)
+        return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2), reward, done, info
