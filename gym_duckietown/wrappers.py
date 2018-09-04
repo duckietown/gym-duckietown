@@ -38,12 +38,12 @@ class PyTorchObsWrapper(gym.ObservationWrapper):
         self.observation_space = spaces.Box(
             self.observation_space.low[0,0,0],
             self.observation_space.high[1,1,1],
-            [obs_shape[2], obs_shape[0], obs_shape[1]],
+            [obs_shape[2], obs_shape[1], obs_shape[0]],
             dtype=self.observation_space.dtype
         )
 
     def observation(self, observation):
-        return observation.transpose(2, 0, 1)
+        return observation.transpose(2, 1, 0)
 
 
 class ResizeWrapper(gym.ObservationWrapper):
