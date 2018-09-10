@@ -805,13 +805,15 @@ class Simulator(gym.Env):
         z = -math.sin(angle)
         return np.array([x, 0, z])
 
-    def get_right_vec(self):
+    def get_right_vec(self, angle=None):
         """
         Vector pointing to the right of the agent
         """
+        if angle == None:
+            angle = self.cur_angle
 
-        x = math.sin(self.cur_angle)
-        z = math.cos(self.cur_angle)
+        x = math.sin(angle)
+        z = math.cos(angle)
         return np.array([x, 0, z])
 
     def closest_curve_point(self, pos, angle=None):
@@ -828,6 +830,8 @@ class Simulator(gym.Env):
 
         # Find curve with largest dotproduct with heading
         curves = self._get_tile(i, j)['curves']
+
+        # TODO: Fix approximation with requested method from PR80
         curve_headings = curves[:, -1, :] - curves[:, 0, :]
         curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
 
@@ -1055,7 +1059,13 @@ class Simulator(gym.Env):
             # Update world objects
             for obj in self.objects:
                 if not obj.static and obj.kind == "duckiebot":
-                    obj.step(delta_time, self.closest_curve_point)    
+                    obj_i, obj_j = self.get_grid_coords(obj.pos)
+                    same_tile_obj = [
+                        o for o in self.objects if 
+                        tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
+                    ]
+
+                    obj.step(delta_time, self.closest_curve_point, same_tile_obj)    
                 else:
                     obj.step(delta_time)
 

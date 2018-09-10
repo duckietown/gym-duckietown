@@ -115,13 +115,14 @@ class DuckiebotObj(WorldObj):
 
         self.wheel_dist = wheel_dist 
 
-    def step(self, delta_time, closest_curve_point):
+    def step(self, delta_time, closest_curve_point, objects):
         """
         Take a step, implemented as a PID controller
         """
         print('In Step')
         # Find the curve point closest to the agent, and the tangent at that point
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
+
 
         while True:
             # Project a point ahead along the curve tangent,
@@ -131,6 +132,17 @@ class DuckiebotObj(WorldObj):
 
             # If we have a valid point on the curve, stop
             if curve_point is not None:
+                if objects:
+                    while True:
+                        distances = np.array([np.linalg.norm(curve_point - o.pos) for o in objects]).squeeze() < self.safety_radius
+                        
+                        if distances.any():
+                            left_vec = -self.get_right_vec(self.angle)
+                            curve_point = left_vec * 0.1 + closest_point
+                            
+                        else:
+                            print(closest_point, distances.any())
+                            break
                 break
 
             self.follow_dist *= 0.5
@@ -226,6 +238,8 @@ class DuckiebotObj(WorldObj):
         self.angle += rotAngle
         self.y_rot += rotAngle * 180 / np.pi 
 
+        # TODO, update corners
+
 
 class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
@@ -317,6 +331,7 @@ class DuckieObj(WorldObj):
 
         if self.domain_rand:
             # Assign a random velocity (in opp. direction) and a wait time
+            # TODO: Fix this: This will go to 0 over time
             self.vel = -1 * np.sign(self.vel) * np.abs(np.random.normal(0.02, 0.005))
             self.pedestrian_wait_time = np.random.randint(3, 20)
         else:
