@@ -9,7 +9,7 @@ Please use this bibtex if you want to cite this repository in your publications:
 
 ```
 @misc{gym_duckietown,
-  author = {Maxime Chevalier-Boisvert, Florian Golemo, Yanjun Cao, Bhairav Mehta, Liam Paull},
+  author = {Chevalier-Boisvert, Maxime and Golemo, Florian and Cao, Yanjun and Mehta, Bhairav and Paull, Liam},
   title = {Duckietown Environments for OpenAI Gym},
   year = {2018},
   publisher = {GitHub},
