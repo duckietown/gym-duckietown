@@ -1097,13 +1097,13 @@ class Simulator(gym.Env):
 
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
-        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
         glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
         glClearColor(*self.horizon_color, 1.0)
         glClearDepth(1.0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set the projection matrix
         glMatrixMode(GL_PROJECTION)
@@ -1161,8 +1161,8 @@ class Simulator(gym.Env):
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
         # For each grid tile
         for j in range(self.grid_height):
@@ -1226,8 +1226,8 @@ class Simulator(gym.Env):
             glEnd()
 
         # Resolve the multisampled frame buffer into the final frame buffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo)
         glBlitFramebuffer(
             0, 0,
             width, height,
@@ -1235,11 +1235,11 @@ class Simulator(gym.Env):
             width, height,
             GL_COLOR_BUFFER_BIT,
             GL_LINEAR
-        );
+        )
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo)
         glReadPixels(
             0,
             0,
@@ -1251,7 +1251,7 @@ class Simulator(gym.Env):
         )
 
         # Unbind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Flip the image because OpenGL maps (0,0) to the lower-left corner
         # Note: this is necessary for gym.wrappers.Monitor to record videos
@@ -1309,7 +1309,7 @@ class Simulator(gym.Env):
         self.window.dispatch_events()
 
         # Bind the default frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Setup orghogonal projection
         glMatrixMode(GL_PROJECTION)
