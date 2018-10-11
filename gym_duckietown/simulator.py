@@ -126,6 +126,7 @@ class Simulator(gym.Env):
 
         # Frame rate to run at
         self.frame_rate = frame_rate
+        self.delta_time = 1.0 / self.frame_rate
 
         # Number of frames to skip per action
         self.frame_skip = frame_skip
@@ -1043,23 +1044,21 @@ class Simulator(gym.Env):
         # Actions could be a Python list
         action = np.array(action)
 
-        delta_time = 1 / self.frame_rate
-
         for _ in range(self.frame_skip):
             self.step_count += 1
 
             prev_pos = self.cur_pos
 
             # Update the robot's position
-            self._update_pos(action * self.robot_speed * 1, delta_time)
+            self._update_pos(action * self.robot_speed * 1, self.delta_time)
 
             # Compute the robot's speed
             delta_pos = self.cur_pos - prev_pos
-            self.speed = np.linalg.norm(delta_pos) / delta_time
+            self.speed = np.linalg.norm(delta_pos) / self.delta_time
 
             # Update world objects
             for obj in self.objects:
-                obj.step(delta_time)
+                obj.step(self.delta_time)
 
         # Generate the current camera image
         obs = self.render_obs()
