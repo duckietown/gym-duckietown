@@ -539,8 +539,8 @@ class Simulator(gym.Env):
         self.grid[j * self.grid_width + i] = tile
 
     def _get_tile(self, i, j):
-        assert isinstance(i, int), i
-        assert isinstance(j, int), j
+        i = int(i)
+        j = int(j)
         if i < 0 or i >= self.grid_width:
             return None
         if j < 0 or j >= self.grid_height:
