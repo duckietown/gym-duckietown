@@ -15,7 +15,7 @@ def main():
     # get parameters from environment (set during docker launch) otherwise take default
     map = os.getenv('DUCKIETOWN_MAP', DEFAULTS["map"])
     domain_rand = bool(os.getenv('DUCKIETOWN_DOMAIN_RAND', DEFAULTS["domain_rand"]))
-    max_steps = os.getenv('DUCKIETOWN_MAX_STEPS', DEFAULTS["max_steps"])
+    max_steps = int(os.getenv('DUCKIETOWN_MAX_STEPS', DEFAULTS["max_steps"]))
 
     # if a challenge is set, it overrides the map selection
 
