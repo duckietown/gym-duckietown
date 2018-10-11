@@ -22,8 +22,8 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
 # Camera image size
-CAMERA_WIDTH = 160
-CAMERA_HEIGHT = 120
+DEFAULT_CAMERA_WIDTH = 160
+DEFAULT_CAMERA_HEIGHT = 120
 
 # Blue sky horizon color
 BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
@@ -78,7 +78,7 @@ MIN_SPAWN_OBJ_DIST = 0.25
 ROAD_TILE_SIZE = 0.61
 
 # Maximum forward robot speed in meters/second
-ROBOT_SPEED = 0.40
+DEFAULT_ROBOT_SPEED = 0.40
 
 class Simulator(gym.Env):
     """
@@ -100,7 +100,10 @@ class Simulator(gym.Env):
         draw_bbox=False,
         domain_rand=True,
         frame_rate=30,
-        frame_skip=1
+        frame_skip=1,
+        camera_width=DEFAULT_CAMERA_WIDTH,
+        camera_height=DEFAULT_CAMERA_HEIGHT,
+        robot_speed=DEFAULT_ROBOT_SPEED,
     ):
         # Map name, set in _load_map()
         self.map_name = None
@@ -137,13 +140,17 @@ class Simulator(gym.Env):
             dtype=np.float32
         )
 
+        self.camera_width = camera_width
+        self.camera_height = camera_height
+
+        self.robot_speed = robot_speed
         # We observe an RGB image with pixels in [0, 255]
         # Note: the pixels are in uint8 format because this is more compact
         # than float32 if sent over the network or stored in a dataset
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(CAMERA_HEIGHT, CAMERA_WIDTH, 3),
+            shape=(self.camera_height, self.camera_width, 3),
             dtype=np.uint8
         )
 
@@ -165,8 +172,8 @@ class Simulator(gym.Env):
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
+                self.camera_width,
+                self.camera_height,
             16
         )
 
@@ -1043,7 +1050,7 @@ class Simulator(gym.Env):
             prev_pos = self.cur_pos
 
             # Update the robot's position
-            self._update_pos(action * ROBOT_SPEED * 1, delta_time)
+            self._update_pos(action * self.robot_speed * 1, delta_time)
 
             # Compute the robot's speed
             delta_pos = self.cur_pos - prev_pos
@@ -1175,7 +1182,7 @@ class Simulator(gym.Env):
                 # Get the tile type and angle
                 tile = self._get_tile(i, j)
 
-                if tile == None:
+                if tile is None:
                     continue
 
                 kind = tile['kind']
@@ -1271,8 +1278,8 @@ class Simulator(gym.Env):
         """
 
         return self._render_img(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
+            self.camera_width,
+            self.camera_height,
             self.multi_fbo,
             self.final_fbo,
             self.img_array

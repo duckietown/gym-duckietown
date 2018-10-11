@@ -22,6 +22,10 @@ build:
 	$(MAKE) build-docker-python2
 	$(MAKE) build-docker-python2-ros
 
+push:
+	$(MAKE) push-docker-python2
+	$(MAKE) push-docker-python2-ros
+
 
 build-docker-python2:
 	docker build -t $(img2) -f docker/amod/server-python2/Dockerfile .
@@ -34,6 +38,8 @@ img2-ros=duckietown/gym-duckietown-server-python2-ros
 build-docker-python2-ros:
 	docker build -t $(img2-ros) -f docker/amod/server-python2-ros/Dockerfile .
 
+push-docker-python2-ros:
+	docker push $(img2-ros)
 
 shell-docker-python2-ros:
 	@echo Running the image with the current directory - happy development
