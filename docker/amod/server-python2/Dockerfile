@@ -4,16 +4,19 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
          git \
          xvfb \
          bzip2 \
-         freeglut3-dev && \
-     rm -rf /var/lib/apt/lists/*
-
-#ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh miniconda.sh
-#RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
-#ENV PATH /opt/conda/bin:$PATH
+         python-pip \
+         python-setuptools\
+         freeglut3-dev \
+          python-subprocess32 python-matplotlib python-yaml python-opencv
+#         && \
+#     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
 
+
+COPY docker/amod/server-python2/requirements.txt /requirements.txt
+RUN pip install -r /requirements.txt
 
 
 RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote
@@ -22,9 +25,10 @@ RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#e
 EXPOSE 5558 8902
 
 
+
 ADD . gym-duckietown
 
-RUN cd gym-duckietown && pip install -e .
+RUN cd gym-duckietown && python setup.py develop --no-deps
 
 COPY docker/amod/server-python2/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 
