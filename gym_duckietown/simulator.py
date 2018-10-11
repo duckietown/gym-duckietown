@@ -1079,7 +1079,7 @@ class Simulator(gym.Env):
         )
         done = False
 
-        return obs, reward, done, {}
+        return obs, reward, done, {'vels': action}
 
     def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
         """
