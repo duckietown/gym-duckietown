@@ -1,6 +1,3 @@
-import math
-import time
-import numpy as np
 import yaml
 
 import pyglet
@@ -258,6 +255,7 @@ class Simulator(gym.Env):
         else:
             light_pos = [-40, 200, 100]
         ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
+        # XXX: diffuse is not used?
         diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
         gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*light_pos))
         gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(*ambient))
@@ -456,11 +454,15 @@ class Simulator(gym.Env):
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
-            x, z, *y = desc['pos']
+
+            pos = desc['pos']
+            x, z = pos[0:2]
+            y = pos[2] if len(pos) == 3 else 0.0
+
             rotate = desc['rotate']
             optional = desc.get('optional', False)
 
-            pos = ROAD_TILE_SIZE * np.array((x, y[0] if len(y) else 0, z))
+            pos = ROAD_TILE_SIZE * np.array((x, y, z))
 
             # Load the mesh
             mesh = ObjMesh.get(kind)
@@ -481,10 +483,9 @@ class Simulator(gym.Env):
                 'y_rot': rotate,
                 'optional': optional,
                 'static': static,
-                'optional': optional,
             }
 
-            obj = None
+            # obj = None
             if static:
                 if kind == "trafficlight":
                     obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
@@ -497,7 +498,7 @@ class Simulator(gym.Env):
 
             # Compute collision detection information
 
-            angle = rotate * (math.pi / 180)
+            # angle = rotate * (math.pi / 180)
 
             # Find drivable tiles object could intersect with
             possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
@@ -538,6 +539,8 @@ class Simulator(gym.Env):
         self.grid[j * self.grid_width + i] = tile
 
     def _get_tile(self, i, j):
+        assert isinstance(i, int), i
+        assert isinstance(j, int), j
         if i < 0 or i >= self.grid_width:
             return None
         if j < 0 or j >= self.grid_height:
@@ -626,7 +629,7 @@ class Simulator(gym.Env):
         i = math.floor(x / ROAD_TILE_SIZE)
         j = math.floor(z / ROAD_TILE_SIZE)
 
-        return i, j
+        return int(i), int(j)
 
     def _get_curve(self, i, j):
         """
@@ -1097,13 +1100,15 @@ class Simulator(gym.Env):
 
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
-        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
         glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
-        glClearColor(*self.horizon_color, 1.0)
+
+        c0, c1, c2 = self.horizon_color
+        glClearColor(c0, c1, c2, 1.0)
         glClearDepth(1.0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set the projection matrix
         glMatrixMode(GL_PROJECTION)
@@ -1161,8 +1166,8 @@ class Simulator(gym.Env):
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
         # For each grid tile
         for j in range(self.grid_height):
@@ -1226,8 +1231,8 @@ class Simulator(gym.Env):
             glEnd()
 
         # Resolve the multisampled frame buffer into the final frame buffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo)
         glBlitFramebuffer(
             0, 0,
             width, height,
@@ -1235,11 +1240,11 @@ class Simulator(gym.Env):
             width, height,
             GL_COLOR_BUFFER_BIT,
             GL_LINEAR
-        );
+        )
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo)
         glReadPixels(
             0,
             0,
@@ -1251,7 +1256,7 @@ class Simulator(gym.Env):
         )
 
         # Unbind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Flip the image because OpenGL maps (0,0) to the lower-left corner
         # Note: this is necessary for gym.wrappers.Monitor to record videos
@@ -1309,7 +1314,7 @@ class Simulator(gym.Env):
         self.window.dispatch_events()
 
         # Bind the default frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Setup orghogonal projection
         glMatrixMode(GL_PROJECTION)

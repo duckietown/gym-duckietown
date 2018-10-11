@@ -20,7 +20,7 @@ class DuckietownEnv(Simulator):
         limit = 1.0,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        Simulator.__init__(self, **kwargs)
 
         self.action_space = spaces.Box(
             low=np.array([-1,-1]),
@@ -70,7 +70,7 @@ class DuckietownEnv(Simulator):
 
         vels = np.array([u_l_limited, u_r_limited])
 
-        return super().step(vels)
+        return Simulator.step(self, vels)
 
 class DuckietownLF(DuckietownEnv):
     """
@@ -79,10 +79,10 @@ class DuckietownLF(DuckietownEnv):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        DuckietownEnv.__init__(self, **kwargs)
 
     def step(self, action):
-        obs, reward, done, info = super().step(action)
+        obs, reward, done, info = DuckietownEnv.step(self, action)
         return obs, reward, done, info
 
 class DuckietownNav(DuckietownEnv):
@@ -92,10 +92,10 @@ class DuckietownNav(DuckietownEnv):
 
     def __init__(self, **kwargs):
         self.goal_tile = None
-        super().__init__(**kwargs)
+        DuckietownEnv.__init__(self, **kwargs)
 
     def reset(self):
-        super().reset()
+        DuckietownNav.reset(self)
 
         # Find the tile the agent starts on
         start_tile_pos = self.get_grid_coords(self.cur_pos)
@@ -110,7 +110,7 @@ class DuckietownNav(DuckietownEnv):
                 break
 
     def step(self, action):
-        obs, reward, done, info = super().step(action)
+        obs, reward, done, info = DuckietownNav.step(self, action)
 
         info['goal_tile'] = self.goal_tile
 

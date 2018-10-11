@@ -7,7 +7,7 @@ import pyglet
 from pyglet.gl import *
 
 
-class WorldObj:
+class WorldObj():
     def __init__(self, obj, domain_rand, safety_radius_mult):
         """
         Initializes the object and its properties
@@ -96,7 +96,7 @@ class WorldObj:
 
 class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
-        super().__init__(obj, domain_rand, safety_radius_mult)
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.walk_distance = walk_distance + 0.25
 
@@ -194,7 +194,7 @@ class DuckieObj(WorldObj):
 
 class TrafficLightObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult):
-        super().__init__(obj, domain_rand, safety_radius_mult)
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.texs = [
             load_texture(get_file_path("textures", "trafficlight_card0", "jpg")),
