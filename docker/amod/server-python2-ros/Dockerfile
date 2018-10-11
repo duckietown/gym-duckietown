@@ -42,3 +42,4 @@ RUN /bin/bash -c "source ~/.bashrc"
 RUN rosdep init
 RUN rosdep update
 
+ENV DISPLAY=:99

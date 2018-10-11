@@ -31,5 +31,6 @@ ADD . gym-duckietown
 RUN cd gym-duckietown && python setup.py develop --no-deps
 
 COPY docker/amod/server-python2/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
+COPY docker/amod/server-python2/launch-xvfb /usr/bin/launch-xvfb
 
 CMD launch-gym-server-with-xvfb
