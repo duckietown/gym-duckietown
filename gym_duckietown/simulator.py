@@ -1,5 +1,5 @@
-import yaml
 from __future__ import division
+import yaml
 
 import pyglet
 from pyglet.gl import *
