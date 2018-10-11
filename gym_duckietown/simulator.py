@@ -479,12 +479,10 @@ class Simulator(gym.Env):
                 'pos': pos,
                 'scale': scale,
                 'y_rot': rotate,
-                'optional': optional,
                 'static': static,
                 'optional': optional,
             }
 
-            obj = None
             if static:
                 if kind == "trafficlight":
                     obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
@@ -497,6 +495,7 @@ class Simulator(gym.Env):
 
             # Compute collision detection information
 
+            # XXX not used
             angle = rotate * (math.pi / 180)
 
             # Find drivable tiles object could intersect with
@@ -580,7 +579,7 @@ class Simulator(gym.Env):
             if tile and tile['drivable']:
                 drivable_tiles.append((c[0], c[1]))
 
-        if drivable_tiles == []:
+        if not drivable_tiles:
             return False
 
         drivable_tiles = np.array(drivable_tiles)
@@ -923,6 +922,7 @@ class Simulator(gym.Env):
         means that more of the circles are overlapping
         """
 
+        # XXX: this static_dist variable is computed but not used
         static_dist = 0
         pos = self._actual_center()
         if len(self.collidable_centers) == 0:
@@ -1170,7 +1170,7 @@ class Simulator(gym.Env):
                 # Get the tile type and angle
                 tile = self._get_tile(i, j)
 
-                if tile == None:
+                if tile is None:
                     continue
 
                 kind = tile['kind']
