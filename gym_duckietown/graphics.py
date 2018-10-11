@@ -87,8 +87,8 @@ def create_frame_buffers(width, height, num_samples):
     try:
         # Create a multisampled texture to render into
         fbTex = GLuint(0)
-        glGenTextures( 1, byref(fbTex));
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex);
+        glGenTextures( 1, byref(fbTex))
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex)
         glTexImage2DMultisample(
             GL_TEXTURE_2D_MULTISAMPLE,
             num_samples,
@@ -96,29 +96,29 @@ def create_frame_buffers(width, height, num_samples):
             width,
             height,
             True
-        );
+        )
         glFramebufferTexture2D(
             GL_FRAMEBUFFER,
             GL_COLOR_ATTACHMENT0,
             GL_TEXTURE_2D_MULTISAMPLE,
             fbTex,
             0
-        );
+        )
 
         # Attach a multisampled depth buffer to the FBO
         depth_rb = GLuint(0)
         glGenRenderbuffers(1, byref(depth_rb))
         glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
-        glRenderbufferStorageMultisample(GL_RENDERBUFFER, num_samples, GL_DEPTH_COMPONENT, width, height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, num_samples, GL_DEPTH_COMPONENT, width, height)
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb)
 
     except:
         print('Falling back to non-multisampled frame buffer')
 
         # Create a plain texture texture to render into
         fbTex = GLuint(0)
-        glGenTextures( 1, byref(fbTex));
-        glBindTexture(GL_TEXTURE_2D, fbTex);
+        glGenTextures( 1, byref(fbTex))
+        glBindTexture(GL_TEXTURE_2D, fbTex)
         glTexImage2D(
             GL_TEXTURE_2D,
             0,
@@ -136,14 +136,14 @@ def create_frame_buffers(width, height, num_samples):
             GL_TEXTURE_2D,
             fbTex,
             0
-        );
+        )
 
         # Attach depth buffer to FBO
         depth_rb = GLuint(0)
         glGenRenderbuffers(1, byref(depth_rb))
         glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height)
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb)
 
     # Sanity check
     if pyglet.options['debug_gl']:
