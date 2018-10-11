@@ -13,13 +13,19 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
 
 WORKDIR /workspace
 
-ADD . gym-duckietown
-RUN cd gym-duckietown && pip install -e .
+
+
 
 RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote
 
-COPY launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 
 EXPOSE 5558 8902
+
+
+ADD . gym-duckietown
+
+RUN cd gym-duckietown && pip install -e .
+
+COPY docker/amod/server-python2/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
 
 CMD launch-gym-server-with-xvfb
