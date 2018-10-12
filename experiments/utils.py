@@ -5,8 +5,6 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 from torch.autograd import Variable
 
 class GradReverse(torch.autograd.Function):
@@ -51,6 +49,35 @@ def make_var(arr):
         arr = arr.cuda()
     return arr
 
+def gen_batch(gen_data_fn, batch_size=2):
+    """
+    Returns a tuple of PyTorch Variable objects
+    gen_data is expected to produce a tuple
+    """
+
+    assert batch_size > 0
+
+    data = []
+    for i in range(0, batch_size):
+        data.append(gen_data_fn())
+
+    # Create arrays of data elements for each variable
+    num_vars = len(data[0])
+    arrays = []
+    for idx in range(0, num_vars):
+        vals = []
+        for datum in data:
+            vals.append(datum[idx])
+        arrays.append(vals)
+
+    # Make a variable out of each element array
+    vars = []
+    for array in arrays:
+        var = make_var(np.stack(array))
+        vars.append(var)
+
+    return tuple(vars)
+
 def save_img(file_name, img):
     from skimage import io
 
@@ -82,32 +109,3 @@ def load_img(file_name):
     var = var.unsqueeze(0)
 
     return var
-
-def gen_batch(gen_data_fn, batch_size=2):
-    """
-    Returns a tuple of PyTorch Variable objects
-    gen_data is expected to produce a tuple
-    """
-
-    assert batch_size > 0
-
-    data = []
-    for i in range(0, batch_size):
-        data.append(gen_data_fn())
-
-    # Create arrays of data elements for each variable
-    num_vars = len(data[0])
-    arrays = []
-    for idx in range(0, num_vars):
-        vals = []
-        for datum in data:
-            vals.append(datum[idx])
-        arrays.append(vals)
-
-    # Make a variable out of each element array
-    vars = []
-    for array in arrays:
-        var = make_var(np.stack(array))
-        vars.append(var)
-
-    return tuple(vars)

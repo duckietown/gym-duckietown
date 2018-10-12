@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# manual
 
 """
 This script allows you to manually control the simulator or Duckiebot
@@ -13,7 +14,8 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
-from experiments.utils import save_img
+
+from experiments.utils_images import save_img
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)

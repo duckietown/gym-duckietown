@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """
 This script allows you to manually control the simulator or Duckiebot
@@ -12,7 +12,7 @@ from pyglet.window import key
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
-from experiments.utils import save_img
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
@@ -85,7 +85,11 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.RETURN:
         print('saving screenshot')
         img = env.render('rgb_array')
-        save_img('screenshot.png', img)
+        try:
+            from experiments.utils import save_img
+            save_img('screenshot.png', img)
+        except BaseException as e:
+            print(str(e))
 
 def update(dt):
     env.render('free_cam')

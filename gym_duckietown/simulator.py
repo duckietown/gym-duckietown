@@ -1,6 +1,4 @@
-import math
-import time
-import numpy as np
+from __future__ import division
 import yaml
 
 import pyglet
@@ -25,8 +23,8 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
 # Camera image size
-CAMERA_WIDTH = 160
-CAMERA_HEIGHT = 120
+DEFAULT_CAMERA_WIDTH = 160
+DEFAULT_CAMERA_HEIGHT = 120
 
 # Blue sky horizon color
 BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
@@ -81,7 +79,7 @@ MIN_SPAWN_OBJ_DIST = 0.25
 ROAD_TILE_SIZE = 0.61
 
 # Maximum forward robot speed in meters/second
-ROBOT_SPEED = 0.40
+DEFAULT_ROBOT_SPEED = 0.40
 
 class Simulator(gym.Env):
     """
@@ -103,7 +101,10 @@ class Simulator(gym.Env):
         draw_bbox=False,
         domain_rand=True,
         frame_rate=30,
-        frame_skip=1
+        frame_skip=1,
+        camera_width=DEFAULT_CAMERA_WIDTH,
+        camera_height=DEFAULT_CAMERA_HEIGHT,
+        robot_speed=DEFAULT_ROBOT_SPEED,
     ):
         # Map name, set in _load_map()
         self.map_name = None
@@ -125,6 +126,7 @@ class Simulator(gym.Env):
 
         # Frame rate to run at
         self.frame_rate = frame_rate
+        self.delta_time = 1.0 / self.frame_rate
 
         # Number of frames to skip per action
         self.frame_skip = frame_skip
@@ -140,13 +142,17 @@ class Simulator(gym.Env):
             dtype=np.float32
         )
 
+        self.camera_width = camera_width
+        self.camera_height = camera_height
+
+        self.robot_speed = robot_speed
         # We observe an RGB image with pixels in [0, 255]
         # Note: the pixels are in uint8 format because this is more compact
         # than float32 if sent over the network or stored in a dataset
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(CAMERA_HEIGHT, CAMERA_WIDTH, 3),
+            shape=(self.camera_height, self.camera_width, 3),
             dtype=np.uint8
         )
 
@@ -168,8 +174,8 @@ class Simulator(gym.Env):
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
+                self.camera_width,
+                self.camera_height,
             16
         )
 
@@ -258,6 +264,7 @@ class Simulator(gym.Env):
         else:
             light_pos = [-40, 200, 100]
         ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
+        # XXX: diffuse is not used?
         diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
         gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat*4)(*light_pos))
         gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat*4)(*ambient))
@@ -456,11 +463,15 @@ class Simulator(gym.Env):
         # For each object
         for obj_idx, desc in enumerate(map_data.get('objects', [])):
             kind = desc['kind']
-            x, z, *y = desc['pos']
+
+            pos = desc['pos']
+            x, z = pos[0:2]
+            y = pos[2] if len(pos) == 3 else 0.0
+
             rotate = desc['rotate']
             optional = desc.get('optional', False)
 
-            pos = ROAD_TILE_SIZE * np.array((x, y[0] if len(y) else 0, z))
+            pos = ROAD_TILE_SIZE * np.array((x, y, z))
 
             # Load the mesh
             mesh = ObjMesh.get(kind)
@@ -481,10 +492,9 @@ class Simulator(gym.Env):
                 'y_rot': rotate,
                 'optional': optional,
                 'static': static,
-                'optional': optional,
             }
 
-            obj = None
+            # obj = None
             if static:
                 if kind == "trafficlight":
                     obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
@@ -497,7 +507,7 @@ class Simulator(gym.Env):
 
             # Compute collision detection information
 
-            angle = rotate * (math.pi / 180)
+            # angle = rotate * (math.pi / 180)
 
             # Find drivable tiles object could intersect with
             possible_tiles = find_candidate_tiles(obj.obj_corners, ROAD_TILE_SIZE)
@@ -538,6 +548,8 @@ class Simulator(gym.Env):
         self.grid[j * self.grid_width + i] = tile
 
     def _get_tile(self, i, j):
+        i = int(i)
+        j = int(j)
         if i < 0 or i >= self.grid_width:
             return None
         if j < 0 or j >= self.grid_height:
@@ -626,7 +638,7 @@ class Simulator(gym.Env):
         i = math.floor(x / ROAD_TILE_SIZE)
         j = math.floor(z / ROAD_TILE_SIZE)
 
-        return i, j
+        return int(i), int(j)
 
     def _get_curve(self, i, j):
         """
@@ -1032,23 +1044,21 @@ class Simulator(gym.Env):
         # Actions could be a Python list
         action = np.array(action)
 
-        delta_time = 1 / self.frame_rate
-
         for _ in range(self.frame_skip):
             self.step_count += 1
 
             prev_pos = self.cur_pos
 
             # Update the robot's position
-            self._update_pos(action * ROBOT_SPEED * 1, delta_time)
+            self._update_pos(action * self.robot_speed * 1, self.delta_time)
 
             # Compute the robot's speed
             delta_pos = self.cur_pos - prev_pos
-            self.speed = np.linalg.norm(delta_pos) / delta_time
+            self.speed = np.linalg.norm(delta_pos) / self.delta_time
 
             # Update world objects
             for obj in self.objects:
-                obj.step(delta_time)
+                obj.step(self.delta_time)
 
         # Generate the current camera image
         obs = self.render_obs()
@@ -1097,13 +1107,15 @@ class Simulator(gym.Env):
 
         # Bind the multisampled frame buffer
         glEnable(GL_MULTISAMPLE)
-        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
         glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
-        glClearColor(*self.horizon_color, 1.0)
+
+        c0, c1, c2 = self.horizon_color
+        glClearColor(c0, c1, c2, 1.0)
         glClearDepth(1.0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set the projection matrix
         glMatrixMode(GL_PROJECTION)
@@ -1161,8 +1173,8 @@ class Simulator(gym.Env):
 
         # Draw the road quads
         glEnable(GL_TEXTURE_2D)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
         # For each grid tile
         for j in range(self.grid_height):
@@ -1170,7 +1182,7 @@ class Simulator(gym.Env):
                 # Get the tile type and angle
                 tile = self._get_tile(i, j)
 
-                if tile == None:
+                if tile is None:
                     continue
 
                 kind = tile['kind']
@@ -1226,8 +1238,8 @@ class Simulator(gym.Env):
             glEnd()
 
         # Resolve the multisampled frame buffer into the final frame buffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo)
         glBlitFramebuffer(
             0, 0,
             width, height,
@@ -1235,11 +1247,11 @@ class Simulator(gym.Env):
             width, height,
             GL_COLOR_BUFFER_BIT,
             GL_LINEAR
-        );
+        )
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo)
         glReadPixels(
             0,
             0,
@@ -1251,7 +1263,7 @@ class Simulator(gym.Env):
         )
 
         # Unbind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Flip the image because OpenGL maps (0,0) to the lower-left corner
         # Note: this is necessary for gym.wrappers.Monitor to record videos
@@ -1266,8 +1278,8 @@ class Simulator(gym.Env):
         """
 
         return self._render_img(
-            CAMERA_WIDTH,
-            CAMERA_HEIGHT,
+            self.camera_width,
+            self.camera_height,
             self.multi_fbo,
             self.final_fbo,
             self.img_array
@@ -1309,7 +1321,7 @@ class Simulator(gym.Env):
         self.window.dispatch_events()
 
         # Bind the default frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
         # Setup orghogonal projection
         glMatrixMode(GL_PROJECTION)

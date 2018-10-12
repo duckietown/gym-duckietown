@@ -10,7 +10,7 @@ class DiscreteWrapper(gym.ActionWrapper):
     """
 
     def __init__(self, env):
-        super().__init__(env)
+        gym.ActionWrapper.__init__(self, env)
         self.action_space = spaces.Discrete(3)
 
     def action(self, action):
@@ -33,7 +33,7 @@ class PyTorchObsWrapper(gym.ObservationWrapper):
     """
 
     def __init__(self, env=None):
-        super().__init__(env)
+        gym.ObservationWrapper.__init__(self, env)
         obs_shape = self.observation_space.shape
         self.observation_space = spaces.Box(
             self.observation_space.low[0,0,0],
@@ -48,7 +48,7 @@ class PyTorchObsWrapper(gym.ObservationWrapper):
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, resize_w=80, resize_h=80):
-        super().__init__(env)
+        gym.ObservationWrapper.__init__(self, env)
         self.resize_h = resize_h
         self.resize_w = resize_w
         obs_shape = self.observation_space.shape
@@ -63,10 +63,10 @@ class ResizeWrapper(gym.ObservationWrapper):
 
     def reset(self):
         import cv2
-        obs = super().reset()
+        obs = gym.ObservationWrapper.reset(self)
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2)
 
     def step(self, actions):
         import cv2
-        obs, reward, done, info = super().step(actions)
+        obs, reward, done, info = gym.ObservationWrapper.step(self, actions)
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2), reward, done, info
