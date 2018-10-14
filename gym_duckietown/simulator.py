@@ -89,7 +89,7 @@ DEFAULT_ACCEPT_START_ANGLE_DEG = 60
 
 REWARD_INVALID_POSE = -1000
 
-MAX_SPAWN_ATTEMPTS = 100
+MAX_SPAWN_ATTEMPTS = 5000
 
 LanePosition0 = namedtuple('LanePosition', 'dist dot_dir angle_deg angle_rad')
 
@@ -413,9 +413,9 @@ class Simulator(gym.Env):
             # Choose a random direction
             propose_angle = self.np_random.uniform(0, 2 * math.pi)
 
-            logger.debug('Sampled %s %s angle %s' % (propose_pos[0],
-                                                     propose_pos[1],
-                                                     np.rad2deg(propose_angle)))
+            # logger.debug('Sampled %s %s angle %s' % (propose_pos[0],
+            #                                          propose_pos[1],
+            #                                          np.rad2deg(propose_angle)))
 
             # If this is too close to an object or not a valid pose, retry
             inconvenient = self._inconvenient_spawn(propose_pos)
@@ -440,7 +440,7 @@ class Simulator(gym.Env):
             # Found a valid initial pose
             break
         else:
-            msg = 'Could not find a valid starting pose.'
+            msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
             raise Exception(msg)
 
         self.cur_pos = propose_pos
