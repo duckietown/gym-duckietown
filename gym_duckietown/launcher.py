@@ -7,6 +7,8 @@ from gym_duckietown.envs import DuckietownEnv
 
 DEBUG = False
 
+from . import logger
+
 
 def main():
     """ Main launcher that starts the gym thread when the command 'duckietown-start-gym' is invoked
@@ -23,11 +25,11 @@ def main():
 
     challenge = os.getenv('DUCKIETOWN_CHALLENGE', "")
     if challenge in ["LF", "LFV"]:
-        print("Launching challenge:", challenge)
+        logger.info("Launching challenge:", challenge)
         map = DEFAULTS["challenges"][challenge]
         misc["challenge"] = challenge
 
-    print("Using map:", map)
+    logger.info("Using map:", map)
 
     env = DuckietownEnv(
         map_name=map,
@@ -41,13 +43,13 @@ def main():
     publisher_socket = None
     command_socket, command_poll = make_pull_socket()
 
-    print("Simulator listening to incoming connections...")
+    logger.info("Simulator listening to incoming connections...")
 
     while True:
         if has_pull_message(command_socket, command_poll):
             success, data = receive_data(command_socket)
             if not success:
-                print(data)  # in error case, this will contain the err msg
+                logger.info(data)  # in error case, this will contain the err msg
                 continue
 
             reward = 0  # in case it's just a ping, not a motor command, we are sending a 0 reward
@@ -57,7 +59,7 @@ def main():
             if data["topic"] == 0:
                 obs, reward, done, misc_ = env.step(data["msg"])
                 if DEBUG:
-                    print("challenge={}, step_count={}, reward={}, done={}".format(
+                    logger.info("challenge={}, step_count={}, reward={}, done={}".format(
                         challenge,
                         env.unwrapped.step_count,
                         np.around(reward,3),

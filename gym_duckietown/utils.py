@@ -1,5 +1,6 @@
 import os
 
+
 def get_subdir_path(sub_dir):
     # Get the directory this module is located in
     abs_path_module = os.path.realpath(__file__)
@@ -8,6 +9,7 @@ def get_subdir_path(sub_dir):
     dir_path = os.path.join(module_dir, sub_dir)
 
     return dir_path
+
 
 def get_file_path(sub_dir, file_name, default_ext):
     """

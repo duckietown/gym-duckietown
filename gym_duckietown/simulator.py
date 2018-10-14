@@ -4,17 +4,13 @@ from collections import namedtuple
 
 import yaml
 
-import pyglet
-from pyglet.gl import *
-from ctypes import byref, POINTER
+from ctypes import POINTER
 
 import gym
-from gym import error, spaces, utils
+from gym import spaces
 from gym.utils import seeding
 
 # Graphics utility code
-from .utils import *
-from .graphics import *
 from .objmesh import *
 from .collision import *
 
@@ -94,7 +90,11 @@ DEFAULT_FRAME_SKIP = 1
 
 DEFAULT_ACCEPT_START_ANGLE_DEG = 60
 
+REWARD_INVALID_POSE = -1000
+
+
 LanePosition0 = namedtuple('LanePosition', 'dist dot_dir angle_deg angle_rad')
+
 
 class LanePosition(LanePosition0):
 
@@ -115,7 +115,7 @@ class Simulator(gym.Env):
 
     metadata = {
         'render.modes': ['human', 'rgb_array', 'app'],
-        'video.frames_per_second' : 30
+        'video.frames_per_second': 30
     }
 
     def __init__(
@@ -132,9 +132,14 @@ class Simulator(gym.Env):
         robot_speed=DEFAULT_ROBOT_SPEED,
         accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
         full_transparency=False,
+        seed=None,
     ):
+        # first initialize the RNG
+        self.seed_value = seed
+        self.seed(seed=self.seed_value)
+
         # If true, then we publish all transparency information
-        self.full_transparency  = full_transparency
+        self.full_transparency = full_transparency
 
         # Map name, set in _load_map()
         self.map_name = None
@@ -259,7 +264,6 @@ class Simulator(gym.Env):
         self._load_map(map_name)
 
         # Initialize the state
-        self.seed()
         self.reset()
 
     def reset(self):
@@ -270,6 +274,7 @@ class Simulator(gym.Env):
 
         # Step count since episode start
         self.step_count = 0
+        self.timestamp = 0.0
 
         # Robot's current speed
         self.speed = 0
@@ -410,7 +415,7 @@ class Simulator(gym.Env):
         # Get the full map file path
         self.map_file_path = get_file_path('maps', map_name, 'yaml')
 
-        print('loading map file "%s"' % self.map_file_path)
+        logger.debug('loading map file "%s"' % self.map_file_path)
 
         with open(self.map_file_path, 'r') as f:
             self.map_data = yaml.load(f)
@@ -630,7 +635,7 @@ class Simulator(gym.Env):
             if tile and tile['drivable']:
                 drivable_tiles.append((c[0], c[1]))
 
-        if drivable_tiles == []:
+        if not drivable_tiles:
             return False
 
         drivable_tiles = np.array(drivable_tiles)
@@ -680,9 +685,8 @@ class Simulator(gym.Env):
 
     def _get_curve(self, i, j):
         """
-        Get the Bezier curve control points for a given tile
+            Get the Bezier curve control points for a given tile
         """
-
         tile = self._get_tile(i, j)
         assert tile is not None
 
@@ -977,7 +981,6 @@ class Simulator(gym.Env):
         means that more of the circles are overlapping
         """
 
-        static_dist = 0
         pos = self._actual_center()
         if len(self.collidable_centers) == 0:
             static_dist = 0
@@ -1084,62 +1087,86 @@ class Simulator(gym.Env):
             not self._collision()
         )
 
-    def step(self, action):
-        # Actions could be a Python list
-        action = np.array(action)
+    def update_physics(self, action):
+        self.step_count += 1
+        self.timestamp += self.delta_time
 
-        for _ in range(self.frame_skip):
-            self.step_count += 1
+        prev_pos = self.cur_pos
 
-            prev_pos = self.cur_pos
+        # Update the robot's position
+        self._update_pos(action * self.robot_speed * 1, self.delta_time)
+        self.last_action = action
 
-            # Update the robot's position
-            self._update_pos(action * self.robot_speed * 1, self.delta_time)
+        # Compute the robot's speed
+        delta_pos = self.cur_pos - prev_pos
+        self.speed = np.linalg.norm(delta_pos) / self.delta_time
 
-            # Compute the robot's speed
-            delta_pos = self.cur_pos - prev_pos
-            self.speed = np.linalg.norm(delta_pos) / self.delta_time
+        # Update world objects
+        for obj in self.objects:
+            obj.step(self.delta_time)
 
-            # Update world objects
-            for obj in self.objects:
-                obj.step(self.delta_time)
+    def get_agent_info(self):
+        info = {}
+        # Get the position relative to the right lane tangent
+        lp = self.get_lane_pos()
+        info['action'] = list(self.last_action)
+        if self.full_transparency:
+            info['lane_position'] = lp.as_json_dict()
+            info['robot_speed'] = self.speed
+            info['proximity_penalty'] = self._proximity_penalty()
+            info['cur_pos'] = [float(self.cur_pos[0]), float(self.cur_pos[1]), float(self.cur_pos[2])]
+            info['cur_angle'] = float(self.cur_angle)
+            info['timestamp'] = self.timestamp
+            info['tile_coords'] = list(self.get_grid_coords(self.cur_pos))
+        misc = {}
+        misc['Simulator'] = info
+        return misc
 
-        # Generate the current camera image
-        obs = self.render_obs()
-
-        # If the agent is not in a valid pose (on drivable tiles)
-        if not self._valid_pose():
-            reward = -1000
-            done = True
-            return obs, reward, done, {}
-
-        # If the maximum time step count is reached
-        if self.step_count >= self.max_steps:
-            done = True
-            reward = 0
-            return obs, reward, done, {}
-
+    def compute_reward(self):
         # Compute the collision avoidance penalty
         col_penalty = self._proximity_penalty()
 
         # Get the position relative to the right lane tangent
         lp = self.get_lane_pos()
-        # dist, dot_dir, angle =
 
         # Compute the reward
         reward = (
-            +1.0 * self.speed * lp.dot_dir +
-            -10 * np.abs(lp.dist) +
-            +40 * col_penalty
+                +1.0 * self.speed * lp.dot_dir +
+                -10 * np.abs(lp.dist) +
+                +40 * col_penalty
         )
-        done = False
+        return reward
 
-        info = {}
-        info['vels'] = action
-        info['lane_position'] = lp.as_json_dict()
-        info['robot_speed'] = self.speed
-        info['col_penalty'] = col_penalty
-        return obs, reward, done, info
+    def step(self, action):
+        # Actions could be a Python list
+        action = np.array(action)
+
+        for _ in range(self.frame_skip):
+            self.update_physics(action)
+
+        # Generate the current camera image
+        obs = self.render_obs()
+        misc = self.get_agent_info()
+
+        # If the agent is not in a valid pose (on drivable tiles)
+        if not self._valid_pose():
+            msg = 'Stopping the simulator because we are at an invalid pose.'
+            misc['Simulator']['msg'] = msg
+            logger.info(msg)
+            reward = REWARD_INVALID_POSE
+            done = True
+        # If the maximum time step count is reached
+        elif self.step_count >= self.max_steps:
+            msg = 'Stopping the simulator because we reached max_steps = %s' % self.max_steps
+            misc['Simulator']['msg'] = msg
+            logger.info(msg)
+            done = True
+            reward = 0
+        else:
+            done = False
+            reward = self.compute_reward()
+
+        return obs, reward, done, misc
 
     def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
         """

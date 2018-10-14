@@ -1,5 +1,14 @@
-__version__ = '2018.8.2'
+__version__ = '2018.8.2-more-exposure'
+
+import logging
+logger = logging.getLogger('gym-duckietown')
+logger.setLevel(logging.DEBUG)
+
+logger.info('Using gym-duckietown version %s\n' % __version__)
+
 import os
+
+
 
 from gym.envs.registration import register
 
@@ -11,7 +20,7 @@ def reg_map_env(map_file):
     map_name, _ = map_name.split('.')
     gym_id = 'Duckietown-%s-v0' % map_name
 
-    print('Registering gym environment id: %s' % gym_id)
+    logger.info('Registering gym environment id: %s' % gym_id)
 
     register(
             id=gym_id,
