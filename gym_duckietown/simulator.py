@@ -1,4 +1,7 @@
 from __future__ import division
+
+from collections import namedtuple
+
 import yaml
 
 import pyglet
@@ -81,6 +84,28 @@ ROAD_TILE_SIZE = 0.61
 # Maximum forward robot speed in meters/second
 DEFAULT_ROBOT_SPEED = 0.40
 
+DEFAULT_FRAMERATE = 30
+
+DEFAULT_MAX_STEPS = 1500
+
+DEFAULT_MAP_NAME = 'udem1'
+
+DEFAULT_FRAME_SKIP = 1
+
+DEFAULT_ACCEPT_START_ANGLE_DEG = 60
+
+LanePosition0 = namedtuple('LanePosition', 'dist dot_dir angle_deg angle_rad')
+
+class LanePosition(LanePosition0):
+
+    def as_json_dict(self):
+        """ Serialization-friendly format. """
+        return dict(dist=self.dist,
+                    dot_dir=self.dot_dir,
+                    angle_deg=self.angle_deg,
+                    angle_rad=self.angle_rad)
+
+
 class Simulator(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -95,22 +120,30 @@ class Simulator(gym.Env):
 
     def __init__(
         self,
-        map_name='udem1',
-        max_steps=1500,
+        map_name=DEFAULT_MAP_NAME,
+        max_steps=DEFAULT_MAX_STEPS,
         draw_curve=False,
         draw_bbox=False,
         domain_rand=True,
-        frame_rate=30,
-        frame_skip=1,
+        frame_rate=DEFAULT_FRAMERATE,
+        frame_skip=DEFAULT_FRAME_SKIP,
         camera_width=DEFAULT_CAMERA_WIDTH,
         camera_height=DEFAULT_CAMERA_HEIGHT,
         robot_speed=DEFAULT_ROBOT_SPEED,
+        accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
+        full_transparency=False,
     ):
+        # If true, then we publish all transparency information
+        self.full_transparency  = full_transparency
+
         # Map name, set in _load_map()
         self.map_name = None
 
         # Full map file path, set in _load_map()
         self.map_file_path = None
+
+        # The parsed content of the map_file
+        self.map_data = None
 
         # Maximum number of steps per episode
         self.max_steps = max_steps
@@ -168,14 +201,14 @@ class Simulator(gym.Env):
         self.text_label = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
-            x = 5,
-            y = WINDOW_HEIGHT - 19
+            x=5,
+            y=WINDOW_HEIGHT - 19
         )
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-                self.camera_width,
-                self.camera_height,
+            self.camera_width,
+            self.camera_height,
             16
         )
 
@@ -218,6 +251,9 @@ class Simulator(gym.Env):
              1, -0.8,  1
         ]
         self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
+
+        # allowed angle in lane for starting position
+        self.accept_start_angle_deg = accept_start_angle_deg
 
         # Load the map
         self._load_map(map_name)
@@ -296,7 +332,7 @@ class Simulator(gym.Env):
         numTris = 12
         verts = []
         colors = []
-        for i in range(0, 3 * numTris):
+        for _ in range(0, 3 * numTris):
             p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
             c = self.np_random.uniform(low=0, high=0.9)
             c = self._perturb([c, c, c], 0.1)
@@ -306,11 +342,9 @@ class Simulator(gym.Env):
 
         # Randomize tile parameters
         for tile in self.grid:
+            rng = self.np_random if self.domain_rand else None
             # Randomize the tile texture
-            tile['texture'] = Texture.get(
-                tile['kind'],
-                rng = self.np_random if self.domain_rand else None
-            )
+            tile['texture'] = Texture.get(tile['kind'], rng=rng)
 
             # Random tile color multiplier
             tile['color'] = self._perturb([1, 1, 1], 0.2)
@@ -351,10 +385,11 @@ class Simulator(gym.Env):
                 continue
 
             # If the angle is too far away from the driving direction, retry
-            dist, dot_dir, angle = self.get_lane_pos()
-            if angle < -60 or angle > 60:
+            lp = self.get_lane_pos()
+            M = self.accept_start_angle_deg
+            ok = -M < lp.angle_deg < +M
+            if not ok:
                 continue
-
             # Found a valid initial pose
             break
 
@@ -378,9 +413,9 @@ class Simulator(gym.Env):
         print('loading map file "%s"' % self.map_file_path)
 
         with open(self.map_file_path, 'r') as f:
-            map_data = yaml.load(f)
+            self.map_data = yaml.load(f)
 
-        tiles = map_data['tiles']
+        tiles = self.map_data['tiles']
         assert len(tiles) > 0
         assert len(tiles[0]) > 0
 
@@ -431,12 +466,12 @@ class Simulator(gym.Env):
                     tile['curves'] = self._get_curve(i, j)
                     self.drivable_tiles.append(tile)
 
-        self._load_objects(map_data)
+        self._load_objects(self.map_data)
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
-        if 'start_tile' in map_data:
-            coords = map_data['start_tile']
+        if 'start_tile' in self.map_data:
+            coords = self.map_data['start_tile']
             self.start_tile = self._get_tile(*coords)
 
     def _load_objects(self, map_data):
@@ -548,6 +583,9 @@ class Simulator(gym.Env):
         self.grid[j * self.grid_width + i] = tile
 
     def _get_tile(self, i, j):
+        """
+            Returns None if the duckiebot is not in a tile.
+        """
         i = int(i)
         j = int(j)
         if i < 0 or i >= self.grid_width:
@@ -730,11 +768,11 @@ class Simulator(gym.Env):
                     [0.20, 0,-0.20],
                     [0.20, 0,-0.50],
                 ],
-                [   
+                [
                     [0.20, 0, 0.50],
                     [0.20, 0, 0.20],
                     [0.30, 0, 0.20],
-                    [0.50, 0, 0.20],                   
+                    [0.50, 0, 0.20],
                 ],
                 [
                     [0.50, 0,-0.20],
@@ -752,7 +790,7 @@ class Simulator(gym.Env):
                     [-0.20, 0, 0.00],
                     [ 0.00, 0, 0.20],
                     [ 0.50, 0, 0.20],
-                ], 
+                ],
                 [
                     [-0.20, 0,-0.50],
                     [-0.20, 0,-0.25],
@@ -786,7 +824,7 @@ class Simulator(gym.Env):
         # Hardcoded each curve; just rotate and shift
         elif kind.startswith('3way'):
             threeway_pts = []
-            
+
             mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
             pts_new = np.matmul(pts, mat)
             pts_new += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
@@ -875,12 +913,16 @@ class Simulator(gym.Env):
 
         # Compute the signed angle between the direction and curve tangent
         # Right of the tangent is negative, left is positive
-        angle = math.acos(dotDir)
-        angle *= 180 / math.pi
-        if np.dot(dirVec, rightVec) < 0:
-            angle *= -1
+        angle_rad = math.acos(dotDir)
 
-        return signedDist, dotDir, angle
+        if np.dot(dirVec, rightVec) < 0:
+            angle_rad *= -1
+
+        angle_deg = np.rad2deg(angle_rad)
+        # return signedDist, dotDir, angle_deg
+
+        return LanePosition(dist=signedDist, dot_dir=dotDir, angle_deg=angle_deg,
+                            angle_rad=angle_rad)
 
     def _update_pos(self, wheelVels, deltaTime):
         """
@@ -922,7 +964,7 @@ class Simulator(gym.Env):
 
         coords = self.get_grid_coords(pos)
         tile = self._get_tile(*coords)
-        return tile != None and tile['drivable']
+        return tile is not None and tile['drivable']
 
     def _proximity_penalty(self):
         """
@@ -1007,9 +1049,11 @@ class Simulator(gym.Env):
         # No collision with any object
         return False
 
-    def _valid_pose(self, safety_factor=1):
+    def _valid_pose(self, safety_factor=1.0):
         """
-        Check that the agent is in a valid pose
+            Check that the agent is in a valid pose
+
+            safety_factor = minimum distance
         """
 
         # Compute the coordinates of the base of both wheels
@@ -1079,17 +1123,23 @@ class Simulator(gym.Env):
         col_penalty = self._proximity_penalty()
 
         # Get the position relative to the right lane tangent
-        dist, dot_dir, angle = self.get_lane_pos()
+        lp = self.get_lane_pos()
+        # dist, dot_dir, angle =
 
         # Compute the reward
         reward = (
-            +1.0 * self.speed * dot_dir +
-            -10 * np.abs(dist) +
+            +1.0 * self.speed * lp.dot_dir +
+            -10 * np.abs(lp.dist) +
             +40 * col_penalty
         )
         done = False
 
-        return obs, reward, done, {'vels': action}
+        info = {}
+        info['vels'] = action
+        info['lane_position'] = lp.as_json_dict()
+        info['robot_speed'] = self.speed
+        info['col_penalty'] = col_penalty
+        return obs, reward, done, info
 
     def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
         """
@@ -1097,7 +1147,7 @@ class Simulator(gym.Env):
         Produce a numpy RGB array image as output
         """
 
-        if self.graphics == False:
+        if not self.graphics:
             return
 
         # Switch to the default context
@@ -1218,7 +1268,7 @@ class Simulator(gym.Env):
                     pts = self._get_curve(i, j)
                     for idx, pt in enumerate(pts):
                         # Don't draw current curve in blue
-                        if idx == np.argmax(dot_prods): 
+                        if idx == np.argmax(dot_prods):
                             continue
                         bezier_draw(pt, n = 20)
 
