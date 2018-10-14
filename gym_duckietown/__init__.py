@@ -1,14 +1,14 @@
 __version__ = '2018.8.2-more-exposure'
 
 import logging
+
+logging.basicConfig()
 logger = logging.getLogger('gym-duckietown')
 logger.setLevel(logging.DEBUG)
 
 logger.info('Using gym-duckietown version %s\n' % __version__)
 
 import os
-
-
 
 from gym.envs.registration import register
 
