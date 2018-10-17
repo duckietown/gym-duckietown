@@ -1,4 +1,4 @@
-FROM duckietown/gym-duckietown-server-python2
+FROM duckietown/gym-duckietown-server-python2:more-exposure
 # ROS INSTALL -------------------------
 # install packages
 
@@ -23,16 +23,7 @@ RUN apt-get install -y \
     ros-kinetic-catkin
 
 
-##RUN apt-get install -q -y python-catkin-pkg
-#RUN apt-get install -q -y ros-kinetic-catkin
-#
-#RUN apt-get install -y ros-kinetic-catkin
-#RUN apt-get install -y ros-kinetic-common-msgs
-#RUN apt-get install -y ros-kinetic-roslib
-#RUN apt-get install -y ros-kinetic-rosbag
-#RUN pip install rospkg
 ENV PYTHONPATH="/opt/ros/kinetic/lib/python2.7/dist-packages/:${PYTHONPATH}"
-# ------------------------------------------
 
 
 RUN echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc
@@ -43,3 +34,6 @@ RUN rosdep init
 RUN rosdep update
 
 ENV DISPLAY=:99
+
+
+COPY . gym-duckietown

@@ -1,9 +1,9 @@
-import math
 import numpy as np
-import gym
 from gym import spaces
 
 from ..simulator import Simulator
+from .. import logger
+
 
 class DuckietownEnv(Simulator):
     """
@@ -21,6 +21,7 @@ class DuckietownEnv(Simulator):
         **kwargs
     ):
         Simulator.__init__(self, **kwargs)
+        logger.info('using DuckietownEnv')
 
         self.action_space = spaces.Box(
             low=np.array([-1,-1]),
@@ -70,7 +71,17 @@ class DuckietownEnv(Simulator):
 
         vels = np.array([u_l_limited, u_r_limited])
 
-        return Simulator.step(self, vels)
+        obs, reward, done, info = Simulator.step(self, vels)
+        mine = {}
+        mine['k'] = self.k
+        mine['gain'] = self.gain
+        mine['train'] = self.trim
+        mine['radius'] = self.radius
+        mine['omega_r'] = omega_r
+        mine['omega_l'] = omega_l
+        info['DuckietownEnv'] = mine
+        return obs, reward, done, info
+
 
 class DuckietownLF(DuckietownEnv):
     """
@@ -84,6 +95,7 @@ class DuckietownLF(DuckietownEnv):
     def step(self, action):
         obs, reward, done, info = DuckietownEnv.step(self, action)
         return obs, reward, done, info
+
 
 class DuckietownNav(DuckietownEnv):
     """

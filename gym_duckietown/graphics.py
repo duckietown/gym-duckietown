@@ -1,11 +1,12 @@
 import math
 
-import os
+from . import logger
+
 import numpy as np
 
 import pyglet
 from pyglet.gl import *
-from ctypes import byref, POINTER
+from ctypes import byref
 
 from .utils import *
 
@@ -53,7 +54,7 @@ class Texture:
         glBindTexture(self.tex.target, self.tex.id)
 
 def load_texture(tex_path):
-    print('loading texture "%s"' % tex_path)
+    logger.debug('loading texture "%s"' % tex_path)
 
     img = pyglet.image.load(tex_path)
     tex = img.get_texture()
@@ -113,7 +114,7 @@ def create_frame_buffers(width, height, num_samples):
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
 
     except:
-        print('Falling back to non-multisampled frame buffer')
+        logger.debug('Falling back to non-multisampled frame buffer')
 
         # Create a plain texture texture to render into
         fbTex = GLuint(0)
