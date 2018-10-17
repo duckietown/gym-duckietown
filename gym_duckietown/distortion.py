@@ -46,6 +46,7 @@ class Distortion(object):
         """
         Distort observation using parameters in constructor
         """
+        
         if self.mapx is None:
             # Not initialized - initialize all the transformations we'll need
             self.mapx = np.zeros(observation.shape)

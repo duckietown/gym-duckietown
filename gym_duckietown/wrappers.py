@@ -87,6 +87,9 @@ class UndistortWrapper(gym.ObservationWrapper):
 
         assert env.unwrapped.distortion, "Distortion is false, no need for this wrapper"
 
+        # Set a variable in the unwrapped env so images don't get distorted
+        self.env.unwrapped.undistort = True
+
         # K - Intrinsic camera matrix for the raw (distorted) images.
         camera_matrix =  [
             305.5718893575089,  0,                  303.0797142544728,

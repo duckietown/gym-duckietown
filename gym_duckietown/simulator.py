@@ -23,8 +23,8 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
 # Camera image size
-DEFAULT_CAMERA_WIDTH = 160
-DEFAULT_CAMERA_HEIGHT = 120
+DEFAULT_CAMERA_WIDTH = 640
+DEFAULT_CAMERA_HEIGHT = 480
 
 # Blue sky horizon color
 BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
@@ -228,6 +228,9 @@ class Simulator(gym.Env):
         if distortion:
             from .distortion import Distortion
             self.camera_model = Distortion()
+
+        # Used by the UndistortWrapper, always initialized to False
+        self.undistort = False
 
         # Initialize the state
         self.seed()
@@ -1292,7 +1295,8 @@ class Simulator(gym.Env):
             self.img_array
         )
 
-        if self.distortion:
+        # self.undistort - for UndistortWrapper
+        if self.distortion and not self.undistort:
             observation = self.camera_model.distort(observation)
 
         return observation
@@ -1316,7 +1320,8 @@ class Simulator(gym.Env):
             self.img_array_human
         )
 
-        if self.distortion and mode != "free_cam":
+        # self.undistort - for UndistortWrapper
+        if self.distortion and not self.undistort and mode != "free_cam":
             img = self.camera_model.distort(img)
 
         if mode == 'rgb_array':

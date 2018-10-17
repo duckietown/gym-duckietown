@@ -14,6 +14,7 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
+from gym_duckietown.wrappers import UndistortWrapper
 
 # from experiments.utils import save_img
 
@@ -32,7 +33,8 @@ if args.env_name is None:
         draw_curve = args.draw_curve,
         draw_bbox = args.draw_bbox,
         domain_rand = args.domain_rand,
-        frame_skip = args.frame_skip
+        frame_skip = args.frame_skip,
+        distortion = True,
     )
 else:
     env = gym.make(args.env_name)
