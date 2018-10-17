@@ -101,7 +101,7 @@ def update(dt):
 
     env.render()
 
-pyglet.clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
+pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
 # Enter main event loop
 pyglet.app.run()
