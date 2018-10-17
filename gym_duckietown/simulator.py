@@ -105,7 +105,7 @@ class Simulator(gym.Env):
         camera_width=DEFAULT_CAMERA_WIDTH,
         camera_height=DEFAULT_CAMERA_HEIGHT,
         robot_speed=DEFAULT_ROBOT_SPEED,
-        distortion=True,
+        distortion=False,
     ):
         # Map name, set in _load_map()
         self.map_name = None
