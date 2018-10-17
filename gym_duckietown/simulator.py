@@ -105,6 +105,7 @@ class Simulator(gym.Env):
         camera_width=DEFAULT_CAMERA_WIDTH,
         camera_height=DEFAULT_CAMERA_HEIGHT,
         robot_speed=DEFAULT_ROBOT_SPEED,
+        distortion=True,
     ):
         # Map name, set in _load_map()
         self.map_name = None
@@ -221,6 +222,12 @@ class Simulator(gym.Env):
 
         # Load the map
         self._load_map(map_name)
+
+        # Distortion params, if so, load the library
+        self.distortion = distortion 
+        if distortion:
+            from .distortion import Distortion
+            self.camera_model = Distortion()
 
         # Initialize the state
         self.seed()
@@ -1277,13 +1284,18 @@ class Simulator(gym.Env):
         Render an observation from the point of view of the agent
         """
 
-        return self._render_img(
+        observation = self._render_img(
             self.camera_width,
             self.camera_height,
             self.multi_fbo,
             self.final_fbo,
             self.img_array
         )
+
+        if self.distortion:
+            observation = self.camera_model.distort(observation)
+
+        return observation
 
     def render(self, mode='human', close=False):
         """
@@ -1303,6 +1315,9 @@ class Simulator(gym.Env):
             self.final_fbo_human,
             self.img_array_human
         )
+
+        if self.distortion and mode != "free_cam":
+            img = self.camera_model.distort(img)
 
         if mode == 'rgb_array':
             return img
@@ -1362,3 +1377,44 @@ class Simulator(gym.Env):
 
         # Force execution of queued commands
         glFlush()
+
+
+    def _set_up_distortion(self):
+        import cv2 
+        # K - Intrinsic camera matrix for the raw (distorted) images.
+        camera_matrix =  [
+            305.5718893575089,  0,                  303.0797142544728,
+            0,                  308.8338858195428,  231.8845403702499,
+            0,                  0,                  1,
+        ]
+        self.camera_matrix = np.reshape(camera_matrix, (3, 3))
+
+        # distortion parameters - (k1, k2, t1, t2, k3)
+        distortion_coefs = [
+            -0.2944667743901807, 0.0701431287084318, 
+            0.0005859930422629722, -0.0006697840226199427, 0
+        ]
+        self.distortion_coefs = np.reshape(distortion_coefs, (1, 5))
+
+        # R - Rectification matrix - stereo cameras only, so identity
+        self.rectification_matrix = np.eye(3)
+
+        # P - Projection Matrix - specifies the intrinsic (camera) matrix
+        #  of the processed (rectified) image
+        projection_matrix = [
+            220.2460277141687,  0,  301.8668918355899, 
+            0,                  0,  238.6758484095299, 
+            227.0880056118307,  0,  0, 
+            0,                  1,  0,
+        ]
+        self.projection_matrix = np.reshape(projection_matrix, (3, 4))
+
+        # Initialize mappings
+
+        # Used for rectification
+        self.mapx = None
+        self.mapy = None
+
+        # Used for distortion
+        self.rmapx = None 
+        self.rmapy = None
