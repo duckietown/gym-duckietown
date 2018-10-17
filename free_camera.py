@@ -82,14 +82,15 @@ def on_key_press(symbol, modifiers):
         cam_offset[2] += .1
 
     # Take a screenshot
-    elif symbol == key.RETURN:
-        print('saving screenshot')
-        img = env.render('rgb_array')
-        try:
-            from experiments.utils import save_img
-            save_img('screenshot.png', img)
-        except BaseException as e:
-            print(str(e))
+    # UNCOMMENT IF NEEDED - Skimage depencency
+    # elif symbol == key.RETURN:
+    #     print('saving screenshot')
+    #     img = env.render('rgb_array')
+    #     try:
+    #         from experiments.utils import save_img
+    #         save_img('screenshot.png', img)
+    #     except BaseException as e:
+    #         print(str(e))
 
 def update(dt):
     env.render('free_cam')
