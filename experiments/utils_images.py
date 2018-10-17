@@ -1,4 +1,5 @@
 import numpy as np
+from torch.autograd import Variable
 
 
 def save_img(file_name, img):
