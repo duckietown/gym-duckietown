@@ -175,9 +175,9 @@ class Simulator(gym.Env):
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-                self.camera_width,
-                self.camera_height,
-            16
+            self.camera_width,
+            self.camera_height,
+            4
         )
 
         # Array to render the image into (for observation rendering)
