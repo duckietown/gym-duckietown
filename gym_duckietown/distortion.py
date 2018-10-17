@@ -14,9 +14,10 @@ class Distortion(object):
 
         # distortion parameters - (k1, k2, t1, t2, k3)
         distortion_coefs = [
-            -0.2944667743901807, 0.0701431287084318, 
+            -0.2,  0.0305, 
             0.0005859930422629722, -0.0006697840226199427, 0
         ]
+
         self.distortion_coefs = np.reshape(distortion_coefs, (1, 5))
 
         # R - Rectification matrix - stereo cameras only, so identity
@@ -25,10 +26,9 @@ class Distortion(object):
         # P - Projection Matrix - specifies the intrinsic (camera) matrix
         #  of the processed (rectified) image
         projection_matrix = [
-            220.2460277141687,  0,  301.8668918355899, 
-            0,                  0,  238.6758484095299, 
-            227.0880056118307,  0,  0, 
-            0,                  1,  0,
+            220.2460277141687,  0,                  301.8668918355899,  0,                  
+            0,                  238.6758484095299,  227.0880056118307,  0,  
+            0,                  0,                  1,                  0,
         ]
         self.projection_matrix = np.reshape(projection_matrix, (3, 4))
 
@@ -62,7 +62,7 @@ class Distortion(object):
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
 
-        return cv2.remap(observation, self.rmapx, self.rmapy, cv2.INTER_NEAREST)
+        return cv2.remap(observation, self.rmapx, self.rmapy, interpolation=cv2.INTER_NEAREST)
 
     def _undistort(self, observation):
         """

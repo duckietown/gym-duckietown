@@ -100,7 +100,7 @@ class UndistortWrapper(gym.ObservationWrapper):
 
         # distortion parameters - (k1, k2, t1, t2, k3)
         distortion_coefs = [
-            -0.2944667743901807, 0.0701431287084318, 
+            -0.2,  0.0305, 
             0.0005859930422629722, -0.0006697840226199427, 0
         ]
         self.distortion_coefs = np.reshape(distortion_coefs, (1, 5))
@@ -111,10 +111,9 @@ class UndistortWrapper(gym.ObservationWrapper):
         # P - Projection Matrix - specifies the intrinsic (camera) matrix
         #  of the processed (rectified) image
         projection_matrix = [
-            220.2460277141687,  0,  301.8668918355899, 
-            0,                  0,  238.6758484095299, 
-            227.0880056118307,  0,  0, 
-            0,                  1,  0,
+            220.2460277141687,      0,                  301.8668918355899,  0,                  
+            0,                      238.6758484095299,  227.0880056118307,  0,  
+            0,                      0,                  1,                  0,
         ]
         self.projection_matrix = np.reshape(projection_matrix, (3, 4))
 

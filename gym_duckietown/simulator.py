@@ -1132,7 +1132,7 @@ class Simulator(gym.Env):
         glLoadIdentity()
         gluPerspective(
             self.cam_fov_y,
-            width / float(height),
+            WINDOW_WIDTH / int(WINDOW_HEIGHT),
             0.04,
             100.0
         )

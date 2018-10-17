@@ -96,6 +96,12 @@ def update(dt):
     obs, reward, done, info = env.step(action)
     print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
+    if key_handler[key.RETURN]:
+        from PIL import Image
+        im = Image.fromarray(obs)
+
+        im.save('screen.png')
+
     if done:
         print('done!')
         env.reset()
