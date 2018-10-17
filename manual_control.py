@@ -15,7 +15,7 @@ import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
 
-# from experiments.utils_images import save_img
+# from experiments.utils import save_img
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)

@@ -87,7 +87,7 @@ def on_key_press(symbol, modifiers):
     #     print('saving screenshot')
     #     img = env.render('rgb_array')
     #     try:
-    #         from experiments.utils_images import save_img
+    #         from experiments.utils import save_img
     #         save_img('screenshot.png', img)
     #     except BaseException as e:
     #         print(str(e))
