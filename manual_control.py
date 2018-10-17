@@ -14,6 +14,7 @@ import numpy as np
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
+from gym_duckietown.wrappers import UndistortWrapper
 
 # from experiments.utils import save_img
 
@@ -32,7 +33,8 @@ if args.env_name is None:
         draw_curve = args.draw_curve,
         draw_bbox = args.draw_bbox,
         domain_rand = args.domain_rand,
-        frame_skip = args.frame_skip
+        frame_skip = args.frame_skip,
+        distortion = True,
     )
 else:
     env = gym.make(args.env_name)
@@ -94,6 +96,12 @@ def update(dt):
     obs, reward, done, info = env.step(action)
     print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
+    if key_handler[key.RETURN]:
+        from PIL import Image
+        im = Image.fromarray(obs)
+
+        im.save('screen.png')
+
     if done:
         print('done!')
         env.reset()
@@ -101,7 +109,7 @@ def update(dt):
 
     env.render()
 
-pyglet.clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
+pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
 # Enter main event loop
 pyglet.app.run()

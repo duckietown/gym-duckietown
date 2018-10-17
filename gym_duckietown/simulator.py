@@ -117,21 +117,22 @@ class Simulator(gym.Env):
     }
 
     def __init__(
-            self,
-            map_name=DEFAULT_MAP_NAME,
-            max_steps=DEFAULT_MAX_STEPS,
-            draw_curve=False,
-            draw_bbox=False,
-            domain_rand=True,
-            frame_rate=DEFAULT_FRAMERATE,
-            frame_skip=DEFAULT_FRAME_SKIP,
-            camera_width=DEFAULT_CAMERA_WIDTH,
-            camera_height=DEFAULT_CAMERA_HEIGHT,
-            robot_speed=DEFAULT_ROBOT_SPEED,
-            accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
-            full_transparency=False,
-            user_tile_start=None,
-            seed=None,
+        self,
+        map_name=DEFAULT_MAP_NAME,
+        max_steps=DEFAULT_MAX_STEPS,
+        draw_curve=False,
+        draw_bbox=False,
+        domain_rand=True,
+        frame_rate=DEFAULT_FRAMERATE,
+        frame_skip=DEFAULT_FRAME_SKIP,
+        camera_width=DEFAULT_CAMERA_WIDTH,
+        camera_height=DEFAULT_CAMERA_HEIGHT,
+        robot_speed=DEFAULT_ROBOT_SPEED,
+        accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
+        full_transparency=False,
+        user_tile_start=None,
+        seed=None,
+        distortion=False,
     ):
         """
 
@@ -228,9 +229,9 @@ class Simulator(gym.Env):
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-                self.camera_width,
-                self.camera_height,
-                16
+            self.camera_width,
+            self.camera_height,
+            4
         )
 
         # Array to render the image into (for observation rendering)
@@ -279,6 +280,16 @@ class Simulator(gym.Env):
         # Load the map
         self._load_map(map_name)
 
+        # Distortion params, if so, load the library
+        self.distortion = distortion 
+        if distortion:
+            from .distortion import Distortion
+            self.camera_model = Distortion()
+
+        # Used by the UndistortWrapper, always initialized to False
+        self.undistort = False
+        
+        # Start tile
         self.user_tile_start = user_tile_start
 
         # Initialize the state
@@ -1346,13 +1357,19 @@ class Simulator(gym.Env):
         Render an observation from the point of view of the agent
         """
 
-        return self._render_img(
-                self.camera_width,
-                self.camera_height,
-                self.multi_fbo,
-                self.final_fbo,
-                self.img_array
+        observation = self._render_img(
+            self.camera_width,
+            self.camera_height,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array
         )
+
+        # self.undistort - for UndistortWrapper
+        if self.distortion and not self.undistort:
+            observation = self.camera_model.distort(observation)
+
+        return observation
 
     def render(self, mode='human', close=False):
         """
@@ -1372,6 +1389,10 @@ class Simulator(gym.Env):
                 self.final_fbo_human,
                 self.img_array_human
         )
+
+        # self.undistort - for UndistortWrapper
+        if self.distortion and not self.undistort and mode != "free_cam":
+            img = self.camera_model.distort(img)
 
         if mode == 'rgb_array':
             return img

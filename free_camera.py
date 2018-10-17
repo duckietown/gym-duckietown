@@ -97,7 +97,7 @@ def update(dt):
 
 
 # Main event loop
-clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
+clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 app.run()
 
 env.close()
