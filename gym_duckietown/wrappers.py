@@ -1,8 +1,8 @@
-import math
 import numpy as np
 import gym
 from gym import spaces
 import itertools 
+
 
 class DiscreteWrapper(gym.ActionWrapper):
     """
@@ -27,6 +27,7 @@ class DiscreteWrapper(gym.ActionWrapper):
         else:
             assert False, "unknown action"
         return np.array(vels)
+
 
 class PyTorchObsWrapper(gym.ObservationWrapper):
     """
