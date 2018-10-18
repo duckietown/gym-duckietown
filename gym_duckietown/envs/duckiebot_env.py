@@ -184,7 +184,7 @@ class DuckiebotEnv(gym.Env):
         self.window.switch_to()
         self.window.dispatch_events()
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
         glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         self.window.clear()

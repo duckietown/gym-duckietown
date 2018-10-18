@@ -464,7 +464,7 @@ class Simulator(gym.Env):
 
     def _load_map(self, map_name):
         """
-        Load the map layout from a CSV file
+        Load the map layout from a YAML file
         """
 
         # Store the map name
