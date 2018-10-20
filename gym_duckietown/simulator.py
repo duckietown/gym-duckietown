@@ -280,11 +280,12 @@ class Simulator(gym.Env):
         # Load the map
         self._load_map(map_name)
 
-        # Distortion params, if so, load the library
-        self.distortion = distortion 
-        if distortion:
-            from .distortion import Distortion
-            self.camera_model = Distortion()
+        # Distortion params, if so, load the library, only if not bbox mode
+        if not draw_bbox:
+            self.distortion = distortion
+            if distortion:
+                from .distortion import Distortion
+                self.camera_model = Distortion()
 
         # Used by the UndistortWrapper, always initialized to False
         self.undistort = False
