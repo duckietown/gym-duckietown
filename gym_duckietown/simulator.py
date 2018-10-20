@@ -1309,15 +1309,17 @@ class Simulator(gym.Env):
         Render an observation from the point of view of the agent
         """
 
+        # From POV of agent, NEVER render top down
         return self._render_img(
             CAMERA_WIDTH,
             CAMERA_HEIGHT,
             self.multi_fbo,
             self.final_fbo,
-            self.img_array
+            self.img_array,
+            top_down=False
         )
 
-    def render(self, mode='top_down', close=False):
+    def render(self, mode='human', close=False):
         """
         Render the environment for human viewing
         """
@@ -1327,13 +1329,15 @@ class Simulator(gym.Env):
                 self.window.close()
             return
 
+        top_down = mode == 'top_down'
         # Render the image
         img = self._render_img(
             WINDOW_WIDTH,
             WINDOW_HEIGHT,
             self.multi_fbo_human,
             self.final_fbo_human,
-            self.img_array_human
+            self.img_array_human,
+            top_down=top_down
         )
 
         if mode == 'rgb_array':
