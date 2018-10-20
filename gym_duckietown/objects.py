@@ -94,6 +94,152 @@ class WorldObj():
             raise NotImplementedError
 
 
+class DuckiebotObj(WorldObj):
+    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist, 
+            robot_width, robot_length, gain=1.0, trim=0.0, radius=0.0318, 
+            k=27.0, limit=1.0):
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
+
+        if self.domain_rand:
+            self.follow_dist = np.random.uniform(0.05, 0.15)
+            self.velocity = np.random.uniform(0.05, 0.15)
+        else:
+            self.follow_dist = 0.05
+            self.velocity = 0.1
+
+        # TODO: Make these DR as well
+        self.gain = gain
+        self.trim = trim
+        self.radius = radius
+        self.k = k
+        self.limit = limit
+
+        self.wheel_dist = wheel_dist 
+
+        self.robot_width = robot_width
+        self.robot_length = robot_length
+
+    def step(self, delta_time, closest_curve_point, objects):
+        """
+        Take a step, implemented as a PID controller
+        """
+
+        # Find the curve point closest to the agent, and the tangent at that point
+        closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
+
+        while True:
+            # Project a point ahead along the curve tangent,
+            # then find the closest point to to that
+            follow_point = closest_point + closest_tangent * self.follow_dist
+            curve_point, _ = closest_curve_point(follow_point, self.angle)
+
+            # If we have a valid point on the curve, stop
+            if curve_point is not None:
+                break
+
+            self.follow_dist *= 0.5
+
+        # Compute a normalized vector to the curve point
+        point_vec = curve_point - self.pos
+        point_vec /= np.linalg.norm(point_vec)
+
+        dot = np.dot(self.get_right_vec(self.angle), point_vec)
+        steering = 2 * -dot
+
+        self._update_pos([self.velocity, steering], delta_time)
+
+    def get_dir_vec(self, angle):
+        x = math.cos(angle)
+        z = -math.sin(angle)
+        return np.array([x, 0, z])
+
+    def get_right_vec(self, angle):
+        x = math.sin(angle)
+        z = math.cos(angle)
+        return np.array([x, 0, z])
+
+    def check_collision(self, agent_corners, agent_norm):
+        """
+        See if the agent collided with this object
+        """
+        return intersects_single_obj(
+            agent_corners,
+            self.obj_corners.T,
+            agent_norm,
+            self.obj_norm
+        )
+
+    def proximity(self, agent_pos, agent_safety_rad):
+        """
+        See if the agent is too close to this object
+        based on a heuristic for the "overlap" between
+        their safety circles
+        """
+        d = np.linalg.norm(agent_pos - self.pos)
+        score = d - agent_safety_rad - self.safety_radius
+
+        return min(0, score)
+
+    def _update_pos(self, action, deltaTime):
+        vel, angle = action
+
+        # assuming same motor constants k for both motors
+        k_r = self.k
+        k_l = self.k
+
+        # adjusting k by gain and trim
+        k_r_inv = (self.gain + self.trim) / k_r
+        k_l_inv = (self.gain - self.trim) / k_l
+
+        omega_r = (vel + 0.5 * angle * self.wheel_dist) / self.radius
+        omega_l = (vel - 0.5 * angle * self.wheel_dist) / self.radius
+
+        # conversion from motor rotation rate to duty cycle
+        u_r = omega_r * k_r_inv
+        u_l = omega_l * k_l_inv
+
+        # limiting output to limit, which is 1.0 for the duckiebot
+        u_r_limited = max(min(u_r, self.limit), -self.limit)
+        u_l_limited = max(min(u_l, self.limit), -self.limit)
+
+        # If the wheel velocities are the same, then there is no rotation
+        if u_l_limited == u_r_limited:
+            self.pos = self.pos + deltaTime * u_l_limited * self.get_dir_vec(self.angle)
+            return
+
+        # Compute the angular rotation velocity about the ICC (center of curvature)
+        w = (u_r_limited - u_l_limited) / self.wheel_dist
+
+        # Compute the distance to the center of curvature
+        r = (self.wheel_dist * (u_l_limited + u_r_limited)) / (2 * (u_l_limited - u_r_limited))
+
+        # Compute the rotation angle for this time step
+        rotAngle = w * deltaTime
+
+        # Rotate the robot's position around the center of rotation
+        r_vec = self.get_right_vec(self.angle)
+        px, py, pz = self.pos
+        cx = px + r * r_vec[0]
+        cz = pz + r * r_vec[2]
+        npx, npz = rotate_point(px, pz, cx, cz, rotAngle)
+
+        # Update position
+        self.pos = np.array([npx, py, npz])
+
+        # Update the robot's direction angle
+        self.angle += rotAngle
+        self.y_rot += rotAngle * 180 / np.pi 
+
+        # Recompute the bounding boxes (BB) for the duckiebot
+        self.obj_corners = agent_boundbox(
+            self.pos,
+            self.robot_width,
+            self.robot_length,
+            self.get_dir_vec(self.angle),
+            self.get_right_vec(self.angle)
+        )
+
+
 class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
@@ -184,6 +330,7 @@ class DuckieObj(WorldObj):
 
         if self.domain_rand:
             # Assign a random velocity (in opp. direction) and a wait time
+            # TODO: Fix this: This will go to 0 over time
             self.vel = -1 * np.sign(self.vel) * np.abs(np.random.normal(0.02, 0.005))
             self.pedestrian_wait_time = np.random.randint(3, 20)
         else:
