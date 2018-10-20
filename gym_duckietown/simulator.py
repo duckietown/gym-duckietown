@@ -10,7 +10,7 @@ from gym.utils import seeding
 
 from .collision import *
 # Objects utility code
-from .objects import WorldObj, DuckieObj, TrafficLightObj
+from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj
 # Graphics utility code
 from .objmesh import *
 
@@ -280,11 +280,12 @@ class Simulator(gym.Env):
         # Load the map
         self._load_map(map_name)
 
-        # Distortion params, if so, load the library
-        self.distortion = distortion 
-        if distortion:
-            from .distortion import Distortion
-            self.camera_model = Distortion()
+        # Distortion params, if so, load the library, only if not bbox mode
+        self.distortion = distortion and not draw_bbox
+        if not draw_bbox and distortion:
+            if distortion:
+                from .distortion import Distortion
+                self.camera_model = Distortion()
 
         # Used by the UndistortWrapper, always initialized to False
         self.undistort = False
@@ -531,7 +532,8 @@ class Simulator(gym.Env):
                 if drivable:
                     tile['curves'] = self._get_curve(i, j)
                     self.drivable_tiles.append(tile)
-
+                    
+        self.mesh = ObjMesh.get('duckiebot')
         self._load_objects(self.map_data)
 
         # Get the starting tile from the map, if specified
@@ -602,7 +604,11 @@ class Simulator(gym.Env):
                 else:
                     obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
-                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
+                if kind == "duckiebot":
+                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, 
+                            ROBOT_WIDTH, ROBOT_LENGTH)
+                elif kind == "duckie":
+                    obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
             self.objects.append(obj)
 
@@ -816,10 +822,10 @@ class Simulator(gym.Env):
                     [-0.20, 0, 0.50],
                 ],
                 [
-                    [-0.20, 0, -0.50],
+                    [-0.20, 0,-0.50],
                     [-0.20, 0, 0.00],
-                    [0.00, 0, 0.20],
-                    [0.50, 0, 0.20],
+                    [ 0.00, 0, 0.20],
+                    [ 0.50, 0, 0.20],
                 ],
                 [
                     [0.20, 0, 0.50],
@@ -889,7 +895,6 @@ class Simulator(gym.Env):
         # Hardcoded each curve; just rotate and shift
         elif kind.startswith('3way'):
             threeway_pts = []
-
             mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
             pts_new = np.matmul(pts, mat)
             pts_new += np.array([(i + 0.5) * ROAD_TILE_SIZE, 0, (j + 0.5) * ROAD_TILE_SIZE])
@@ -902,12 +907,33 @@ class Simulator(gym.Env):
         else:
             mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
             pts = np.matmul(pts, mat)
-            pts += np.array([(i + 0.5) * ROAD_TILE_SIZE, 0, (j + 0.5) * ROAD_TILE_SIZE])
+            pts += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
 
         return pts
 
+    def get_dir_vec(self, angle=None):
+        """
+        Vector pointing in the direction the agent is looking
+        """
+        if angle == None:
+            angle = self.cur_angle
 
-    def closest_curve_point(self, pos, angle):
+        x = math.cos(angle)
+        z = -math.sin(angle)
+        return np.array([x, 0, z])
+
+    def get_right_vec(self, angle=None):
+        """
+        Vector pointing to the right of the agent
+        """
+        if angle == None:
+            angle = self.cur_angle
+
+        x = math.sin(angle)
+        z = math.cos(angle)
+        return np.array([x, 0, z])
+
+    def closest_curve_point(self, pos, angle=None):
         """
         Get the closest point on the curve to a given point
         Also returns the tangent at that point
@@ -971,8 +997,6 @@ class Simulator(gym.Env):
 
         return LanePosition(dist=signedDist, dot_dir=dotDir, angle_deg=angle_deg,
                             angle_rad=angle_rad)
-
-
 
     def _drivable_pos(self, pos):
         """
@@ -1106,7 +1130,16 @@ class Simulator(gym.Env):
 
         # Update world objects
         for obj in self.objects:
-            obj.step(self.delta_time)
+            if not obj.static and obj.kind == "duckiebot":
+                obj_i, obj_j = self.get_grid_coords(obj.pos)
+                same_tile_obj = [
+                    o for o in self.objects if 
+                    tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
+                ]
+
+                obj.step(self.delta_time, self.closest_curve_point, same_tile_obj)    
+            else:
+                obj.step(self.delta_time)
 
     def get_agent_info(self):
         info = {}
@@ -1146,10 +1179,9 @@ class Simulator(gym.Env):
     def step(self, action):
         # Actions could be a Python list
         action = np.array(action)
-
         for _ in range(self.frame_skip):
             self.update_physics(action)
-
+            
         # Generate the current camera image
         obs = self.render_obs()
         misc = self.get_agent_info()
@@ -1174,7 +1206,7 @@ class Simulator(gym.Env):
 
         return obs, reward, done, misc
 
-    def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
+    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1224,14 +1256,28 @@ class Simulator(gym.Env):
         if self.draw_bbox:
             y += 0.8
             glRotatef(90, 1, 0, 0)
-        else:
+        elif not top_down:
             y += self.cam_height
             glRotatef(self.cam_angle[0], 1, 0, 0)
             glRotatef(self.cam_angle[1], 0, 1, 0)
             glRotatef(self.cam_angle[2], 0, 0, 1)
             glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
-        gluLookAt(
+        if top_down:
+            gluLookAt(
+                # Eye position
+                (self.grid_width * ROAD_TILE_SIZE) / 2,
+                5,
+                (self.grid_height * ROAD_TILE_SIZE) / 2,
+                # Target
+                (self.grid_width * ROAD_TILE_SIZE) / 2,
+                0,
+                (self.grid_height * ROAD_TILE_SIZE) / 2,
+                 # Up vector
+                0, 0, -1.0
+            )
+        else:
+            gluLookAt(
                 # Eye position
                 x,
                 y,
@@ -1242,7 +1288,7 @@ class Simulator(gym.Env):
                 z + dz,
                 # Up vector
                 0, 1.0, 0.0
-        )
+            )
 
         # Draw the ground quad
         glDisable(GL_TEXTURE_2D)
@@ -1292,7 +1338,6 @@ class Simulator(gym.Env):
                     curve_headings = curves[:, -1, :] - curves[:, 0, :]
                     curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
                     dirVec = get_dir_vec(angle)
-
                     dot_prods = np.dot(curve_headings, dirVec)
 
                     # Current ("closest") curve drawn in Red
@@ -1302,7 +1347,7 @@ class Simulator(gym.Env):
                     pts = self._get_curve(i, j)
                     for idx, pt in enumerate(pts):
                         # Don't draw current curve in blue
-                        if idx == np.argmax(dot_prods):
+                        if idx == np.argmax(dot_prods): 
                             continue
                         bezier_draw(pt, n=20)
 
@@ -1320,6 +1365,16 @@ class Simulator(gym.Env):
             glVertex3f(corners[2, 0], 0.01, corners[2, 1])
             glVertex3f(corners[3, 0], 0.01, corners[3, 1])
             glEnd()
+
+        if top_down:
+            
+            glPushMatrix()
+            glTranslatef(*self.cur_pos)
+            glScalef(1, 1, 1)
+            glRotatef(self.cur_angle * 180 / np.pi, 0, 1, 0)
+            # glColor3f(*self.color)
+            self.mesh.render()
+            glPopMatrix()
 
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo)
@@ -1366,7 +1421,8 @@ class Simulator(gym.Env):
             self.camera_height,
             self.multi_fbo,
             self.final_fbo,
-            self.img_array
+            self.img_array,
+            top_down=False
         )
 
         # self.undistort - for UndistortWrapper
@@ -1385,13 +1441,15 @@ class Simulator(gym.Env):
                 self.window.close()
             return
 
+        top_down = mode == 'top_down'
         # Render the image
         img = self._render_img(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                self.multi_fbo_human,
-                self.final_fbo_human,
-                self.img_array_human
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            self.multi_fbo_human,
+            self.final_fbo_human,
+            self.img_array_human,
+            top_down=top_down
         )
 
         # self.undistort - for UndistortWrapper
