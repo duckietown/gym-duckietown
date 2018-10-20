@@ -529,7 +529,8 @@ class Simulator(gym.Env):
                 if drivable:
                     tile['curves'] = self._get_curve(i, j)
                     self.drivable_tiles.append(tile)
-
+                    
+        self.mesh = ObjMesh.get('duckiebot')
         self._load_objects(self.map_data)
 
         # Get the starting tile from the map, if specified
@@ -1201,7 +1202,7 @@ class Simulator(gym.Env):
 
         return obs, reward, done, misc
 
-    def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
+    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1251,14 +1252,28 @@ class Simulator(gym.Env):
         if self.draw_bbox:
             y += 0.8
             glRotatef(90, 1, 0, 0)
-        else:
+        elif not top_down:
             y += self.cam_height
             glRotatef(self.cam_angle[0], 1, 0, 0)
             glRotatef(self.cam_angle[1], 0, 1, 0)
             glRotatef(self.cam_angle[2], 0, 0, 1)
             glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
-        gluLookAt(
+        if top_down:
+            gluLookAt(
+                # Eye position
+                (self.grid_width * ROAD_TILE_SIZE) / 2,
+                5,
+                (self.grid_height * ROAD_TILE_SIZE) / 2,
+                # Target
+                (self.grid_width * ROAD_TILE_SIZE) / 2,
+                0,
+                (self.grid_height * ROAD_TILE_SIZE) / 2,
+                 # Up vector
+                0, 0, -1.0
+            )
+        else:
+            gluLookAt(
                 # Eye position
                 x,
                 y,
@@ -1269,7 +1284,7 @@ class Simulator(gym.Env):
                 z + dz,
                 # Up vector
                 0, 1.0, 0.0
-        )
+            )
 
         # Draw the ground quad
         glDisable(GL_TEXTURE_2D)
@@ -1347,6 +1362,16 @@ class Simulator(gym.Env):
             glVertex3f(corners[3, 0], 0.01, corners[3, 1])
             glEnd()
 
+        if top_down:
+            
+            glPushMatrix()
+            glTranslatef(*self.cur_pos)
+            glScalef(1, 1, 1)
+            glRotatef(self.cur_angle * 180 / np.pi, 0, 1, 0)
+            # glColor3f(*self.color)
+            self.mesh.render()
+            glPopMatrix()
+
         # Resolve the multisampled frame buffer into the final frame buffer
         glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo)
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo)
@@ -1392,7 +1417,8 @@ class Simulator(gym.Env):
             self.camera_height,
             self.multi_fbo,
             self.final_fbo,
-            self.img_array
+            self.img_array,
+            top_down=False
         )
 
         # self.undistort - for UndistortWrapper
@@ -1411,13 +1437,15 @@ class Simulator(gym.Env):
                 self.window.close()
             return
 
+        top_down = mode == 'top_down'
         # Render the image
         img = self._render_img(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                self.multi_fbo_human,
-                self.final_fbo_human,
-                self.img_array_human
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            self.multi_fbo_human,
+            self.final_fbo_human,
+            self.img_array_human,
+            top_down=top_down
         )
 
         # self.undistort - for UndistortWrapper
