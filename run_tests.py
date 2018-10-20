@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import os
 import numpy as np
 import gym
-import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv, MultiMapEnv
+from gym_duckietown.simulator import get_agent_corners
 from gym_duckietown.wrappers import PyTorchObsWrapper
 
 env = gym.make('Duckietown-udem1-v0')
@@ -48,9 +48,9 @@ for i in range(0, 50):
 env = DuckietownEnv(map_name='loop_obstacles')
 for i in range(0, 75):
     obs = env.reset()
-    assert not env._collision(), "collision on spawn"
+    assert not env._collision(get_agent_corners(env.cur_pos, env.cur_angle)), "collision on spawn"
     env.step(np.array([0.05, 0]))
-    assert not env._collision(), "collision after one step"
+    assert not env._collision(get_agent_corners(env.cur_pos, env.cur_angle)), "collision after one step"
 
 # Test the draw_bbox mode
 env = DuckietownEnv(map_name='udem1', draw_bbox=True)

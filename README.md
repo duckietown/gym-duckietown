@@ -9,7 +9,7 @@ Please use this bibtex if you want to cite this repository in your publications:
 
 ```
 @misc{gym_duckietown,
-  author = {Maxime Chevalier-Boisvert, Florian Golemo, Yanjun Cao, Bhairav Mehta, Liam Paull},
+  author = {Chevalier-Boisvert, Maxime and Golemo, Florian and Cao, Yanjun and Mehta, Bhairav and Paull, Liam},
   title = {Duckietown Environments for OpenAI Gym},
   year = {2018},
   publisher = {GitHub},
@@ -194,7 +194,7 @@ Note that it is possible to have `gen_demos.py` and `train_imitate.py` running s
 
 ### Map File Format
 
-The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](https://docs.duckietown.org/opmanual_duckietown/out/duckietown_specs.html).
+The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](http://docs.duckietown.org/DT18/opmanual_duckietown/out/duckietown_specs.html).
 
 The available tile types are:
 - empty
