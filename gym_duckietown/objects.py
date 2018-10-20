@@ -123,10 +123,9 @@ class DuckiebotObj(WorldObj):
         """
         Take a step, implemented as a PID controller
         """
-        print('In Step')
+
         # Find the curve point closest to the agent, and the tangent at that point
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
-
 
         while True:
             # Project a point ahead along the curve tangent,
@@ -136,17 +135,6 @@ class DuckiebotObj(WorldObj):
 
             # If we have a valid point on the curve, stop
             if curve_point is not None:
-                if objects:
-                    while True:
-                        distances = np.array([np.linalg.norm(curve_point - o.pos) for o in objects]).squeeze() < self.safety_radius
-                        
-                        if distances.any():
-                            left_vec = -self.get_right_vec(self.angle)
-                            curve_point = left_vec * 0.1 + closest_point
-                            
-                        else:
-                            print(closest_point, distances.any())
-                            break
                 break
 
             self.follow_dist *= 0.5
