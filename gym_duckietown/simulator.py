@@ -456,6 +456,9 @@ class Simulator(gym.Env):
 
         self.cur_pos = propose_pos
         self.cur_angle = propose_angle
+
+        logger.info('Starting at %s %s' % (self.cur_pos, self.cur_angle))
+
         # Generate the first camera image
         obs = self.render_obs()
 
@@ -1120,6 +1123,7 @@ class Simulator(gym.Env):
             info['cur_angle'] = float(angle)
             info['timestamp'] = self.timestamp
             info['tile_coords'] = list(self.get_grid_coords(pos))
+            info['map_data'] = self.map_data
         misc = {}
         misc['Simulator'] = info
         return misc

@@ -125,9 +125,9 @@ class ObjMesh:
         chunks[-1]['end_idx'] = len(faces)
 
         num_faces = len(faces)
-        logger.debug('num verts=%d' % len(verts))
-        logger.debug('num faces=%d' % num_faces)
-        logger.debug('num chunks=%d' % len(chunks))
+        # logger.debug('num verts=%d' % len(verts))
+        # logger.debug('num faces=%d' % num_faces)
+        # logger.debug('num chunks=%d' % len(chunks))
 
         # Create numpy arrays to store the vertex data
         list_verts = np.zeros(shape=(num_faces, 3, 3), dtype=np.float32)

@@ -19,6 +19,7 @@ from gym_duckietown.envs import DuckietownEnv
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
 parser.add_argument('--map-name', default='udem1')
+parser.add_argument('--distortion', default=False, action='store_true')
 parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 args = parser.parse_args()
@@ -26,6 +27,7 @@ args = parser.parse_args()
 if args.env_name is None:
     env = DuckietownEnv(
         map_name = args.map_name,
+        distortion= args.distortion,
         domain_rand = args.domain_rand,
         max_steps = np.inf
     )
