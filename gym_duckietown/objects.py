@@ -7,7 +7,7 @@ import pyglet
 from pyglet.gl import *
 
 
-class WorldObj:
+class WorldObj():
     def __init__(self, obj, domain_rand, safety_radius_mult):
         """
         Initializes the object and its properties
@@ -95,9 +95,10 @@ class WorldObj:
 
 
 class DuckiebotObj(WorldObj):
-    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist,
-            gain=1.0, trim=0.0, radius=0.0318, k=27.0, limit=1.0):
-        super().__init__(obj, domain_rand, safety_radius_mult)
+    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist, 
+            robot_width, robot_length, gain=1.0, trim=0.0, radius=0.0318, 
+            k=27.0, limit=1.0):
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         if self.domain_rand:
             self.follow_dist = np.random.uniform(0.05, 0.15)
@@ -115,14 +116,16 @@ class DuckiebotObj(WorldObj):
 
         self.wheel_dist = wheel_dist 
 
+        self.robot_width = robot_width
+        self.robot_length = robot_length
+
     def step(self, delta_time, closest_curve_point, objects):
         """
         Take a step, implemented as a PID controller
         """
-        print('In Step')
+
         # Find the curve point closest to the agent, and the tangent at that point
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
-
 
         while True:
             # Project a point ahead along the curve tangent,
@@ -132,17 +135,6 @@ class DuckiebotObj(WorldObj):
 
             # If we have a valid point on the curve, stop
             if curve_point is not None:
-                if objects:
-                    while True:
-                        distances = np.array([np.linalg.norm(curve_point - o.pos) for o in objects]).squeeze() < self.safety_radius
-                        
-                        if distances.any():
-                            left_vec = -self.get_right_vec(self.angle)
-                            curve_point = left_vec * 0.1 + closest_point
-                            
-                        else:
-                            print(closest_point, distances.any())
-                            break
                 break
 
             self.follow_dist *= 0.5
@@ -238,12 +230,19 @@ class DuckiebotObj(WorldObj):
         self.angle += rotAngle
         self.y_rot += rotAngle * 180 / np.pi 
 
-        # TODO, update corners
+        # Recompute the bounding boxes (BB) for the duckiebot
+        self.obj_corners = agent_boundbox(
+            self.pos,
+            self.robot_width,
+            self.robot_length,
+            self.get_dir_vec(self.angle),
+            self.get_right_vec(self.angle)
+        )
 
 
 class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
-        super().__init__(obj, domain_rand, safety_radius_mult)
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.walk_distance = walk_distance + 0.25
 
@@ -342,7 +341,7 @@ class DuckieObj(WorldObj):
 
 class TrafficLightObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult):
-        super().__init__(obj, domain_rand, safety_radius_mult)
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.texs = [
             load_texture(get_file_path("textures", "trafficlight_card0", "jpg")),

@@ -1,3 +1,9 @@
-.git
-.dockerignore
-*Dockerfile
+**
+!gym_duckietown/**
+!experiments/**
+!docker/**
+!**/*py
+!**/*yaml
+!Makefile
+!LICENSE.pdf
+

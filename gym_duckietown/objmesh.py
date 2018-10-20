@@ -1,9 +1,7 @@
-import os
-import math
-import numpy as np
-import pyglet
 from .graphics import *
 from .utils import *
+from . import logger
+
 
 class ObjMesh:
     """
@@ -48,7 +46,7 @@ class ObjMesh:
         # usemtl mtl_name
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
-        print('loading mesh "%s"' % file_path)
+        logger.debug('loading mesh "%s"' % file_path)
 
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)
@@ -127,9 +125,9 @@ class ObjMesh:
         chunks[-1]['end_idx'] = len(faces)
 
         num_faces = len(faces)
-        print('num verts=%d' % len(verts))
-        print('num faces=%d' % num_faces)
-        print('num chunks=%d' % len(chunks))
+        logger.debug('num verts=%d' % len(verts))
+        logger.debug('num faces=%d' % num_faces)
+        logger.debug('num chunks=%d' % len(chunks))
 
         # Create numpy arrays to store the vertex data
         list_verts = np.zeros(shape=(num_faces, 3, 3), dtype=np.float32)
@@ -234,7 +232,7 @@ class ObjMesh:
         if not os.path.exists(mtl_path):
             return materials
 
-        print('loading materials from "%s"' % mtl_path)
+        logger.debug('loading materials from "%s"' % mtl_path)
 
         mtl_file = open(mtl_path, 'r')
 

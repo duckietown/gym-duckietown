@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """
 This script allows you to manually control the simulator or Duckiebot
@@ -27,7 +27,7 @@ if args.env_name is None:
     env = DuckietownEnv(
         map_name = args.map_name,
         domain_rand = args.domain_rand,
-        max_steps = math.inf
+        max_steps = np.inf
     )
 else:
     env = gym.make(args.env_name)
@@ -182,7 +182,7 @@ def update(dt):
 
     env.render()
 
-pyglet.clock.schedule_interval(update, 1 / env.unwrapped.frame_rate)
+pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
 # Registers joysticks and recording controls
 joysticks = pyglet.input.get_joysticks()

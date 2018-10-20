@@ -12,10 +12,9 @@ RUN sh miniconda.sh -b -p /opt/conda && rm miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
 WORKDIR /workspace
-RUN chmod -R a+w /workspace
 
 ADD . gym-duckietown
-RUN pip install -e gym-duckietown
+RUN cd gym-duckietown && pip install -e .
 
 RUN pip install -e git+https://github.com/duckietown/duckietown-slimremote.git#egg=duckietown-slimremote
 
