@@ -95,8 +95,9 @@ class WorldObj:
 
 
 class DuckiebotObj(WorldObj):
-    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist,
-            gain=1.0, trim=0.0, radius=0.0318, k=27.0, limit=1.0):
+    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist, 
+            robot_width, robot_length, gain=1.0, trim=0.0, radius=0.0318, 
+            k=27.0, limit=1.0):
         super().__init__(obj, domain_rand, safety_radius_mult)
 
         if self.domain_rand:
@@ -114,6 +115,9 @@ class DuckiebotObj(WorldObj):
         self.limit = limit
 
         self.wheel_dist = wheel_dist 
+
+        self.robot_width = robot_width
+        self.robot_length = robot_length
 
     def step(self, delta_time, closest_curve_point, objects):
         """
@@ -238,7 +242,14 @@ class DuckiebotObj(WorldObj):
         self.angle += rotAngle
         self.y_rot += rotAngle * 180 / np.pi 
 
-        # TODO, update corners
+        # Recompute the bounding boxes (BB) for the duckiebot
+        self.obj_corners = agent_boundbox(
+            self.pos,
+            self.robot_width,
+            self.robot_length,
+            self.get_dir_vec(self.angle),
+            self.get_right_vec(self.angle)
+        )
 
 
 class DuckieObj(WorldObj):

@@ -492,7 +492,8 @@ class Simulator(gym.Env):
                     obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
                 if kind == "duckiebot":
-                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST)
+                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, 
+                            ROBOT_WIDTH, ROBOT_LENGTH)
                 elif kind == "duckie":
                     obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
 
