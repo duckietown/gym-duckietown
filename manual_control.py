@@ -34,7 +34,7 @@ if args.env_name is None:
         draw_bbox = args.draw_bbox,
         domain_rand = args.domain_rand,
         frame_skip = args.frame_skip,
-        distortion = True,
+        distortion = False,
     )
 else:
     env = gym.make(args.env_name)

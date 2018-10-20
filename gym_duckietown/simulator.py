@@ -11,6 +11,8 @@ from gym.utils import seeding
 from .collision import *
 # Objects utility code
 from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj
+# Graphics utility code
+from .objmesh import *
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -1130,7 +1132,7 @@ class Simulator(gym.Env):
                     tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
                 ]
 
-                obj.step(delta_time, self.closest_curve_point, same_tile_obj)    
+                obj.step(self.delta_time, self.closest_curve_point, same_tile_obj)    
             else:
                 obj.step(self.delta_time)
 

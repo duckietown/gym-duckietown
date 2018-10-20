@@ -98,7 +98,7 @@ class DuckiebotObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist, 
             robot_width, robot_length, gain=1.0, trim=0.0, radius=0.0318, 
             k=27.0, limit=1.0):
-        super().__init__(obj, domain_rand, safety_radius_mult)
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         if self.domain_rand:
             self.follow_dist = np.random.uniform(0.05, 0.15)
