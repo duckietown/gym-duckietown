@@ -20,19 +20,23 @@ Please use this bibtex if you want to cite this repository in your publications:
 
 This simulator was created as part of work done at [Mila](https://mila.quebec/).
 
-## Introduction
-
 <p align="center">
-<img src="media/finalmain.gif"><br>
+<img src="media/simplesim_free.png"><br>
 </p>
+
 <h2 align="center">
 Welcome to <b>Duckietown</b>! 
 </h2>
+
+## Introduction
 
 Gym-Duckietown is a simulator for the [Duckietown](https://duckietown.org) Universe, written in pure Python/OpenGL (Pyglet). It places your agent, a Duckiebot, inside of an instance of a Duckietown: a loop of roads with turns, intersections, obstacles, Duckie pedestrians, and other Duckiebots. It can be a pretty hectic place!
 
 Gym-Duckietown is fast, open, and incredibly customizable. What started as a lane-following simulator has evolved into a fully-functioning autonomous driving simulator that you can use to train your Machine Learning, Reinforcement Learning, Imitation Learning, or even classical robotics algorithms. Gym-Duckietown offers a wide range of tasks, from simple lane-following to full city navigation with dynamic obstacles. Gym-Duckietown also ships with features, wrappers, and tools that can help you bring your algorithms to the real robot, including [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/), accurate camera distortion, and differential-drive physics (and most importantly, realistic waddling).
 
+<p align="center">
+<img src="media/finalmain.gif"><br>
+</p>
 
 There are multiple registered gym environments, each corresponding to a different [map file](https://github.com/duckietown/gym-duckietown/tree/master/gym_duckietown/maps):
 - `Duckietown-straight_road-v0`
