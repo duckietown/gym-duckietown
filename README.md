@@ -21,7 +21,7 @@ Please use this bibtex if you want to cite this repository in your publications:
 This simulator was created as part of work done at [Mila](https://mila.quebec/).
 
 <p align="center">
-<img src="media/simplesim_free.png"><br>
+<img src="media/simplesim_free.png" width="300px"><br>
 </p>
 
 <h2 align="center">
