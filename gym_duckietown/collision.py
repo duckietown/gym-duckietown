@@ -1,3 +1,4 @@
+# coding=utf-8
 from .graphics import rotate_point
 import numpy as np
 import math

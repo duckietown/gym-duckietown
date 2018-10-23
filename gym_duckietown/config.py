@@ -1,4 +1,4 @@
-
+# coding=utf-8
 DEFAULTS = {
     "map": "small_loop",
     "domain_rand": False,

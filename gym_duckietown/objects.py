@@ -1,3 +1,4 @@
+# coding=utf-8
 from .collision import *
 from .graphics import load_texture
 from .utils import get_file_path

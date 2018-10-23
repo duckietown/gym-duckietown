@@ -1,3 +1,4 @@
+# coding=utf-8
 from .graphics import *
 from .utils import *
 from . import logger
@@ -101,7 +102,7 @@ class ObjMesh(object):
                 face = []
                 for token in tokens:
                     indices = filter(lambda t: t != '', token.split('/'))
-                    indices = list(map(lambda idx: int(idx), indices))
+                    indices = list(map(int, indices))
                     assert len(indices) == 2 or len(indices) == 3
                     face.append(indices)
 

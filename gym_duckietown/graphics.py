@@ -1,3 +1,4 @@
+# coding=utf-8
 import math
 
 from . import logger
@@ -121,8 +122,8 @@ def create_frame_buffers(width, height, num_samples):
 
         # Create a plain texture texture to render into
         fbTex = gl.GLuint(0)
-        gl.glGenTextures( 1, byref(fbTex));
-        gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex);
+        gl.glGenTextures( 1, byref(fbTex))
+        gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
         gl.glTexImage2D(
             gl.GL_TEXTURE_2D,
             0,
@@ -135,9 +136,9 @@ def create_frame_buffers(width, height, num_samples):
             None
         )
         gl.glFramebufferTexture2D(
-                gl.GL_FRAMEBUFFER,
-                gl.GL_COLOR_ATTACHMENT0,
-                gl.GL_TEXTURE_2D,
+            gl.GL_FRAMEBUFFER,
+            gl.GL_COLOR_ATTACHMENT0,
+            gl.GL_TEXTURE_2D,
             fbTex,
             0
         )
