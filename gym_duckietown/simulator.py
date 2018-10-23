@@ -216,6 +216,7 @@ class Simulator(gym.Env):
         # Window for displaying the environment to humans
         self.window = None
 
+        import pyglet
         # Invisible window to render into (shadow OpenGL context)
         self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
 
@@ -337,12 +338,13 @@ class Simulator(gym.Env):
         ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
         # XXX: diffuse is not used?
         diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
-        gl.glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat * 4)(*light_pos))
-        gl.glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat * 4)(*ambient))
-        gl.glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat * 4)(0.5, 0.5, 0.5, 1.0))
-        gl.glEnable(GL_LIGHT0)
-        gl.glEnable(GL_LIGHTING)
-        gl.glEnable(GL_COLOR_MATERIAL)
+        from pyglet import gl
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, (gl.GLfloat * 4)(*light_pos))
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1.0))
+        gl.glEnable(gl.GL_LIGHT0)
+        gl.glEnable(gl.GL_LIGHTING)
+        gl.glEnable(gl.GL_COLOR_MATERIAL)
 
         # Ground color
         self.ground_color = self._perturb(GROUND_COLOR, 0.3)
@@ -373,6 +375,7 @@ class Simulator(gym.Env):
             c = self._perturb([c, c, c], 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
+        import pyglet
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors))
 
         # Randomize tile parameters
@@ -1220,22 +1223,23 @@ class Simulator(gym.Env):
         # pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
+        from pyglet import gl
         # Bind the multisampled frame buffer
-        glEnable(GL_MULTISAMPLE)
-        glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
-        glViewport(0, 0, width, height)
+        gl.glEnable(gl.GL_MULTISAMPLE)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
+        gl.glViewport(0, 0, width, height)
 
         # Clear the color and depth buffers
 
         c0, c1, c2 = self.horizon_color
-        glClearColor(c0, c1, c2, 1.0)
-        glClearDepth(1.0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        gl.glClearColor(c0, c1, c2, 1.0)
+        gl.glClearDepth(1.0)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
         # Set the projection matrix
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        gl.glLoadIdentity()
+        gl.gluPerspective(
                 self.cam_fov_y,
                 width / float(height),
                 0.04,
@@ -1250,21 +1254,21 @@ class Simulator(gym.Env):
             pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
         x, y, z = pos + self.cam_offset
         dx, dy, dz = get_dir_vec(angle)
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
 
         if self.draw_bbox:
             y += 0.8
-            glRotatef(90, 1, 0, 0)
+            gl.glRotatef(90, 1, 0, 0)
         elif not top_down:
             y += self.cam_height
-            glRotatef(self.cam_angle[0], 1, 0, 0)
-            glRotatef(self.cam_angle[1], 0, 1, 0)
-            glRotatef(self.cam_angle[2], 0, 0, 1)
-            glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+            gl.glRotatef(self.cam_angle[0], 1, 0, 0)
+            gl.glRotatef(self.cam_angle[1], 0, 1, 0)
+            gl.glRotatef(self.cam_angle[2], 0, 0, 1)
+            gl.glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
         if top_down:
-            gluLookAt(
+            gl.gluLookAt(
                 # Eye position
                 (self.grid_width * ROAD_TILE_SIZE) / 2,
                 5,
@@ -1277,7 +1281,7 @@ class Simulator(gym.Env):
                 0, 0, -1.0
             )
         else:
-            gluLookAt(
+            gl.gluLookAt(
                 # Eye position
                 x,
                 y,
@@ -1291,20 +1295,20 @@ class Simulator(gym.Env):
             )
 
         # Draw the ground quad
-        glDisable(GL_TEXTURE_2D)
-        glColor3f(*self.ground_color)
-        glPushMatrix()
-        glScalef(50, 1, 50)
-        self.ground_vlist.draw(GL_QUADS)
-        glPopMatrix()
+        gl.glDisable(gl.GL_TEXTURE_2D)
+        gl.glColor3f(*self.ground_color)
+        gl.glPushMatrix()
+        gl.glScalef(50, 1, 50)
+        self.ground_vlist.draw(gl.GL_QUADS)
+        gl.glPopMatrix()
 
         # Draw the ground/noise triangles
-        self.tri_vlist.draw(GL_TRIANGLES)
+        self.tri_vlist.draw(gl.GL_TRIANGLES)
 
         # Draw the road quads
-        glEnable(GL_TEXTURE_2D)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        gl.glEnable(gl.GL_TEXTURE_2D)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 
         # For each grid tile
         for j in range(self.grid_height):
@@ -1320,17 +1324,17 @@ class Simulator(gym.Env):
                 color = tile['color']
                 texture = tile['texture']
 
-                glColor3f(*color)
+                gl.glColor3f(*color)
 
-                glPushMatrix()
-                glTranslatef((i + 0.5) * ROAD_TILE_SIZE, 0, (j + 0.5) * ROAD_TILE_SIZE)
-                glRotatef(angle * 90, 0, 1, 0)
+                gl.glPushMatrix()
+                gl.glTranslatef((i + 0.5) * ROAD_TILE_SIZE, 0, (j + 0.5) * ROAD_TILE_SIZE)
+                gl.glRotatef(angle * 90, 0, 1, 0)
 
                 # Bind the appropriate texture
                 texture.bind()
 
-                self.road_vlist.draw(GL_QUADS)
-                glPopMatrix()
+                self.road_vlist.draw(gl.GL_QUADS)
+                gl.glPopMatrix()
 
                 if self.draw_curve and tile['drivable']:
                     # Find curve with largest dotproduct with heading
@@ -1358,51 +1362,50 @@ class Simulator(gym.Env):
         # Draw the agent's own bounding box
         if self.draw_bbox:
             corners = get_agent_corners(pos, angle)
-            glColor3f(1, 0, 0)
-            glBegin(GL_LINE_LOOP)
-            glVertex3f(corners[0, 0], 0.01, corners[0, 1])
-            glVertex3f(corners[1, 0], 0.01, corners[1, 1])
-            glVertex3f(corners[2, 0], 0.01, corners[2, 1])
-            glVertex3f(corners[3, 0], 0.01, corners[3, 1])
-            glEnd()
+            gl.glColor3f(1, 0, 0)
+            gl.glBegin(gl.GL_LINE_LOOP)
+            gl.glVertex3f(corners[0, 0], 0.01, corners[0, 1])
+            gl.glVertex3f(corners[1, 0], 0.01, corners[1, 1])
+            gl.glVertex3f(corners[2, 0], 0.01, corners[2, 1])
+            gl.glVertex3f(corners[3, 0], 0.01, corners[3, 1])
+            gl.glEnd()
 
         if top_down:
-            
-            glPushMatrix()
-            glTranslatef(*self.cur_pos)
-            glScalef(1, 1, 1)
-            glRotatef(self.cur_angle * 180 / np.pi, 0, 1, 0)
+            gl.glPushMatrix()
+            gl.glTranslatef(*self.cur_pos)
+            gl.glScalef(1, 1, 1)
+            gl.glRotatef(self.cur_angle * 180 / np.pi, 0, 1, 0)
             # glColor3f(*self.color)
             self.mesh.render()
-            glPopMatrix()
+            gl.glPopMatrix()
 
         # Resolve the multisampled frame buffer into the final frame buffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, multi_fbo)
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, final_fbo)
-        glBlitFramebuffer(
+        gl.glBindFramebuffer(gl.GL_READ_FRAMEBUFFER, multi_fbo)
+        gl.glBindFramebuffer(gl.GL_DRAW_FRAMEBUFFER, final_fbo)
+        gl.glBlitFramebuffer(
                 0, 0,
                 width, height,
                 0, 0,
                 width, height,
-                GL_COLOR_BUFFER_BIT,
-                GL_LINEAR
+                gl.GL_COLOR_BUFFER_BIT,
+                gl.GL_LINEAR
         )
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
-        glBindFramebuffer(GL_FRAMEBUFFER, final_fbo)
-        glReadPixels(
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, final_fbo)
+        gl.glReadPixels(
                 0,
                 0,
                 width,
                 height,
-                GL_RGB,
-                GL_UNSIGNED_BYTE,
-                img_array.ctypes.data_as(POINTER(GLubyte))
+                gl.GL_RGB,
+                gl.GL_UNSIGNED_BYTE,
+                img_array.ctypes.data_as(POINTER(gl.GLubyte))
         )
 
         # Unbind the frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
         # Flip the image because OpenGL maps (0,0) to the lower-left corner
         # Note: this is necessary for gym.wrappers.Monitor to record videos
@@ -1459,9 +1462,11 @@ class Simulator(gym.Env):
         if mode == 'rgb_array':
             return img
 
+        from pyglet import gl, window, image
+
         if self.window is None:
-            config = pyglet.gl.Config(double_buffer=False)
-            self.window = pyglet.window.Window(
+            config = gl.Config(double_buffer=False)
+            self.window = window.Window(
                     width=WINDOW_WIDTH,
                     height=WINDOW_HEIGHT,
                     resizable=False,
@@ -1473,24 +1478,24 @@ class Simulator(gym.Env):
         self.window.dispatch_events()
 
         # Bind the default frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
         # Setup orghogonal projection
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        gl.glLoadIdentity()
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
+        gl. glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
         width = img.shape[1]
         height = img.shape[0]
         img = np.ascontiguousarray(np.flip(img, axis=0))
-        img_data = pyglet.image.ImageData(
+        img_data = image.ImageData(
                 width,
                 height,
                 'RGB',
-                img.ctypes.data_as(POINTER(GLubyte)),
+                img.ctypes.data_as(POINTER(gl.GLubyte)),
                 pitch=width * 3,
         )
         img_data.blit(
@@ -1513,7 +1518,7 @@ class Simulator(gym.Env):
             self.text_label.draw()
 
         # Force execution of queued commands
-        glFlush()
+        gl.glFlush()
 
 
 def get_dir_vec(cur_angle):

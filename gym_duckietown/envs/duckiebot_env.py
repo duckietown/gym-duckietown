@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
 import gym
-from gym import error, spaces, utils
+from gym import spaces
 from gym.utils import seeding
 import math
-import time
 import numpy
 import zmq
-import pyglet
-from pyglet.image import ImageData
-from pyglet.gl import *
 import numpy as np
 
 # For Python 3 compatibility
@@ -81,6 +77,7 @@ class DuckiebotEnv(gym.Env):
         self.latest_img = None
 
         # For displaying text
+        import pyglet
         self.textLabel = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
@@ -174,6 +171,8 @@ class DuckiebotEnv(gym.Env):
         if mode == 'rgb_array':
             return self.img
 
+        import pyglet
+        from pyglet import gl
         if self.window is None:
             context = pyglet.gl.get_current_context()
             self.window = pyglet.window.Window(
@@ -184,17 +183,17 @@ class DuckiebotEnv(gym.Env):
         self.window.switch_to()
         self.window.dispatch_events()
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
-        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+        gl.glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         self.window.clear()
 
         # Setup orghogonal projection
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        gl.glLoadIdentity()
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
+        gl.glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
         width = self.img.shape[1]

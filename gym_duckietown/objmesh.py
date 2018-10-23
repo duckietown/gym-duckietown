@@ -3,7 +3,7 @@ from .utils import *
 from . import logger
 
 
-class ObjMesh:
+class ObjMesh(object):
     """
     Load and render OBJ model files
     """
