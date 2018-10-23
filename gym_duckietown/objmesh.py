@@ -59,6 +59,8 @@ class ObjMesh(object):
 
         cur_mtl = ''
 
+        import pyglet
+
         # For each line of the input file
         for line in mesh_file:
             line = line.rstrip(' \r\n')
@@ -274,15 +276,16 @@ class ObjMesh(object):
         return materials
 
     def render(self):
+        from pyglet import gl
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]
 
             if texture:
-                glEnable(GL_TEXTURE_2D)
-                glBindTexture(texture.target, texture.id)
+                gl.glEnable(gl.GL_TEXTURE_2D)
+                gl.glBindTexture(texture.target, texture.id)
             else:
-                glDisable(GL_TEXTURE_2D)
+                gl.glDisable(gl.GL_TEXTURE_2D)
 
-            vlist.draw(GL_TRIANGLES)
+            vlist.draw(gl.GL_TRIANGLES)
 
-        glDisable(GL_TEXTURE_2D)
+        gl.glDisable(gl.GL_TEXTURE_2D)

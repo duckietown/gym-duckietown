@@ -1,7 +1,6 @@
 import numpy as np
 import gym
 from gym import spaces
-import itertools 
 
 
 class DiscreteWrapper(gym.ActionWrapper):
@@ -143,7 +142,6 @@ class UndistortWrapper(gym.ObservationWrapper):
     """
 
     def __init__(self, env=None):
-        import cv2 
         gym.ObservationWrapper.__init__(self, env)
 
         assert env.unwrapped.distortion, "Distortion is false, no need for this wrapper"
@@ -203,4 +201,3 @@ class UndistortWrapper(gym.ObservationWrapper):
 
         return cv2.remap(observation, self.mapx, self.mapy, cv2.INTER_NEAREST)
 
-        
