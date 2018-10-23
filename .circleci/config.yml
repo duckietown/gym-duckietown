@@ -6,7 +6,7 @@ jobs:
     steps:
       - checkout
       - run: sudo apt-get install xvfb freeglut3-dev
-      - run: pip3 install -r requirements.txt
+      - run: pip3 install --user -r requirements.txt
       - run: pip3 install --user --no-deps -e .
       - run: pip3 install --user flake8
       - run: python3 -m flake8 . --count --show-source --statistics --select=E901,E999,F821,F822,F823
