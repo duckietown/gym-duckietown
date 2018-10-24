@@ -12,7 +12,7 @@ from pyglet.window import key
 import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
-
+from gym_duckietown.simulator import Simulator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
@@ -37,6 +37,7 @@ else:
 env.reset()
 env.render()
 
+assert isinstance(env.unwrapped, Simulator)
 
 @env.unwrapped.window.event
 def on_key_press(symbol, modifiers):

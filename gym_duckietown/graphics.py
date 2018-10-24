@@ -1,16 +1,17 @@
+# coding=utf-8
 import math
 
 from . import logger
 
 import numpy as np
 
-import pyglet
-from pyglet.gl import *
+
+
 from ctypes import byref
 
 from .utils import *
 
-class Texture:
+class Texture(object):
     """
     Manage the caching of textures, and texture randomization
     """
@@ -51,24 +52,26 @@ class Texture:
         self.tex = tex
 
     def bind(self):
-        glBindTexture(self.tex.target, self.tex.id)
+        from pyglet import gl
+        gl.glBindTexture(self.tex.target, self.tex.id)
 
 def load_texture(tex_path):
+    from pyglet import gl
     logger.debug('loading texture "%s"' % tex_path)
-
+    import pyglet
     img = pyglet.image.load(tex_path)
     tex = img.get_texture()
-    glEnable(tex.target)
-    glBindTexture(tex.target, tex.id)
-    glTexImage2D(
-        GL_TEXTURE_2D,
+    gl.glEnable(tex.target)
+    gl.glBindTexture(tex.target, tex.id)
+    gl.glTexImage2D(
+        gl.GL_TEXTURE_2D,
         0,
-        GL_RGB,
+        gl.GL_RGB,
         img.width,
         img.height,
         0,
-        GL_RGBA,
-        GL_UNSIGNED_BYTE,
+        gl.GL_RGBA,
+        gl.GL_UNSIGNED_BYTE,
         img.get_image_data().get_data('RGBA', img.width * 4)
     )
 
@@ -76,117 +79,120 @@ def load_texture(tex_path):
 
 def create_frame_buffers(width, height, num_samples):
     """Create the frame buffer objects"""
+    from pyglet import gl
 
     # Create a frame buffer (rendering target)
-    multi_fbo = GLuint(0)
-    glGenFramebuffers(1, byref(multi_fbo))
-    glBindFramebuffer(GL_FRAMEBUFFER, multi_fbo)
+    multi_fbo = gl.GLuint(0)
+    gl.glGenFramebuffers(1, byref(multi_fbo))
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
 
     # The try block here is because some OpenGL drivers
     # (Intel GPU drivers on macbooks in particular) do not
     # support multisampling on frame buffer objects
     try:
         # Create a multisampled texture to render into
-        fbTex = GLuint(0)
-        glGenTextures( 1, byref(fbTex));
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbTex);
-        glTexImage2DMultisample(
-            GL_TEXTURE_2D_MULTISAMPLE,
+        fbTex = gl.GLuint(0)
+        gl.glGenTextures( 1, byref(fbTex))
+        gl.glBindTexture(gl.GL_TEXTURE_2D_MULTISAMPLE, fbTex)
+        gl.glTexImage2DMultisample(
+            gl.GL_TEXTURE_2D_MULTISAMPLE,
             num_samples,
-            GL_RGBA32F,
+            gl.GL_RGBA32F,
             width,
             height,
             True
-        );
-        glFramebufferTexture2D(
-            GL_FRAMEBUFFER,
-            GL_COLOR_ATTACHMENT0,
-            GL_TEXTURE_2D_MULTISAMPLE,
+        )
+        gl.glFramebufferTexture2D(
+                gl.GL_FRAMEBUFFER,
+                gl.GL_COLOR_ATTACHMENT0,
+                gl.GL_TEXTURE_2D_MULTISAMPLE,
             fbTex,
             0
-        );
+        )
 
         # Attach a multisampled depth buffer to the FBO
-        depth_rb = GLuint(0)
-        glGenRenderbuffers(1, byref(depth_rb))
-        glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
-        glRenderbufferStorageMultisample(GL_RENDERBUFFER, num_samples, GL_DEPTH_COMPONENT, width, height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+        depth_rb = gl.GLuint(0)
+        gl.glGenRenderbuffers(1, byref(depth_rb))
+        gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, depth_rb)
+        gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width, height)
+        gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
     except:
         logger.debug('Falling back to non-multisampled frame buffer')
 
         # Create a plain texture texture to render into
-        fbTex = GLuint(0)
-        glGenTextures( 1, byref(fbTex));
-        glBindTexture(GL_TEXTURE_2D, fbTex);
-        glTexImage2D(
-            GL_TEXTURE_2D,
+        fbTex = gl.GLuint(0)
+        gl.glGenTextures( 1, byref(fbTex))
+        gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
+        gl.glTexImage2D(
+            gl.GL_TEXTURE_2D,
             0,
-            GL_RGBA,
+            gl.GL_RGBA,
             width,
             height,
             0,
-            GL_RGBA,
-            GL_FLOAT,
+            gl.GL_RGBA,
+            gl.GL_FLOAT,
             None
         )
-        glFramebufferTexture2D(
-            GL_FRAMEBUFFER,
-            GL_COLOR_ATTACHMENT0,
-            GL_TEXTURE_2D,
+        gl.glFramebufferTexture2D(
+            gl.GL_FRAMEBUFFER,
+            gl.GL_COLOR_ATTACHMENT0,
+            gl.GL_TEXTURE_2D,
             fbTex,
             0
-        );
+        )
 
         # Attach depth buffer to FBO
-        depth_rb = GLuint(0)
-        glGenRenderbuffers(1, byref(depth_rb))
-        glBindRenderbuffer(GL_RENDERBUFFER, depth_rb)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height)
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+        depth_rb = gl.GLuint(0)
+        gl.glGenRenderbuffers(1, byref(depth_rb))
+        gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, depth_rb)
+        gl.glRenderbufferStorage(gl.GL_RENDERBUFFER, gl.GL_DEPTH_COMPONENT, width, height)
+        gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
     # Sanity check
+    import pyglet
     if pyglet.options['debug_gl']:
-      res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-      assert res == GL_FRAMEBUFFER_COMPLETE
+      res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
+      assert res == gl.GL_FRAMEBUFFER_COMPLETE
 
     # Create the frame buffer used to resolve the final render
-    final_fbo = GLuint(0)
-    glGenFramebuffers(1, byref(final_fbo))
-    glBindFramebuffer(GL_FRAMEBUFFER, final_fbo)
+    final_fbo = gl.GLuint(0)
+    gl.glGenFramebuffers(1, byref(final_fbo))
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, final_fbo)
 
     # Create the texture used to resolve the final render
-    fbTex = GLuint(0)
-    glGenTextures(1, byref(fbTex))
-    glBindTexture(GL_TEXTURE_2D, fbTex)
-    glTexImage2D(
-        GL_TEXTURE_2D,
+    fbTex = gl.GLuint(0)
+    gl.glGenTextures(1, byref(fbTex))
+    gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
+    gl.glTexImage2D(
+        gl. GL_TEXTURE_2D,
         0,
-        GL_RGBA,
+        gl.GL_RGBA,
         width,
         height,
         0,
-        GL_RGBA,
-        GL_FLOAT,
+        gl. GL_RGBA,
+        gl.GL_FLOAT,
         None
     )
-    glFramebufferTexture2D(
-        GL_FRAMEBUFFER,
-        GL_COLOR_ATTACHMENT0,
-        GL_TEXTURE_2D,
+    gl.glFramebufferTexture2D(
+            gl.GL_FRAMEBUFFER,
+            gl.GL_COLOR_ATTACHMENT0,
+            gl.GL_TEXTURE_2D,
         fbTex,
         0
     )
+    import pyglet
     if pyglet.options['debug_gl']:
-      res = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-      assert res == GL_FRAMEBUFFER_COMPLETE
+      res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
+      assert res == gl.GL_FRAMEBUFFER_COMPLETE
 
     # Enable depth testing
-    glEnable(GL_DEPTH_TEST)
+    gl.glEnable(gl.GL_DEPTH_TEST)
 
     # Unbind the frame buffer
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
+    gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
     return multi_fbo, final_fbo
 
@@ -264,16 +270,17 @@ def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
     return bezier_closest(cps, p, mid, t_top, n-1)
 
 def bezier_draw(cps, n = 20, red=False):
+    from pyglet import gl
     pts = [bezier_point(cps, i/(n-1)) for i in range(0,n)]
-    glBegin(GL_LINE_STRIP)
+    gl.glBegin(gl.GL_LINE_STRIP)
 
     if red:
-        glColor3f(1, 0, 0)
+        gl.glColor3f(1, 0, 0)
     else:
-        glColor3f(0, 0, 1)
+        gl.glColor3f(0, 0, 1)
 
     for i, p in enumerate(pts):
-        glVertex3f(*p)
+        gl.glVertex3f(*p)
 
-    glEnd()
-    glColor3f(1,1,1)
+    gl.glEnd()
+    gl.glColor3f(1,1,1)

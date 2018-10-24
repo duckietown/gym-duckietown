@@ -1,3 +1,4 @@
+# coding=utf-8
 import numpy as np
 import cv2
 import itertools
@@ -116,8 +117,8 @@ class Distortion(object):
         R = 2
         F = R * 2 + 1
 
-        def norm(x):
-            return np.hypot(x[0], x[1])
+        def norm(_):
+            return np.hypot(_[0], _[1])
 
         deltas0 = [ (i - R - 1, j - R - 1) for i, j in itertools.product(range(F), range(F))]
         deltas0 = [x for x in deltas0 if norm(x) <= R]

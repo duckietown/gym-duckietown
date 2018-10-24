@@ -1,9 +1,10 @@
+# coding=utf-8
 from .graphics import *
 from .utils import *
 from . import logger
 
 
-class ObjMesh:
+class ObjMesh(object):
     """
     Load and render OBJ model files
     """
@@ -59,6 +60,8 @@ class ObjMesh:
 
         cur_mtl = ''
 
+        import pyglet
+
         # For each line of the input file
         for line in mesh_file:
             line = line.rstrip(' \r\n')
@@ -99,7 +102,7 @@ class ObjMesh:
                 face = []
                 for token in tokens:
                     indices = filter(lambda t: t != '', token.split('/'))
-                    indices = list(map(lambda idx: int(idx), indices))
+                    indices = list(map(int, indices))
                     assert len(indices) == 2 or len(indices) == 3
                     face.append(indices)
 
@@ -125,9 +128,9 @@ class ObjMesh:
         chunks[-1]['end_idx'] = len(faces)
 
         num_faces = len(faces)
-        logger.debug('num verts=%d' % len(verts))
-        logger.debug('num faces=%d' % num_faces)
-        logger.debug('num chunks=%d' % len(chunks))
+        # logger.debug('num verts=%d' % len(verts))
+        # logger.debug('num faces=%d' % num_faces)
+        # logger.debug('num chunks=%d' % len(chunks))
 
         # Create numpy arrays to store the vertex data
         list_verts = np.zeros(shape=(num_faces, 3, 3), dtype=np.float32)
@@ -274,15 +277,16 @@ class ObjMesh:
         return materials
 
     def render(self):
+        from pyglet import gl
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]
 
             if texture:
-                glEnable(GL_TEXTURE_2D)
-                glBindTexture(texture.target, texture.id)
+                gl.glEnable(gl.GL_TEXTURE_2D)
+                gl.glBindTexture(texture.target, texture.id)
             else:
-                glDisable(GL_TEXTURE_2D)
+                gl.glDisable(gl.GL_TEXTURE_2D)
 
-            vlist.draw(GL_TRIANGLES)
+            vlist.draw(gl.GL_TRIANGLES)
 
-        glDisable(GL_TEXTURE_2D)
+        gl.glDisable(gl.GL_TEXTURE_2D)

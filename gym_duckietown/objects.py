@@ -1,13 +1,12 @@
-import numpy as np
+# coding=utf-8
 from .collision import *
 from .graphics import load_texture
 from .utils import get_file_path
 
-import pyglet
-from pyglet.gl import *
 
 
-class WorldObj():
+
+class WorldObj(object):
     def __init__(self, obj, domain_rand, safety_radius_mult):
         """
         Initializes the object and its properties
@@ -46,23 +45,25 @@ class WorldObj():
         if not self.visible:
             return
 
+        from pyglet import gl
+
         # Draw the bounding box
         if draw_bbox:
-            glColor3f(1, 0, 0)
-            glBegin(GL_LINE_LOOP)
-            glVertex3f(self.obj_corners.T[0, 0], 0.01, self.obj_corners.T[1, 0])
-            glVertex3f(self.obj_corners.T[0, 1], 0.01, self.obj_corners.T[1, 1])
-            glVertex3f(self.obj_corners.T[0, 2], 0.01, self.obj_corners.T[1, 2])
-            glVertex3f(self.obj_corners.T[0, 3], 0.01, self.obj_corners.T[1, 3])
-            glEnd()
+            gl.glColor3f(1, 0, 0)
+            gl.glBegin(gl.GL_LINE_LOOP)
+            gl.glVertex3f(self.obj_corners.T[0, 0], 0.01, self.obj_corners.T[1, 0])
+            gl.glVertex3f(self.obj_corners.T[0, 1], 0.01, self.obj_corners.T[1, 1])
+            gl.glVertex3f(self.obj_corners.T[0, 2], 0.01, self.obj_corners.T[1, 2])
+            gl.glVertex3f(self.obj_corners.T[0, 3], 0.01, self.obj_corners.T[1, 3])
+            gl.glEnd()
 
-        glPushMatrix()
-        glTranslatef(*self.pos)
-        glScalef(self.scale, self.scale, self.scale)
-        glRotatef(self.y_rot, 0, 1, 0)
-        glColor3f(*self.color)
+        gl.glPushMatrix()
+        gl.glTranslatef(*self.pos)
+        gl.glScalef(self.scale, self.scale, self.scale)
+        gl.glRotatef(self.y_rot, 0, 1, 0)
+        gl.glColor3f(*self.color)
         self.mesh.render()
-        glPopMatrix()
+        gl.glPopMatrix()
 
     # Below are the functions that need to
     # be reimplemented for any dynamic object

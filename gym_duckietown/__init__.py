@@ -1,3 +1,4 @@
+# coding=utf-8
 __version__ = '2018.8.2-more-exposure'
 
 import logging
