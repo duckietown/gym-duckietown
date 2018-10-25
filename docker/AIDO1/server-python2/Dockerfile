@@ -15,7 +15,7 @@ WORKDIR /workspace
 
 
 
-COPY docker/amod/server-python2/requirements.txt /requirements.txt
+COPY docker/AIDO1/server-python2/requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
 
 
@@ -30,7 +30,7 @@ ADD . gym-duckietown
 
 RUN cd gym-duckietown && python setup.py develop --no-deps
 
-COPY docker/amod/server-python2/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
-COPY docker/amod/server-python2/launch-xvfb /usr/bin/launch-xvfb
+COPY docker/AIDO1/server-python2/launch-gym-server-with-xvfb.sh /usr/bin/launch-gym-server-with-xvfb
+COPY docker/AIDO1/server-python2/launch-xvfb /usr/bin/launch-xvfb
 
 CMD launch-gym-server-with-xvfb

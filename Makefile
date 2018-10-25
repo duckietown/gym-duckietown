@@ -34,7 +34,7 @@ push:
 
 
 build-docker-python2:
-	docker build -t $(img2) -f docker/amod/server-python2/Dockerfile .
+	docker build -t $(img2) -f docker/AIDO1/server-python2/Dockerfile .
 
 push-docker-python2:
 	docker push $(img2)
@@ -42,7 +42,7 @@ push-docker-python2:
 
 
 build-docker-python2-ros:
-	docker build -t $(img2-ros) -f docker/amod/server-python2-ros/Dockerfile .
+	docker build -t $(img2-ros) -f docker/AIDO1/server-python2-ros/Dockerfile .
 
 push-docker-python2-ros:
 	docker push $(img2-ros)

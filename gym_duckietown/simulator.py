@@ -1114,14 +1114,14 @@ class Simulator(gym.Env):
         )
 
     def update_physics(self, action):
-        wheelVels = action * self.robot_speed * 1
+        self.wheelVels = action * self.robot_speed * 1
         prev_pos = self.cur_pos
 
         # Update the robot's position
         self.cur_pos, self.cur_angle = _update_pos(self.cur_pos,
                                                    self.cur_angle,
                                                    self.wheel_dist,
-                                                   wheelVels=wheelVels,
+                                                   wheelVels=self.wheelVels,
                                                    deltaTime=self.delta_time)
         self.step_count += 1
         self.timestamp += self.delta_time
@@ -1153,14 +1153,35 @@ class Simulator(gym.Env):
         lp = self.get_lane_pos(pos, angle)
         info['action'] = list(self.last_action)
         if self.full_transparency:
+#             info['desc'] = """
+#
+# cur_pos, cur_angle ::  simulator frame (non cartesian)
+#
+# egovehicle_pose_cartesian :: cartesian frame
+#
+#     the map goes from (0,0) to (grid_height, grid_width)*ROAD_TILE_SIZE
+#
+# """
             info['lane_position'] = lp.as_json_dict()
             info['robot_speed'] = self.speed
             info['proximity_penalty'] = self._proximity_penalty2(pos, angle)
             info['cur_pos'] = [float(pos[0]), float(pos[1]), float(pos[2])]
             info['cur_angle'] = float(angle)
+            info['wheel_velocities'] = [self.wheelVels[0], self.wheelVels[1]]
+
+            # put in cartesian coordinates
+            # (0,0 is bottom left)
+            grid_height = self.grid_height
+            tile_size = ROAD_TILE_SIZE
+            gx, gy, gz = pos
+
+            p = [gx, (grid_height - 1) * tile_size - gz]
+            info['egovehicle_pose_cartesian'] = {'~SE2Transform': {'p': [float(p[0]), float(p[1])],
+                                                                   'theta': angle}}
+
             info['timestamp'] = self.timestamp
             info['tile_coords'] = list(self.get_grid_coords(pos))
-            info['map_data'] = self.map_data
+            # info['map_data'] = self.map_data
         misc = {}
         misc['Simulator'] = info
         return misc

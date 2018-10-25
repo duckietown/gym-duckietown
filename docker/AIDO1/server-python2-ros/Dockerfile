@@ -1,4 +1,4 @@
-FROM duckietown/gym-duckietown-server-python2:more-exposure
+FROM duckietown/gym-duckietown-server-python2:aido1_lf1_r3-v3
 # ROS INSTALL -------------------------
 # install packages
 
