@@ -15,42 +15,21 @@ tiles:
 objects:
 
 - kind: duckie
-  pos: [3.5, 1.2]
+  pos: [0.5,0.5]
+  rotate: 10
+  height: 0.06
+
+- kind: duckie
+  pos: [0.5,0.7]
+  rotate: 10
+  height: 0.06
+
+- kind: duckie
+  pos: [6.5,0.7]
   rotate: 10
   height: 0.06
 
 - kind: cone
-  pos: [6.8, 2.5]
+  pos: [0, 2.5]
   rotate: 90
   height: 0.08
-- kind: cone
-  pos: [6.6, 2.4]
-  rotate: 90
-  height: 0.08
-
-- kind: duckie
-  pos: [1.5, 5.5]
-  rotate: 90
-  height: 0.08
-
-- kind: duckiebot
-  pos: [4.5, 5.75]
-  rotate: -45
-  height: 0.12
-
-- kind: barrier
-  pos: [0.9, 3]
-  rotate: 100
-  height: 0.08
-
-- kind: duckie
-  pos: [3.0, 6.25]
-  rotate: 90
-  height: 0.08
-  static: False
-
-- kind: duckie
-  pos: [4.0, 6.25]
-  rotate: 90
-  height: 0.08
-  static: False
