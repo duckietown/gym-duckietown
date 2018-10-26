@@ -1,5 +1,5 @@
 # coding=utf-8
-__version__ = '2018.8.2-more-exposure'
+__version__ = '2018.10.1'
 
 import logging
 
@@ -7,7 +7,7 @@ logging.basicConfig()
 logger = logging.getLogger('gym-duckietown')
 logger.setLevel(logging.DEBUG)
 
-logger.info('Using gym-duckietown version %s\n' % __version__)
+logger.info('gym-duckietown %s\n' % __version__)
 
 import os
 
