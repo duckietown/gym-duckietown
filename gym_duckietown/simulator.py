@@ -104,6 +104,9 @@ class LanePosition(LanePosition0):
                     angle_deg=self.angle_deg,
                     angle_rad=self.angle_rad)
 
+class NotInLane(Exception):
+    ''' Raised when the Duckiebot is not in a lane. '''
+    pass
 
 class Simulator(gym.Env):
     """
@@ -448,7 +451,10 @@ class Simulator(gym.Env):
                 continue
 
             # If the angle is too far away from the driving direction, retry
-            lp = self.get_lane_pos(propose_pos, propose_angle)
+            try:
+                lp = self.get_lane_pos2(propose_pos, propose_angle)
+            except NotInLane:
+                continue
             M = self.accept_start_angle_deg
             ok = -M < lp.angle_deg < +M
             if not ok:
@@ -613,6 +619,9 @@ class Simulator(gym.Env):
                             ROBOT_WIDTH, ROBOT_LENGTH)
                 elif kind == "duckie":
                     obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
+                else:
+                    msg = 'I do not know what object this is: %s' % kind
+                    raise Exception(msg)
 
             self.objects.append(obj)
 
@@ -939,8 +948,10 @@ class Simulator(gym.Env):
 
     def closest_curve_point(self, pos, angle=None):
         """
-        Get the closest point on the curve to a given point
-        Also returns the tangent at that point
+            Get the closest point on the curve to a given point
+            Also returns the tangent at that point.
+
+            Returns None, None if not in a lane.
         """
 
         i, j = self.get_grid_coords(pos)
@@ -967,14 +978,20 @@ class Simulator(gym.Env):
 
         return point, tangent
 
-    def get_lane_pos(self, pos, angle):
+    def get_lane_pos2(self, pos, angle):
         """
         Get the position of the agent relative to the center of the right lane
+
+        Raises NotInLane if the Duckiebot is not in a lane.
         """
 
         # Get the closest point along the right lane's Bezier curve,
         # and the tangent at that point
         point, tangent = self.closest_curve_point(pos, angle)
+        if point is None:
+            msg = 'Point not in lane: %s' % pos
+            raise NotInLane(msg)
+
         assert point is not None
 
         # Compute the alignment of the agent direction with the curve tangent
@@ -1150,7 +1167,7 @@ class Simulator(gym.Env):
         pos = self.cur_pos
         angle = self.cur_angle
         # Get the position relative to the right lane tangent
-        lp = self.get_lane_pos(pos, angle)
+
         info['action'] = list(self.last_action)
         if self.full_transparency:
 #             info['desc'] = """
@@ -1162,7 +1179,12 @@ class Simulator(gym.Env):
 #     the map goes from (0,0) to (grid_height, grid_width)*ROAD_TILE_SIZE
 #
 # """
-            info['lane_position'] = lp.as_json_dict()
+            try:
+                lp = self.get_lane_pos2(pos, angle)
+                info['lane_position'] = lp.as_json_dict()
+            except NotInLane:
+                pass
+
             info['robot_speed'] = self.speed
             info['proximity_penalty'] = self._proximity_penalty2(pos, angle)
             info['cur_pos'] = [float(pos[0]), float(pos[1]), float(pos[2])]
@@ -1191,14 +1213,18 @@ class Simulator(gym.Env):
         col_penalty = self._proximity_penalty2(pos, angle)
 
         # Get the position relative to the right lane tangent
-        lp = self.get_lane_pos(pos, angle)
+        try:
+            lp = self.get_lane_pos2(pos, angle)
+        except NotInLane:
+            reward = 40 * col_penalty
+        else:
 
-        # Compute the reward
-        reward = (
-                +1.0 * speed * lp.dot_dir +
-                -10 * np.abs(lp.dist) +
-                +40 * col_penalty
-        )
+            # Compute the reward
+            reward = (
+                    +1.0 * speed * lp.dot_dir +
+                    -10 * np.abs(lp.dist) +
+                    +40 * col_penalty
+            )
         return reward
 
     def step(self, action):
