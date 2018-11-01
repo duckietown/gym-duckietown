@@ -998,6 +998,9 @@ class Simulator(gym.Env):
         dirVec = get_dir_vec(angle)
         dotDir = np.dot(dirVec, tangent)
         dotDir = max(-1, min(1, dotDir))
+        # The Duckiebot should be able to drive in
+        # both directions of the lane lane without being penalized (hence absolute direction)
+        dotDir = abs(dotDir)
 
         # Compute the signed distance to the curve
         # Right of the curve is negative, left is positive
@@ -1006,12 +1009,8 @@ class Simulator(gym.Env):
         rightVec = np.cross(tangent, upVec)
         signedDist = np.dot(posVec, rightVec)
 
-        # Compute the signed angle between the direction and curve tangent
-        # Right of the tangent is negative, left is positive
+        # Compute the absolute angle between the direction and curve tangent
         angle_rad = math.acos(dotDir)
-
-        if np.dot(dirVec, rightVec) < 0:
-            angle_rad *= -1
 
         angle_deg = np.rad2deg(angle_rad)
         # return signedDist, dotDir, angle_deg
