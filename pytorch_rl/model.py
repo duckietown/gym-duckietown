@@ -50,7 +50,7 @@ class CNNPolicy(FFPolicy):
         self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
 
         self.linear1_drop = nn.Dropout(p=0.5)
-        self.linear1 = nn.Linear(32 * 9 * 14, 256)
+        self.linear1 = nn.Linear(32 * 74 * 54, 256)
 
         if use_gru:
             self.gru = nn.GRUCell(512, 512)
@@ -111,8 +111,7 @@ class CNNPolicy(FFPolicy):
 
         x = self.conv4(x)
         x = F.leaky_relu(x)
-
-        x = x.view(-1, 32 * 9 * 14)
+        x = x.view(-1, 32 * 74 * 54)
         x = self.linear1_drop(x)
         x = self.linear1(x)
         x = F.leaky_relu(x)
