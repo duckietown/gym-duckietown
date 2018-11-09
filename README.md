@@ -154,7 +154,7 @@ docker build . \
 There is a simple UI application which allows you to control the simulation or real robot manually. The `manual_control.py` application will launch the Gym environment, display camera images and send actions (keyboard commands) back to the simulator or robot. You can specify which map file to load with the `--map-name` argument:
 
 ```
-./manual_control.py --env-name Duckietown-udem1-v0
+python3 manual_control.py --env-name Duckietown-udem1-v0
 ```
 
 There is also a script to run automated tests (`run_tests.py`) and a script to gather performance metrics (`benchmark.py`).
