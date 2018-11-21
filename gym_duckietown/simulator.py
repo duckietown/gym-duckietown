@@ -76,7 +76,8 @@ MIN_SPAWN_OBJ_DIST = 0.25
 ROAD_TILE_SIZE = 0.61
 
 # Maximum forward robot speed in meters/second
-DEFAULT_ROBOT_SPEED = 0.40
+DEFAULT_ROBOT_SPEED = 1.20
+# approx 2 tiles/second
 
 DEFAULT_FRAMERATE = 30
 
@@ -1202,6 +1203,7 @@ class Simulator(gym.Env):
         return reward
 
     def step(self, action):
+        action=np.clip(action,-1,1)
         # Actions could be a Python list
         action = np.array(action)
         for _ in range(self.frame_skip):
