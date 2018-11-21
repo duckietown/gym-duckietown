@@ -1,0 +1,11 @@
+# This is a closed loop (no intersections) with a few obstacles directly
+# on the road, which have to be avoided.
+
+tiles:
+- [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
+- [floor  , curve_left/W, straight/W, straight/W, straight/W    , straight/W, curve_left/N  , floor  ]
+- [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
+- [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
+- [floor  , straight/S  , floor     , floor     , curve_right/N , straight/E, curve_left/E  , floor  ]
+- [floor  , curve_left/S, straight/E, straight/W, curve_left/E  , floor     , floor         , floor  ]
+- [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
