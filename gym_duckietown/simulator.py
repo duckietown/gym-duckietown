@@ -1183,7 +1183,7 @@ class Simulator(gym.Env):
 
     def step(self, action):
         # clip the actions to +-1
-        action = np.clip(action,np.array([-1.,-1.]),np.array([1.,1.]))
+        action = np.clip(action, -1, 1)
 
         
         # Actions could be a Python list
