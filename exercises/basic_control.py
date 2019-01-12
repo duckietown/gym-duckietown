@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Exercise: Build a controller to control the Duckiebot in simulation using the ground truth pose
+Construire un contrôleur pour contrôler le Duckiebot en simulation en utilisant la vrai pose 
 """
 
 import time
@@ -30,7 +30,7 @@ else:
 obs = env.reset()
 env.render()
 
-total_reward=0
+total_recompense=0
 
 while True:
 
@@ -38,25 +38,26 @@ while True:
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
 
-    ###### START FILL IN CODE HERE.
-    # TODO: Figure out how to compute the velocity and steering
+    ###### Commencez à remplir le code ici.
+    # TODO: Décide comment calculer la vitesse et la direction
 
-    # Velicty is a value between 0 and 1 (corresponds to actual speed of 0 to 1.2m/s)
-    velocity = 0.1 # You should overwrite this value
-    # the angle of the steering wheel i.e. the change in angle of the car in rads/s
-    steering = 0.1 # You should overwrite this value
+    # La vitesse est une valeur entre 0 et 1 (correspond à une vitesse réelle de 0 à 1,2m/s)
+    
+    vitesse = 0.1 # You should overwrite this value
+    # l'angle du volant, c'est-à-dire le changement d'angle de la voiture en rads/s
+    braquage = 0.1 # You should overwrite this value
 
-    ###### END FILL IN CODE HERE
+    ###### Fini à remplir le code ici
     
-    obs, reward, done, info = env.step([velocity, steering])
-    total_reward += reward
+    obs, recompense, fini, info = env.step([vitesse, braquage])
+    total_recompense += recompense
     
-    print('step number = %s, one step reward=%.3f, accumulated reward=%.3f' % (env.step_count, reward, total_reward))
+    print('étape = %s, recompense instantanée=%.3f, recompense totale=%.3f' % (env.step_count, recompense, total_recompense))
 
     env.render()
 
-    if done:
-        if reward < 0:
+    if fini:
+        if recompense < 0:
             print('*** CRASHED ***')
-        print ('final reward = %.3f' % total_reward)
+        print ('recompense finale = %.3f' % total_recompense)
         break;
