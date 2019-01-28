@@ -41,11 +41,14 @@ while True:
     ###### Commencez à remplir le code ici.
     # TODO: Décide comment calculer la vitesse et la direction
 
+    k_p = 10
+    k_d = 1
+    
     # La vitesse est une valeur entre 0 et 1 (correspond à une vitesse réelle de 0 à 1,2m/s)
     
-    vitesse = 0.1 # You should overwrite this value
+    vitesse = 0.2 # You should overwrite this value
     # l'angle du volant, c'est-à-dire le changement d'angle de la voiture en rads/s
-    braquage = 0.1 # You should overwrite this value
+    braquage = k_p*distance_to_road_center + k_d*angle_from_straight_in_rads # You should overwrite this value
 
     ###### Fini à remplir le code ici
     
