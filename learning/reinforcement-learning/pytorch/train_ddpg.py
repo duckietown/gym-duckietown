@@ -46,8 +46,6 @@ def _train(args):
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
     
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
     # Set seeds
     seed(args.seed)
 
