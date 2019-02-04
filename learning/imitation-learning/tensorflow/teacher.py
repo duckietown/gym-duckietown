@@ -11,7 +11,7 @@ FOLLOWING_DISTANCE = 0.3
 class PurePursuitExpert:
     def __init__(self, env, ref_velocity=REF_VELOCITY, position_threshold=POSITION_THRESHOLD,
                  following_distance=FOLLOWING_DISTANCE, max_iterations=1000):
-        self.env = env
+        self.env = env.unwrapped
         self.following_distance = following_distance
         self.max_iterations = max_iterations
         self.ref_velocity = ref_velocity
