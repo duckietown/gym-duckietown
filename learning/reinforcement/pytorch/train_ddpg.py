@@ -17,13 +17,11 @@ import logging
 import os
 
 # Duckietown Specific
-import utils
-from env import launch_env
-from ddpg import DDPG
-from utils import seed, evaluate_policy
-from wrappers import NormalizeWrapper, ImgWrapper, \
+from reinforcement.pytorch.ddpg import DDPG
+from reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
+from utils.env import launch_env
+from utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -55,7 +53,7 @@ def _train(args):
 
     # Initialize policy
     policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    replay_buffer = utils.ReplayBuffer(args.replay_buffer_max_size)
+    replay_buffer = ReplayBuffer(args.replay_buffer_max_size)
     print("Initialized DDPG")
     
     # Evaluate untrained policy
@@ -149,6 +147,6 @@ if __name__ == '__main__':
     parser.add_argument("--policy_freq", default=2, type=int)  # Frequency of delayed policy updates
     parser.add_argument("--env_timesteps", default=500, type=int)  # Frequency of delayed policy updates
     parser.add_argument("--replay_buffer_max_size", default=10000, type=int)  # Maximum number of steps to keep in the replay buffer
-    parser.add_argument('--model-dir', type=str, default='models/')
+    parser.add_argument('--model-dir', type=str, default='reinforcement/pytorch/models/')
 
     _train(parser.parse_args())

@@ -14,6 +14,7 @@ import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
 from gym_duckietown.simulator import Simulator
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
 parser.add_argument('--map-name', default='udem1')
@@ -88,13 +89,21 @@ def on_key_press(symbol, modifiers):
     #     print('saving screenshot')
     #     img = env.render('rgb_array')
     #     try:
-    #         from experiments.utils import save_img
     #         save_img('screenshot.png', img)
     #     except BaseException as e:
     #         print(str(e))
 
 def update(dt):
     env.render('free_cam')
+
+def save_img(file_name, img):
+    from skimage import io
+    if isinstance(img, Variable):
+        img = img.data.numpy()
+    if len(img.shape) == 4:
+        img = img.squeeze(0)
+    img = img.astype(np.uint8)
+    io.imsave(file_name, img)
 
 
 # Main event loop

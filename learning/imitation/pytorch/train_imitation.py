@@ -1,23 +1,36 @@
 #!/usr/bin/env python3
 
+"""
+This script will train a CNN model using imitation learning from a PurePursuit Expert.
+"""
+
+import time
+import random
 import argparse
-import sys
+import math
+import json
+from functools import reduce
+import operator
+
 import numpy as np
+import torch
+import torch.optim as optim
 
-from model import TensorflowModel
-from teacher import PurePursuitExpert
-from env import launch_env
-
-from wrappers import NormalizeWrapper, \
+from utils.env import launch_env
+from utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
+from utils.teacher import PurePursuitExpert
+
+from imitation.pytorch.model import Model
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train(args):
-    print("Running Expert for {} Episodes of {} Steps".format(args.episodes, args.steps))
-    print("Training Learning for {} Epochs with Batch Size of {}".format(args.epochs, args.batch_size))
-
     env = launch_env()
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
+    env = ImgWrapper(env)
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
@@ -40,36 +53,45 @@ def _train(args):
             observation, reward, done, info = env.step(action)
             observations.append(observation)
             actions.append(action)
-            
         env.reset()
-
     env.close()
 
     actions = np.array(actions)
     observations = np.array(observations)
 
-    model = TensorflowModel(
-        observation_shape=observation_shape,  # from the logs we've got
-        action_shape=action_shape,  # same
-        graph_location=args.model_directory,  # where do we want to store our trained models
-        seed=args.seed  # to seed all random operations in the model (e.g., dropout)
+    model = Model(action_dim=2, max_action=1.)
+    model.train().to(device)
+
+    # weight_decay is L2 regularization, helps avoid overfitting
+    optimizer = optim.SGD(
+        model.parameters(),
+        lr=0.0004,
+        weight_decay=1e-3
     )
 
-    for i in range(args.epochs):
-        # we defined the batch size, this can be adjusted according to your computing resources
-        loss = None
-        for batch in range(0, len(observations), args.batch_size):
-            print("Training batch", batch)
-            loss = model.train(
-                observations=observations[batch:batch + args.batch_size],
-                actions=actions[batch:batch + args.batch_size]
-            )
+    avg_loss = 0
+    for epoch in range(args.epochs):
+        optimizer.zero_grad()
 
-        # every 10 epochs, we store the model we have
-        if i % 10 == 0:
-            model.commit()
+        batch_indices = np.random.randint(0, observations.shape[0], (args.batch_size))
+        obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
+        act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
 
-    print("Training complete!")
+        model_actions = model(obs_batch)
+
+        loss = (model_actions - act_batch).norm(2).mean()
+        loss.backward()
+        optimizer.step()
+
+        loss = loss.data[0]
+        avg_loss = avg_loss * 0.995 + loss * 0.005
+
+        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
+
+        # Periodically save the trained model
+        if epoch % 200 == 0:
+            torch.save(model.state_dict(), 'imitation/pytorch/models/imitate.pt')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
