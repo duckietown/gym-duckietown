@@ -16,52 +16,44 @@ import numpy as np
 import gym
 from gym_duckietown.envs import DuckietownEnv
 
+from utils.env import launch_env
+from utils.wrappers import NormalizeWrapper, ImgWrapper, \
+    DtRewardWrapper, ActionWrapper, ResizeWrapper
+from utils.teacher import PurePursuitExpert
+
 from imitation.pytorch.model import Model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def load_model():
-    global model
-    model = Model()
+def _enjoy():
+    model = Model(action_dim=2, max_action=1.)
 
     try:
         state_dict = torch.load('trained_models/imitate.pt', map_location=lambda storage, loc: storage)
         model.load_state_dict(state_dict)
     except:
         print('failed to load model')
+        exit()
 
-    model.eval()
-    if torch.cuda.is_available():
-        model.cuda()
+    model.eval().to(device)
 
-load_model()
+    env = launch_env()
+    env = ResizeWrapper(env)
+    env = NormalizeWrapper(env) 
+    env = ImgWrapper(env)
+    env = ActionWrapper(env)
+    env = DtRewardWrapper(env)
 
-    def _enjoy(args):
+    obs = env.reset()
 
     while True:
-        start_time = time.time()
+        obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
 
-        obs = obs.transpose(2, 0, 1)
-        obs = make_var(obs).unsqueeze(0)
-
-        vels = model(obs)
-        vels = vels.squeeze().data.cpu().numpy()
-        print(vels)
-
-
-        obs, reward, done, info = env.step(vels)
-
+        action = model(obs)
+        action = action.squeeze().data.cpu().numpy()
+        
+        obs, reward, done, info = env.step(action)
         env.render()
-
-        end_time = time.time()
-        frame_time = 1000 * (end_time - start_time)
-        avg_frame_time = avg_frame_time * 0.95 + frame_time * 0.05
-        max_frame_time = 0.99 * max(max_frame_time, frame_time) + 0.01 * frame_time
-        fps = 1 / (frame_time / 1000)
-
-        print('avg frame time: %d' % int(avg_frame_time))
-        print('max frame time: %d' % int(max_frame_time))
-        print('fps: %.1f' % fps)
 
         if done:
             if reward < 0:
@@ -72,4 +64,4 @@ load_model()
             env.render()
 
 if __name__ == '__main__':
-    _enjoy(args)
+    _enjoy()
