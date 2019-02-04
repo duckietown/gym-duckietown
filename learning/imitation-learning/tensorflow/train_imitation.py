@@ -9,7 +9,7 @@ from model import TensorflowModel
 from teacher import PurePursuitExpert
 from env import launch_env
 
-from wrappers import NormalizeWrapper, ImgWrapper, \
+from wrappers import NormalizeWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 def _train(args):
