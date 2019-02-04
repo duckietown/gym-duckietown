@@ -14,7 +14,6 @@ import torch
 
 import numpy as np
 import gym
-from gym_duckietown.envs import DuckietownEnv
 
 from utils.env import launch_env
 from utils.wrappers import NormalizeWrapper, ImgWrapper, \
@@ -29,7 +28,7 @@ def _enjoy():
     model = Model(action_dim=2, max_action=1.)
 
     try:
-        state_dict = torch.load('trained_models/imitate.pt', map_location=lambda storage, loc: storage)
+        state_dict = torch.load('trained_models/imitate.pt', map_location=device)
         model.load_state_dict(state_dict)
     except:
         print('failed to load model')
