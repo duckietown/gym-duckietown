@@ -53,9 +53,10 @@ will automatically cycle through all available [map files](https://github.com/du
 a variety of different maps at the same time, with the idea that training on a variety of
 different scenarios will make for a more robust policy/model.
 
+`gym-duckietown` is an _accompanying_ simulator to real Duckiebots, which allow you to run your code on the real robot. We provide a domain randomization API, which can help you transfer your trained policies from simulation to real world. Without using a domain transfer method, your learned models will likely overfit to various aspects of the simulator, which won't transfer to the real world. When you deploy, you and your Duckiebot will be running around in circles trying to figure out what's going on. 
+
 <p align="center">
-<img src="media/duckiebot_1.png" width="300px"><br>
-Duckiebot-v0
+<img src="media/domainrand-sim.gif" width="300px" height="200px" ><img src="media/needfordr.gif" width="300px" height="200px" ><br>
 </p>
 
 The `Duckiebot-v0` environment is meant to connect to software running on
@@ -64,6 +65,11 @@ trained in simulation can transfer to the real robot. If you want to
 control your robot remotely with the `Duckiebot-v0` environment, you will need to
 install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
 repository on your Duckiebot.
+
+<p align="center">
+<img src="media/duckiebot_1.png" width="300px"><br>
+Duckiebot-v0
+</p>
 
 ## Installation
 
