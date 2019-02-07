@@ -35,13 +35,14 @@ while True:
     follow_dist = 0.4
 
     # Find the curve point closest to the agent, and the tangent at that point
-    closest_point, closest_tangent = env.closest_curve_point(env.cur_pos)
+    print (" %s ,  %s " % (env.cur_pos, env.cur_angle))
+    closest_point, closest_tangent = env.closest_curve_point(env.cur_pos, env.cur_angle)
 
     while True:
         # Project a point ahead along the curve tangent,
         # then find the closest point to to that
         follow_point = closest_point + closest_tangent * follow_dist
-        curve_point, _ = env.closest_curve_point(follow_point)
+        curve_point, _ = env.closest_curve_point(follow_point, env.cur_angle)
 
         # If we have a valid point on the curve, stop
         if curve_point is not None:
