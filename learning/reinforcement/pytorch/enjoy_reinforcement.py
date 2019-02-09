@@ -34,6 +34,7 @@ def _enjoy():
     policy.load(filename='ddpg', directory='reinforcement/pytorch/models/')
 
     obs = env.reset()
+    done = False
 
     while True:
         while not done:
