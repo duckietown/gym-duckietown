@@ -15,6 +15,7 @@ import argparse
 import logging
 
 import os
+import numpy as np
 
 # Duckietown Specific
 from reinforcement.pytorch.ddpg import DDPG
@@ -23,12 +24,7 @@ from utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 
-def _enjoy():   
-    if not os.path.exists("./results"):
-        os.makedirs("./results")
-    if not os.path.exists(args.model_dir):
-        os.makedirs(args.model_dir)
-        
+def _enjoy():          
     # Launch the env with our helper function
     env = launch_env()
     print("Initialized environment")
