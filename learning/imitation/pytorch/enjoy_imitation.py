@@ -57,8 +57,8 @@ def _enjoy():
         if done:
             if reward < 0:
                 print('*** FAILED ***')
-                if not args.no_pause:
-                    time.sleep(0.7)
+                time.sleep(0.7)
+                
             obs = env.reset()
             env.render()
 
