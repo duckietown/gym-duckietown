@@ -1,0 +1,11 @@
+{
+    "horz_mode": {
+        "default": 0
+    },
+    "light_pos": {
+        "default": [-40, 200, 100]
+    },
+    "camera_noise": {
+        "default": [0, 0, 0]
+    }
+}
