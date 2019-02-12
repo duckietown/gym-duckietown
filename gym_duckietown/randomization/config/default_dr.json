@@ -2,7 +2,7 @@
     "horz_mode": {
         "type": "int",
         "low": 0,
-        "high": 4,
+        "high": 4
     },
     "light_pos": {
         "type": "uniform",

@@ -1,23 +1,30 @@
+import json
 import numpy as np
 
+from ..utils import *
+from .. import logger
+
+
 class Randomizer():
-    def __init__(self, randomization_config_fp, default_config_fp):
+    def __init__(self, randomization_config_fp='default_dr.json', default_config_fp='default.json'):
         try:
-            with open(randomization_config_fp, mode='r') as f:
+            with open(get_file_path('randomization/config', randomization_config_fp, 'json'), mode='r') as f:
                 self.randomization_config = json.load(f)
         except:
+            logger.warning("Couldn't find {} in randomization/config subdirectory".format(randomization_config_fp))
             self.randomization_config = dict()
-            
-        with open(default_config_fp, mode='r') as f:
+
+        with open(get_file_path('randomization/config', default_config_fp, 'json'), mode='r') as f:
             self.default_config = json.load(f)
 
         self.keys = set(list(self.randomization_config.keys()) + list(self.default_config.keys()))
-
+        
     def randomize(self):
         """Returns a dictionary of randomized parameters, with key: parameter name and value: randomized
         value
         """
         randomization_settings = dict()
+        
         for k in self.keys:
             setting = None
             if k in self.randomization_config:
@@ -27,7 +34,7 @@ class Randomizer():
                     try:
                         low = randomization_definition['low']
                         high = randomization_definition['high']
-                        size = randomization_definition.get('setting', 1)
+                        size = randomization_definition.get('size', 1)
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
@@ -37,7 +44,7 @@ class Randomizer():
                     try:
                         low = randomization_definition['low']
                         high = randomization_definition['high']
-                        size = randomization_definition.get('setting', 1)
+                        size = randomization_definition.get('size', 1)
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
@@ -47,7 +54,7 @@ class Randomizer():
                     try:
                         loc = randomization_definition['loc']
                         scale = randomization_definition['scale']
-                        size = randomization_definition.get('setting', 1)
+                        size = randomization_definition.get('size', 1)
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
