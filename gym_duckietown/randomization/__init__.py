@@ -1,1 +1,1 @@
-from randomizer import Randomizer
+from .randomizer import Randomizer
