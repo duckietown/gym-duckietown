@@ -1161,7 +1161,7 @@ class Simulator(gym.Env):
                 lp = self.get_lane_pos(pos, angle)
                 info['lane_position'] = lp.as_json_dict()
             else:
-                info['lane_position']
+                info['lane_position'] = None
             info['robot_speed'] = self.speed
             info['proximity_penalty'] = self._proximity_penalty2(pos, angle)
             info['cur_pos'] = [float(pos[0]), float(pos[1]), float(pos[2])]
