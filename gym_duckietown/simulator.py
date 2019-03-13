@@ -3,6 +3,16 @@ from __future__ import division
 
 from collections import namedtuple
 from ctypes import POINTER
+from dataclasses import dataclass
+
+
+@dataclass
+class DoneRewardInfo:
+    done: bool
+    done_why: str
+    done_code: str
+    reward: float
+
 
 import gym
 import yaml
@@ -105,9 +115,11 @@ class LanePosition(LanePosition0):
                     angle_deg=self.angle_deg,
                     angle_rad=self.angle_rad)
 
+
 class NotInLane(Exception):
     ''' Raised when the Duckiebot is not in a lane. '''
     pass
+
 
 class Simulator(gym.Env):
     """
@@ -122,22 +134,22 @@ class Simulator(gym.Env):
     }
 
     def __init__(
-        self,
-        map_name=DEFAULT_MAP_NAME,
-        max_steps=DEFAULT_MAX_STEPS,
-        draw_curve=False,
-        draw_bbox=False,
-        domain_rand=True,
-        frame_rate=DEFAULT_FRAMERATE,
-        frame_skip=DEFAULT_FRAME_SKIP,
-        camera_width=DEFAULT_CAMERA_WIDTH,
-        camera_height=DEFAULT_CAMERA_HEIGHT,
-        robot_speed=DEFAULT_ROBOT_SPEED,
-        accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
-        full_transparency=False,
-        user_tile_start=None,
-        seed=None,
-        distortion=False,
+            self,
+            map_name=DEFAULT_MAP_NAME,
+            max_steps=DEFAULT_MAX_STEPS,
+            draw_curve=False,
+            draw_bbox=False,
+            domain_rand=True,
+            frame_rate=DEFAULT_FRAMERATE,
+            frame_skip=DEFAULT_FRAME_SKIP,
+            camera_width=DEFAULT_CAMERA_WIDTH,
+            camera_height=DEFAULT_CAMERA_HEIGHT,
+            robot_speed=DEFAULT_ROBOT_SPEED,
+            accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
+            full_transparency=False,
+            user_tile_start=None,
+            seed=None,
+            distortion=False,
     ):
         """
 
@@ -235,9 +247,9 @@ class Simulator(gym.Env):
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-            self.camera_width,
-            self.camera_height,
-            4
+                self.camera_width,
+                self.camera_height,
+                4
         )
 
         # Array to render the image into (for observation rendering)
@@ -295,7 +307,7 @@ class Simulator(gym.Env):
 
         # Used by the UndistortWrapper, always initialized to False
         self.undistort = False
-        
+
         # Start tile
         self.user_tile_start = user_tile_start
 
@@ -543,7 +555,7 @@ class Simulator(gym.Env):
                 if drivable:
                     tile['curves'] = self._get_curve(i, j)
                     self.drivable_tiles.append(tile)
-                    
+
         self.mesh = ObjMesh.get('duckiebot')
         self._load_objects(self.map_data)
 
@@ -616,8 +628,8 @@ class Simulator(gym.Env):
                     obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
                 if kind == "duckiebot":
-                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, 
-                            ROBOT_WIDTH, ROBOT_LENGTH)
+                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST,
+                                       ROBOT_WIDTH, ROBOT_LENGTH)
                 elif kind == "duckie":
                     obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, ROAD_TILE_SIZE)
                 else:
@@ -836,10 +848,10 @@ class Simulator(gym.Env):
                     [-0.20, 0, 0.50],
                 ],
                 [
-                    [-0.20, 0,-0.50],
+                    [-0.20, 0, -0.50],
                     [-0.20, 0, 0.00],
-                    [ 0.00, 0, 0.20],
-                    [ 0.50, 0, 0.20],
+                    [0.00, 0, 0.20],
+                    [0.50, 0, 0.20],
                 ],
                 [
                     [0.20, 0, 0.50],
@@ -921,7 +933,7 @@ class Simulator(gym.Env):
         else:
             mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
             pts = np.matmul(pts, mat)
-            pts += np.array([(i+0.5) * ROAD_TILE_SIZE, 0, (j+0.5) * ROAD_TILE_SIZE])
+            pts += np.array([(i + 0.5) * ROAD_TILE_SIZE, 0, (j + 0.5) * ROAD_TILE_SIZE])
 
         return pts
 
@@ -1131,7 +1143,9 @@ class Simulator(gym.Env):
                 not self._collision(agent_corners)
         )
 
-    def update_physics(self, action):
+    def update_physics(self, action, delta_time=None):
+        if delta_time is None:
+            delta_time = self.delta_time
         self.wheelVels = action * self.robot_speed * 1
         prev_pos = self.cur_pos
 
@@ -1140,28 +1154,28 @@ class Simulator(gym.Env):
                                                    self.cur_angle,
                                                    self.wheel_dist,
                                                    wheelVels=self.wheelVels,
-                                                   deltaTime=self.delta_time)
+                                                   deltaTime=delta_time)
         self.step_count += 1
-        self.timestamp += self.delta_time
+        self.timestamp += delta_time
 
         self.last_action = action
 
         # Compute the robot's speed
         delta_pos = self.cur_pos - prev_pos
-        self.speed = np.linalg.norm(delta_pos) / self.delta_time
+        self.speed = np.linalg.norm(delta_pos) / delta_time
 
         # Update world objects
         for obj in self.objects:
             if not obj.static and obj.kind == "duckiebot":
                 obj_i, obj_j = self.get_grid_coords(obj.pos)
                 same_tile_obj = [
-                    o for o in self.objects if 
+                    o for o in self.objects if
                     tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
                 ]
 
-                obj.step(self.delta_time, self.closest_curve_point, same_tile_obj)    
+                obj.step(delta_time, self.closest_curve_point, same_tile_obj)
             else:
-                obj.step(self.delta_time)
+                obj.step(delta_time)
 
     def get_agent_info(self):
         info = {}
@@ -1171,15 +1185,15 @@ class Simulator(gym.Env):
 
         info['action'] = list(self.last_action)
         if self.full_transparency:
-#             info['desc'] = """
-#
-# cur_pos, cur_angle ::  simulator frame (non cartesian)
-#
-# egovehicle_pose_cartesian :: cartesian frame
-#
-#     the map goes from (0,0) to (grid_height, grid_width)*ROAD_TILE_SIZE
-#
-# """
+            #             info['desc'] = """
+            #
+            # cur_pos, cur_angle ::  simulator frame (non cartesian)
+            #
+            # egovehicle_pose_cartesian :: cartesian frame
+            #
+            #     the map goes from (0,0) to (grid_height, grid_width)*ROAD_TILE_SIZE
+            #
+            # """
             try:
                 lp = self.get_lane_pos2(pos, angle)
                 info['lane_position'] = lp.as_json_dict()
@@ -1199,6 +1213,7 @@ class Simulator(gym.Env):
             gx, gy, gz = pos
 
             p = [gx, (grid_height - 1) * tile_size - gz]
+            info['cur_pos_cartesian'] = [float(p[0]), float(p[1])]
             info['egovehicle_pose_cartesian'] = {'~SE2Transform': {'p': [float(p[0]), float(p[1])],
                                                                    'theta': angle}}
 
@@ -1229,35 +1244,42 @@ class Simulator(gym.Env):
         return reward
 
     def step(self, action):
-        action=np.clip(action,-1,1)
+        action = np.clip(action, -1, 1)
         # Actions could be a Python list
         action = np.array(action)
         for _ in range(self.frame_skip):
             self.update_physics(action)
-            
+
         # Generate the current camera image
         obs = self.render_obs()
         misc = self.get_agent_info()
 
+        d = self._compute_done_reward()
+        misc['Simulator']['msg'] = d.done_why
+
+        return obs, d.reward, d.done, misc
+
+    def _compute_done_reward(self) -> DoneRewardInfo:
         # If the agent is not in a valid pose (on drivable tiles)
         if not self._valid_pose(self.cur_pos, self.cur_angle):
             msg = 'Stopping the simulator because we are at an invalid pose.'
-            misc['Simulator']['msg'] = msg
             logger.info(msg)
             reward = REWARD_INVALID_POSE
+            done_code = 'invalid-pose'
             done = True
         # If the maximum time step count is reached
         elif self.step_count >= self.max_steps:
             msg = 'Stopping the simulator because we reached max_steps = %s' % self.max_steps
-            misc['Simulator']['msg'] = msg
             logger.info(msg)
             done = True
             reward = 0
+            done_code = 'max-steps-reached'
         else:
             done = False
             reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
-
-        return obs, reward, done, misc
+            msg = ''
+            done_code = 'in-progress'
+        return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
     def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True):
         """
@@ -1319,29 +1341,29 @@ class Simulator(gym.Env):
 
         if top_down:
             gl.gluLookAt(
-                # Eye position
-                (self.grid_width * ROAD_TILE_SIZE) / 2,
-                5,
-                (self.grid_height * ROAD_TILE_SIZE) / 2,
-                # Target
-                (self.grid_width * ROAD_TILE_SIZE) / 2,
-                0,
-                (self.grid_height * ROAD_TILE_SIZE) / 2,
-                 # Up vector
-                0, 0, -1.0
+                    # Eye position
+                    (self.grid_width * ROAD_TILE_SIZE) / 2,
+                    5,
+                    (self.grid_height * ROAD_TILE_SIZE) / 2,
+                    # Target
+                    (self.grid_width * ROAD_TILE_SIZE) / 2,
+                    0,
+                    (self.grid_height * ROAD_TILE_SIZE) / 2,
+                    # Up vector
+                    0, 0, -1.0
             )
         else:
             gl.gluLookAt(
-                # Eye position
-                x,
-                y,
-                z,
-                # Target
-                x + dx,
-                y + dy,
-                z + dz,
-                # Up vector
-                0, 1.0, 0.0
+                    # Eye position
+                    x,
+                    y,
+                    z,
+                    # Target
+                    x + dx,
+                    y + dy,
+                    z + dz,
+                    # Up vector
+                    0, 1.0, 0.0
             )
 
         # Draw the ground quad
@@ -1401,7 +1423,7 @@ class Simulator(gym.Env):
                     pts = self._get_curve(i, j)
                     for idx, pt in enumerate(pts):
                         # Don't draw current curve in blue
-                        if idx == np.argmax(dot_prods): 
+                        if idx == np.argmax(dot_prods):
                             continue
                         bezier_draw(pt, n=20)
 
@@ -1470,12 +1492,12 @@ class Simulator(gym.Env):
         """
 
         observation = self._render_img(
-            self.camera_width,
-            self.camera_height,
-            self.multi_fbo,
-            self.final_fbo,
-            self.img_array,
-            top_down=False
+                self.camera_width,
+                self.camera_height,
+                self.multi_fbo,
+                self.final_fbo,
+                self.img_array,
+                top_down=False
         )
 
         # self.undistort - for UndistortWrapper
@@ -1497,12 +1519,12 @@ class Simulator(gym.Env):
         top_down = mode == 'top_down'
         # Render the image
         img = self._render_img(
-            WINDOW_WIDTH,
-            WINDOW_HEIGHT,
-            self.multi_fbo_human,
-            self.final_fbo_human,
-            self.img_array_human,
-            top_down=top_down
+                WINDOW_WIDTH,
+                WINDOW_HEIGHT,
+                self.multi_fbo_human,
+                self.final_fbo_human,
+                self.img_array_human,
+                top_down=top_down
         )
 
         # self.undistort - for UndistortWrapper
@@ -1535,7 +1557,7 @@ class Simulator(gym.Env):
         gl.glLoadIdentity()
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
-        gl. glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
+        gl.glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, 0, 10)
 
         # Draw the image to the rendering window
         width = img.shape[1]
@@ -1579,8 +1601,6 @@ def get_dir_vec(cur_angle):
     x = math.cos(cur_angle)
     z = -math.sin(cur_angle)
     return np.array([x, 0, z])
-
-
 
 
 def get_right_vec(cur_angle):
