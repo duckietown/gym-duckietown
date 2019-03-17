@@ -44,7 +44,7 @@ class WorldObj(object):
         self.static = obj['static']
         self.safety_radius = safety_radius_mult *\
             calculate_safety_radius(self.mesh, self.scale)
-        self.optional = obj['optional']
+
 
     def render(self, draw_bbox):
         """
