@@ -33,3 +33,5 @@ objects:
   pos: [0, 2.5]
   rotate: 90
   height: 0.08
+
+tile_size: 0.585

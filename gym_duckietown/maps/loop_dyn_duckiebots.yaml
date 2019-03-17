@@ -54,3 +54,5 @@ objects:
   rotate: 0
   height: 0.12
   static: False
+
+tile_size: 0.585
