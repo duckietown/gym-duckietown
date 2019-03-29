@@ -29,7 +29,7 @@ parser.add_argument('--frame-skip', default=1, type=int, help='number of frames 
 parser.add_argument('--seed', default=1, type=int, help='seed')
 args = parser.parse_args()
 
-if args.env_name is None:
+if args.env_name and args.env_name.find('Duckietown') != -1:
     env = DuckietownEnv(
         seed = args.seed,
         map_name = args.map_name,

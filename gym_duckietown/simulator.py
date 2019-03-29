@@ -1272,7 +1272,7 @@ class Simulator(gym.Env):
         gl.glLoadIdentity()
 
         if self.draw_bbox:
-            y += 0.8
+            y += 5.8
             gl.glRotatef(90, 1, 0, 0)
         elif not top_down:
             y += self.cam_height
