@@ -108,6 +108,8 @@ class DuckiebotObj(WorldObj):
             self.follow_dist = 0.3
             self.velocity = 0.1
 
+        self.max_iterations = 1000 
+
         # TODO: Make these DR as well
         self.gain = gain
         self.trim = trim
