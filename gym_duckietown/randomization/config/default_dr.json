@@ -1,0 +1,19 @@
+{
+    "horz_mode": {
+        "type": "int",
+        "low": 0,
+        "high": 4
+    },
+    "light_pos": {
+        "type": "uniform",
+        "low": [-150, 170, -150],
+        "high": [150, 220, 150],
+        "size": 3
+    },
+    "camera_noise": {
+        "type": "uniform",
+        "low": -0.005,
+        "high": 0.005,
+        "size": 3
+    }
+}

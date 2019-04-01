@@ -25,6 +25,8 @@ from .collision import *
 from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj
 # Graphics utility code
 from .objmesh import *
+# Randomization code
+from .randomization import Randomizer
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -200,6 +202,8 @@ class Simulator(gym.Env):
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
+        if self.domain_rand:
+            self.randomizer = Randomizer()
 
         # Frame rate to run at
         self.frame_rate = frame_rate
@@ -339,11 +343,14 @@ class Simulator(gym.Env):
         # Robot's current speed
         self.speed = 0
 
+        if self.domain_rand:
+            self.randomization_settings = self.randomizer.randomize()
+
         # Horizon color
         # Note: we explicitly sample white and grey/black because
         # these colors are easily confused for road and lane markings
         if self.domain_rand:
-            horz_mode = self.np_random.randint(0, 4)
+            horz_mode = self.randomization_settings['horz_mode']
             if horz_mode == 0:
                 self.horizon_color = self._perturb(BLUE_SKY_COLOR)
             elif horz_mode == 1:
@@ -357,13 +364,10 @@ class Simulator(gym.Env):
 
         # Setup some basic lighting with a far away sun
         if self.domain_rand:
-            light_pos = [
-                self.np_random.uniform(-150, 150),
-                self.np_random.uniform(170, 220),
-                self.np_random.uniform(-150, 150),
-            ]
+            light_pos = self.randomization_settings['light_pos']
         else:
             light_pos = [-40, 200, 100]
+
         ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
         # XXX: diffuse is not used?
         diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
@@ -838,10 +842,10 @@ class Simulator(gym.Env):
                     [0.50, 0, 0.20],
                 ],
                 [
-                    [0.20, 0, -0.50],
-                    [0.20, 0, -0.30],
-                    [0.30, 0, -0.20],
                     [0.50, 0, -0.20],
+                    [0.30, 0, -0.20],
+                    [0.20, 0, -0.30],
+                    [0.20, 0, -0.50],
                 ]
             ]) * self.road_tile_size
 
@@ -1392,7 +1396,8 @@ class Simulator(gym.Env):
         angle = self.cur_angle
         logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
         if self.domain_rand:
-            pos = pos + self.np_random.uniform(low=-0.005, high=0.005, size=(3,))
+            pos = pos + self.randomization_settings['camera_noise']
+            
         x, y, z = pos + self.cam_offset
         dx, dy, dz = get_dir_vec(angle)
         gl.glMatrixMode(gl.GL_MODELVIEW)
