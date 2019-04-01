@@ -11,6 +11,14 @@ class WorldObj(object):
         """
         Initializes the object and its properties
         """
+        # XXX this is relied on by things but it is not always set
+        # (Static analysis complains)
+        self.visible = True
+        # same
+        self.color = (0, 0, 0)
+        # maybe have an abstract method is_visible, get_color()
+
+
         self.process_obj_dict(obj, safety_radius_mult)
 
         self.domain_rand = domain_rand
@@ -36,7 +44,7 @@ class WorldObj(object):
         self.static = obj['static']
         self.safety_radius = safety_radius_mult *\
             calculate_safety_radius(self.mesh, self.scale)
-        self.optional = obj['optional']
+
 
     def render(self, draw_bbox):
         """
@@ -122,6 +130,7 @@ class DuckiebotObj(WorldObj):
         self.robot_width = robot_width
         self.robot_length = robot_length
 
+    # FIXME: this does not follow the same signature as WorldOb
     def step(self, delta_time, closest_curve_point, objects):
         """
         Take a step, implemented as a PID controller

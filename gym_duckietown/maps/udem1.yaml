@@ -95,3 +95,5 @@ objects:
   rotate: 180
   height: 0.2
   optional: true
+
+tile_size: 0.585

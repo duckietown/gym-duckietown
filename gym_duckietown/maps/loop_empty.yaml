@@ -7,5 +7,31 @@ tiles:
 - [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
 - [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
 - [floor  , straight/S  , floor     , floor     , curve_right/N , straight/E, curve_left/E  , floor  ]
-- [floor  , curve_left/S, straight/E, straight/W, curve_left/E  , floor     , floor         , floor  ]
+- [floor  , curve_left/S, straight/E, straight/E, curve_left/E  , floor     , floor         , floor  ]
 - [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
+
+# NOTE: obstacles cannot be optional, because they will change for
+# every episode, and this will interfere with imitation learning
+objects:
+
+- kind: duckie
+  pos: [0.5,0.5]
+  rotate: 10
+  height: 0.06
+
+- kind: duckie
+  pos: [0.5,0.7]
+  rotate: 10
+  height: 0.06
+
+- kind: duckie
+  pos: [6.5,0.7]
+  rotate: 10
+  height: 0.06
+
+- kind: cone
+  pos: [0, 2.5]
+  rotate: 90
+  height: 0.08
+
+tile_size: 0.585

@@ -3,3 +3,5 @@ tiles:
 - [curve_left/W , straight/W, curve_left/N]
 - [straight/S   , asphalt   , straight/N]
 - [curve_left/S , straight/E, curve_left/E]
+
+tile_size: 0.585
