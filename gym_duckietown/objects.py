@@ -97,16 +97,18 @@ class WorldObj(object):
 
 class DuckiebotObj(WorldObj):
     def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist, 
-            robot_width, robot_length, gain=1.0, trim=0.0, radius=0.0318, 
+            robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318, 
             k=27.0, limit=1.0):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         if self.domain_rand:
-            self.follow_dist = np.random.uniform(0.05, 0.15)
+            self.follow_dist = np.random.uniform(0.3, 0.4)
             self.velocity = np.random.uniform(0.05, 0.15)
         else:
-            self.follow_dist = 0.05
+            self.follow_dist = 0.3
             self.velocity = 0.1
+
+        self.max_iterations = 1000 
 
         # TODO: Make these DR as well
         self.gain = gain
@@ -128,24 +130,29 @@ class DuckiebotObj(WorldObj):
         # Find the curve point closest to the agent, and the tangent at that point
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
 
-        while True:
+        iterations = 0
+        
+        lookup_distance = self.follow_dist
+        curve_point = None
+        while iterations < self.max_iterations:
             # Project a point ahead along the curve tangent,
             # then find the closest point to to that
-            follow_point = closest_point + closest_tangent * self.follow_dist
+            follow_point = closest_point + closest_tangent * lookup_distance
             curve_point, _ = closest_curve_point(follow_point, self.angle)
 
             # If we have a valid point on the curve, stop
             if curve_point is not None:
                 break
 
-            self.follow_dist *= 0.5
+            iterations += 1
+            lookup_distance *= 0.5
 
         # Compute a normalized vector to the curve point
         point_vec = curve_point - self.pos
         point_vec /= np.linalg.norm(point_vec)
 
         dot = np.dot(self.get_right_vec(self.angle), point_vec)
-        steering = 2 * -dot
+        steering = self.gain * -dot
 
         self._update_pos([self.velocity, steering], delta_time)
 
