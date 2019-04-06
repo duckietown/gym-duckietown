@@ -5,7 +5,7 @@ from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
 from typing import Tuple
-
+import geometry
 
 @dataclass
 class DoneRewardInfo:
@@ -1279,11 +1279,11 @@ class Simulator(gym.Env):
         # cp = [gx, (grid_height - 1) * tile_size - gz]
         cp = [gx, grid_height * tile_size - gz]
 
-        import geometry
+
         return geometry.SE2_from_translation_angle(cp, angle)
 
     def weird_from_cartesian(self, q: np.ndarray) -> Tuple[list, float]:
-        import geometry
+
         cp, angle = geometry.translation_angle_from_SE2(q)
 
         gx = cp[0]
