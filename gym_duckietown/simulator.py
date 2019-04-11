@@ -157,6 +157,7 @@ class Simulator(gym.Env):
             user_tile_start=None,
             seed=None,
             distortion=False,
+            randomize_maps_on_reset=False,
     ):
         """
 
@@ -295,6 +296,13 @@ class Simulator(gym.Env):
         # Start tile
         self.user_tile_start = user_tile_start
 
+        self.randomize_maps_on_reset = randomize_maps_on_reset
+
+        if self.randomize_maps_on_reset:
+            import os
+            self.map_names = os.listdir('maps')
+            self.map_names = [mapfile.replace('.yaml', '') for mapfile in self.map_names]
+
         # Initialize the state
         self.reset()
 
@@ -342,6 +350,11 @@ class Simulator(gym.Env):
 
         # Robot's current speed
         self.speed = 0
+
+
+        if self.randomize_maps_on_reset:
+            map_name = np.random.choice(self.map_names)
+            self._load_map(map_name)
 
         if self.domain_rand:
             self.randomization_settings = self.randomizer.randomize()
