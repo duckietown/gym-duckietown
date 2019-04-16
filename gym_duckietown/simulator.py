@@ -165,7 +165,7 @@ class Simulator(gym.Env):
         :param max_steps:
         :param draw_curve:
         :param draw_bbox:
-        :param domain_rand:
+        :param domain_rand: If true, applies domain randomization
         :param frame_rate:
         :param frame_skip:
         :param camera_width:
@@ -175,6 +175,8 @@ class Simulator(gym.Env):
         :param full_transparency:
         :param user_tile_start: If None, sample randomly. Otherwise (i,j). Overrides map start tile
         :param seed:
+        :param distortion: If true, distorts the image with fish-eye approximation
+        :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
         # first initialize the RNG
         self.seed_value = seed
