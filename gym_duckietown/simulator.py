@@ -535,7 +535,7 @@ class Simulator(gym.Env):
         logger.debug('loading map file "%s"' % self.map_file_path)
 
         with open(self.map_file_path, 'r') as f:
-            self.map_data = yaml.load(f)
+            self.map_data = yaml.load(f, Loader=yaml.Loader)
 
         self._interpret_map(self.map_data)
 

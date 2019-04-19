@@ -5,7 +5,7 @@ from ..utils import *
 from .. import logger
 
 
-class Randomizer():
+class Randomizer:
     def __init__(self, randomization_config_fp='default_dr.json', default_config_fp='default.json'):
         try:
             with open(get_file_path('randomization/config', randomization_config_fp, 'json'), mode='r') as f:

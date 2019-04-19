@@ -47,7 +47,7 @@ class ObjMesh(object):
         # usemtl mtl_name
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
-        logger.debug('loading mesh "%s"' % file_path)
+        logger.debug('loading mesh "%s"' % os.path.basename(file_path))
 
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)

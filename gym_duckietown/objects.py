@@ -6,7 +6,7 @@ from .utils import get_file_path
 
 
 
-class WorldObj(object):
+class WorldObj:
     def __init__(self, obj, domain_rand, safety_radius_mult):
         """
         Initializes the object and its properties

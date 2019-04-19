@@ -57,7 +57,7 @@ class Texture(object):
 
 def load_texture(tex_path):
     from pyglet import gl
-    logger.debug('loading texture "%s"' % tex_path)
+    logger.debug('loading texture "%s"' % os.path.basename(tex_path))
     import pyglet
     img = pyglet.image.load(tex_path)
     tex = img.get_texture()
