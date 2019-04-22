@@ -1,21 +1,23 @@
 # coding=utf-8
-import numpy as np
-import cv2
 import itertools
+
+import cv2
+import numpy as np
+
 
 class Distortion(object):
     def __init__(self):
         # K - Intrinsic camera matrix for the raw (distorted) images.
-        camera_matrix =  [
-            305.5718893575089,  0,                  303.0797142544728,
-            0,                  308.8338858195428,  231.8845403702499,
-            0,                  0,                  1,
+        camera_matrix = [
+            305.5718893575089, 0, 303.0797142544728,
+            0, 308.8338858195428, 231.8845403702499,
+            0, 0, 1,
         ]
         self.camera_matrix = np.reshape(camera_matrix, (3, 3))
 
         # distortion parameters - (k1, k2, t1, t2, k3)
         distortion_coefs = [
-            -0.2,  0.0305, 
+            -0.2, 0.0305,
             0.0005859930422629722, -0.0006697840226199427, 0
         ]
 
@@ -27,9 +29,9 @@ class Distortion(object):
         # P - Projection Matrix - specifies the intrinsic (camera) matrix
         #  of the processed (rectified) image
         projection_matrix = [
-            220.2460277141687,  0,                  301.8668918355899,  0,                  
-            0,                  238.6758484095299,  227.0880056118307,  0,  
-            0,                  0,                  1,                  0,
+            220.2460277141687, 0, 301.8668918355899, 0,
+            0, 238.6758484095299, 227.0880056118307, 0,
+            0, 0, 1, 0,
         ]
         self.projection_matrix = np.reshape(projection_matrix, (3, 4))
 
@@ -40,14 +42,14 @@ class Distortion(object):
         self.mapy = None
 
         # Used for distortion
-        self.rmapx = None 
+        self.rmapx = None
         self.rmapy = None
 
     def distort(self, observation):
         """
         Distort observation using parameters in constructor
         """
-        
+
         if self.mapx is None:
             # Not initialized - initialize all the transformations we'll need
             self.mapx = np.zeros(observation.shape)
@@ -56,9 +58,9 @@ class Distortion(object):
             H, W, _ = observation.shape
 
             # Initialize self.mapx and self.mapy (updated)
-            self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.camera_matrix, 
-                self.distortion_coefs, self.rectification_matrix, 
-                self.projection_matrix, (W, H), cv2.CV_32FC1)
+            self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.camera_matrix,
+                                                               self.distortion_coefs, self.rectification_matrix,
+                                                               self.projection_matrix, (W, H), cv2.CV_32FC1)
 
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
@@ -103,7 +105,6 @@ class Distortion(object):
         self._fill_holes(rmapx, rmapy)
         return rmapx, rmapy
 
-
     def _fill_holes(self, rmapx, rmapy):
         """
         Utility function for simulating distortion
@@ -112,7 +113,6 @@ class Distortion(object):
         ... ground_projection_geometry.py
         """
         H, W = rmapx.shape[0:2]
-        nholes = 0
 
         R = 2
         F = R * 2 + 1
@@ -120,7 +120,7 @@ class Distortion(object):
         def norm(_):
             return np.hypot(_[0], _[1])
 
-        deltas0 = [ (i - R - 1, j - R - 1) for i, j in itertools.product(range(F), range(F))]
+        deltas0 = [(i - R - 1, j - R - 1) for i, j in itertools.product(range(F), range(F))]
         deltas0 = [x for x in deltas0 if norm(x) <= R]
         deltas0.sort(key=norm)
 

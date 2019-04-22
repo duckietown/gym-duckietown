@@ -5,7 +5,7 @@ from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
 from typing import Tuple
-
+import geometry
 
 @dataclass
 class DoneRewardInfo:
@@ -157,6 +157,7 @@ class Simulator(gym.Env):
             user_tile_start=None,
             seed=None,
             distortion=False,
+            randomize_maps_on_reset=False,
     ):
         """
 
@@ -164,7 +165,7 @@ class Simulator(gym.Env):
         :param max_steps:
         :param draw_curve:
         :param draw_bbox:
-        :param domain_rand:
+        :param domain_rand: If true, applies domain randomization
         :param frame_rate:
         :param frame_skip:
         :param camera_width:
@@ -174,6 +175,8 @@ class Simulator(gym.Env):
         :param full_transparency:
         :param user_tile_start: If None, sample randomly. Otherwise (i,j). Overrides map start tile
         :param seed:
+        :param distortion: If true, distorts the image with fish-eye approximation
+        :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
         # first initialize the RNG
         self.seed_value = seed
@@ -295,6 +298,13 @@ class Simulator(gym.Env):
         # Start tile
         self.user_tile_start = user_tile_start
 
+        self.randomize_maps_on_reset = randomize_maps_on_reset
+
+        if self.randomize_maps_on_reset:
+            import os
+            self.map_names = os.listdir('maps')
+            self.map_names = [mapfile.replace('.yaml', '') for mapfile in self.map_names]
+
         # Initialize the state
         self.reset()
 
@@ -342,6 +352,11 @@ class Simulator(gym.Env):
 
         # Robot's current speed
         self.speed = 0
+
+
+        if self.randomize_maps_on_reset:
+            map_name = np.random.choice(self.map_names)
+            self._load_map(map_name)
 
         if self.domain_rand:
             self.randomization_settings = self.randomizer.randomize()
@@ -520,7 +535,7 @@ class Simulator(gym.Env):
         logger.debug('loading map file "%s"' % self.map_file_path)
 
         with open(self.map_file_path, 'r') as f:
-            self.map_data = yaml.load(f)
+            self.map_data = yaml.load(f, Loader=yaml.Loader)
 
         self._interpret_map(self.map_data)
 
@@ -1279,11 +1294,11 @@ class Simulator(gym.Env):
         # cp = [gx, (grid_height - 1) * tile_size - gz]
         cp = [gx, grid_height * tile_size - gz]
 
-        import geometry
+
         return geometry.SE2_from_translation_angle(cp, angle)
 
     def weird_from_cartesian(self, q: np.ndarray) -> Tuple[list, float]:
-        import geometry
+
         cp, angle = geometry.translation_angle_from_SE2(q)
 
         gx = cp[0]

@@ -8,16 +8,3 @@ DEFAULTS = {
         "LFV": "loop_pedestrians"
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
