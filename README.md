@@ -74,7 +74,7 @@ Duckiebot-v0
 ## Installation
 
 Requirements:
-- Python 3.6+
+- Python 3.5+
 - OpenAI gym
 - NumPy
 - Pyglet
