@@ -1226,7 +1226,6 @@ class Simulator(gym.Env):
     def update_physics(self, action, delta_time=None):
         if delta_time is None:
             delta_time = self.delta_time
-        print(action, self.robot_speed, 'hi')
         self.wheelVels = action * self.robot_speed * 1
         prev_pos = self.cur_pos
 
