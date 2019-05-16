@@ -31,7 +31,9 @@ setup(
             'opencv-python>=3.4',
             'pyyaml>=3.11',
             'cloudpickle',
-            'duckietown_slimremote>=2018.8.2', 
+            'duckietown_world',
+            'pygeometry',
+            
         ],
         entry_points={
             'console_scripts': [
