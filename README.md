@@ -74,13 +74,13 @@ Duckiebot-v0
 ## Installation
 
 Requirements:
-- Python 3.5+
+- Python 3.6+
 - OpenAI gym
 - NumPy
 - Pyglet
 - PyYAML
 - cloudpickle
-- PyTorch
+- PyTorch or Tensorflow (to use the scripts in `learning/`)
 
 You can install all the dependencies except PyTorch with `pip3`:
 
@@ -89,10 +89,6 @@ git clone https://github.com/duckietown/gym-duckietown.git
 cd gym-duckietown
 pip3 install -e .
 ```
-
-Reinforcement learning code forked from [this repository](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr)
-is included under [/pytorch_rl](/pytorch_rl). If you wish to use this code, you
-should install [PyTorch](http://pytorch.org/).
 
 ### Installation Using Conda (Alternative Method)
 
@@ -131,18 +127,6 @@ Xvfb :0 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &> xvfb.log &
 export DISPLAY=:0
 ```
 
-Now, you are ready to start training a policy using RL:
-
-```
-python3 pytorch_rl/main.py \
-        --algo a2c \
-        --env-name Duckietown-loop_obstacles-v0 \
-        --lr 0.0002 \
-        --max-grad-norm 0.5 \
-        --no-vis \
-        --num-steps 20
-```
-
 If you need to do so, you can build a Docker image by running the following command from the root directory of this repository:
 
 ```
@@ -165,41 +149,35 @@ There is a simple UI application which allows you to control the simulation or r
 
 There is also a script to run automated tests (`run_tests.py`) and a script to gather performance metrics (`benchmark.py`).
 
-### Reinforcement Learning
+### Learning
 
-To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR algorithms. A sample command to launch training is:
+`gym-duckietown` provides starter code for both reinforcement learning (Pytorch only) and imitation learning (both Tensorflow and Pytorch). In the following section, we describe how to get started, as well as some tips on improving both agents.
 
-```
-python3 pytorch_rl/main.py --no-vis --env-name Duckietown-small_loop-v0 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --num-steps 20
-```
+Within the `learning/` subdirectory, you will find `imitation/{tensorflow|pytorch}` and `reinforcement/pytorch`. To use either, you will want to change directories into the `learning/` directory, and call scripts from there (this allows us to import utility functions used in all three baselines while not forcing users to install both Tensorflow and Pytorch).
 
-Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running. Also note that if you are running this through SSH, you will need to enable X forwarding to get a display:
+**Pytorch Reinforcement Learning** can be run using: 
 
 ```
-python3 pytorch_rl/enjoy.py --env-name Duckietown-small_loop-v0 --num-stack 1 --load-dir trained_models/a2c
+python -m reinforcement.pytorch.train_reinforcement
 ```
 
-### Imitation Learning
-
-There is a script in the `experiments` directory which automatically generates a dataset of synthetic demonstrations. It uses hillclimbing to optimize the reward obtained, and outputs a JSON file:
+whereas both **Tensorflow and Pytorch Imitation Learning** can be run using:
 
 ```
-experiments/gen_demos.py --map-name loop_obstacles
+python -m imitation.{tensorflow|pytorch}.train_imitation
 ```
 
-Then you can start training an imitation learning model (conv net) with:
+We use `argparse` for hyperparameters, which can be found at the bottom of the training files.
+
+Within the `learning/utils` folder, you will find useful wrappers (`wrappers.py`), imitation learning teachers (`teacher.py`), and environment launchers (`env.py`). You can use the `utils` folder to organize helper code that can be used across all baselines, by importing as follows:
 
 ```
-experiments/train_imitation.py --map-name loop_obstacles
+from utils.{your_file} import {your_class | your function}
 ```
 
-Finally, you can visualize what the trained model is doing with:
+Since `gym-duckietown` is heavily used in the [AI Driving Olympics](https://challenges.duckietown.org), we encourage you to take a look at some of the [tips and tricks we provide](https://docs.duckietown.org/DT19/AIDO/out/embodied_rl.html) on improving your policy and Sim2Real Transfer.
 
-```
-experiments/control_imitation.py --map-name loop_obstacles
-```
-
-Note that it is possible to have `gen_demos.py` and `train_imitate.py` running simultaneously, so that training takes place while new demonstrations are being generated. You can also run `control_imitate.py` periodically during training to check on learning progress.
+In addition, although not directly supported in this simulator, we encourage you to check out the [Duckietown Logs](http://logs.duckietown.org/) infrastructure, which has been incredibly successful in [training imitation learning policies](https://github.com/duckietown/challenge-aido_LF-baseline-IL-logs-tensorflow/) or even "warm-starting" reinforcement learning policies.
 
 ## Design
 
