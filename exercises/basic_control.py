@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Construire un contrôleur pour contrôler le Duckiebot en simulation en utilisant la vrai pose 
+Simple exercise to construct a controller that controls the simulated Duckiebot using pose. 
 """
 
 import time
@@ -30,7 +30,7 @@ else:
 obs = env.reset()
 env.render()
 
-total_recompense=0
+total_reward = 0
 
 while True:
 
@@ -38,29 +38,30 @@ while True:
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
 
-    ###### Commencez à remplir le code ici.
-    # TODO: Décide comment calculer la vitesse et la direction
+    ###### Start changing the code here.
+    # TODO: Decide how to calculate the speed and direction.
 
     k_p = 10
     k_d = 1
     
-    # La vitesse est une valeur entre 0 et 1 (correspond à une vitesse réelle de 0 à 1,2m/s)
+    # The speed is a value between [0, 1] (which corresponds to a real speed between 0m/s and 1.2m/s)
     
-    vitesse = 0.2 # You should overwrite this value
-    # l'angle du volant, c'est-à-dire le changement d'angle de la voiture en rads/s
-    braquage = k_p*distance_to_road_center + k_d*angle_from_straight_in_rads # You should overwrite this value
+    speed = 0.2 # TODO: You should overwrite this value
+    
+    # angle of the steering wheel, which corresponds to the angular velocity in rad/s
+    steering = k_p*distance_to_road_center + k_d*angle_from_straight_in_rads # TODO: You should overwrite this value
 
-    ###### Fini à remplir le code ici
+    ###### No need to edit code below.
     
-    obs, recompense, fini, info = env.step([vitesse, braquage])
-    total_recompense += recompense
+    obs, reward, done, info = env.step([speed, steering])
+    total_reward += reward
     
-    print('étape = %s, recompense instantanée=%.3f, recompense totale=%.3f' % (env.step_count, recompense, total_recompense))
+    print('Steps = %s, Timestep Reward=%.3f, Total Reward=%.3f' % (env.step_count, reward, total_reward))
 
     env.render()
 
-    if fini:
-        if recompense < 0:
+    if done:
+        if reward < 0:
             print('*** CRASHED ***')
-        print ('recompense finale = %.3f' % total_recompense)
-        break;
+        print ('Final Reward = %.3f' % total_reward)
+        break
