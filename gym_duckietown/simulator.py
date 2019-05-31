@@ -1363,7 +1363,7 @@ class Simulator(gym.Env):
             done_code = 'max-steps-reached'
         else:
             done = False
-            reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
+            reward = self.compute_reward(self.cur_pos, self.cur_angle, self.speed)
             msg = ''
             done_code = 'in-progress'
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
