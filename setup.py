@@ -32,6 +32,8 @@ setup(
             'pyyaml>=3.11',
             'cloudpickle',
             'duckietown_slimremote>=2018.8.2', 
+            'pygeometry',
+            'dataclasses'
         ],
         entry_points={
             'console_scripts': [
