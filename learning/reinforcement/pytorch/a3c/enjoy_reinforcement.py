@@ -1,49 +1,59 @@
 import ast
 import argparse
 import logging
-
 import os
 import numpy as np
 
+import torch
+
 # Duckietown Specific
-from reinforcement.pytorch.ddpg import DDPG
-from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+import gym
+from learning.reinforcement.pytorch.a3c import a3c_continuous_simple as a3c
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+    DtRewardWrapper, ActionWrapper, ResizeWrapper, ActionClampWrapper
 
 
-def _enjoy():          
-    # Launch the env with our helper function
-    env = launch_env()
-    print("Initialized environment")
-
-    # Wrappers
+def _enjoy(args):
+    env = gym.make('Duckietown-udem1-v0')
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
-    env = ImgWrapper(env) # to make the images from 160x120x3 into 3x160x120
+    env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
     env = ActionWrapper(env)
+    env = ActionClampWrapper(env)  # clip to range [-1, 1]
+    #env = PreventBackwardsWrapper(env)  # prevent duckiebot driving backwards..
     env = DtRewardWrapper(env)
-    print("Initialized Wrappers")
 
-    state_dim = env.observation_space.shape
-    action_dim = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
+    shape_obs_space = env.observation_space.shape  # (3, 120, 160)
+    shape_action_space = env.action_space.shape[0]  # (2,)
 
     # Initialize policy
-    policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    policy.load(filename='ddpg', directory='reinforcement/pytorch/models/')
+
+    # Load model
+    cwd = os.getcwd()
+    path = os.path.join(cwd, args.model_dir, args.model_file)
+    print('Loading model from:', path)
+
+    global_net = torch.load(path)
+    global_net.eval()
+
+    #global_net.load_state_dict(state_dict.Net)
 
     obs = env.reset()
     done = False
 
     while True:
         while not done:
-            action = policy.predict(np.array(obs))
+            action = global_net.choose_action(np.array(obs))
             # Perform action
             obs, reward, done, _ = env.step(action)
             env.render()
         done = False
-        obs = env.reset()        
+        obs = env.reset()
+
 
 if __name__ == '__main__':
-    _enjoy()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model-dir', type=str, default='models')  # Name of the directory where the models are saved
+    parser.add_argument('--model-file', type=str, default='2019-06-10_19-28-47_a3c-cont.pth')  # Name of the model file
+    _enjoy(parser.parse_args())
