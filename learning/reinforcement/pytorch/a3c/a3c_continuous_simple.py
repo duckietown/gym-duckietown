@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.multiprocessing as mp
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+    DtRewardWrapper, ActionWrapper, ResizeWrapper, ActionClampWrapper, PreventBackwardsWrapper
 
 """
 env = gym.make('Duckietown-udem1-v0')
@@ -105,6 +105,8 @@ class Worker(mp.Process):
         self.env = NormalizeWrapper(self.env)
         self.env = ImgWrapper(self.env)  # to make the images from 160x120x3 into 3x160x120
         self.env = ActionWrapper(self.env)
+        self.env = ActionClampWrapper(self.env)  # clip to range [-1, 1]
+        self.env = PreventBackwardsWrapper(self.env)  # prevent duckiebot driving backwards..
         self.env = DtRewardWrapper(self.env)
 
         self.shape_obs_space = self.env.observation_space.shape  # (3, 120, 160)
@@ -160,10 +162,10 @@ class Worker(mp.Process):
                             self.global_episode.value += 1
 
                         with self.global_episode_reward.get_lock():
+                            # Moving average
                             if self.global_episode_reward.value == 0.:
                                 self.global_episode_reward.value = episode_reward
                             else:
-                                # Moving average
                                 self.global_episode_reward.value = self.global_episode_reward.value * 0.9 + \
                                                                    episode_reward * 0.1
                         self.res_queue.put(self.global_episode_reward.value)
@@ -174,6 +176,7 @@ class Worker(mp.Process):
 
                 obs = new_obs
         self.env.close()
+        self.res_queue.put(None)
 
 
 def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, action_buffer, reward_buffer, gamma):

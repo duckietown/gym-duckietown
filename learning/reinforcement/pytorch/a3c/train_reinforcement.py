@@ -21,12 +21,6 @@ logger.setLevel(logging.DEBUG)
 
 
 def _train(args):
-    if not os.path.exists("./results"):
-        os.makedirs("./results")
-    if not os.path.exists(args.model_dir):
-        os.makedirs(args.model_dir)
-
-    print("Initializing Global Network")
     env = launch_env()
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
@@ -40,8 +34,7 @@ def _train(args):
     shape_obs_space = env.observation_space.shape  # (3, 120, 160)
     shape_action_space = env.action_space.shape[0]  # (2,)
 
-    print("Initialized Wrappers")
-
+    print("Initializing Global Network")
     # Global Network
     global_net = a3c.Net(shape_obs_space, shape_action_space)  # global net that's updated by the workers
     global_net.share_memory()  # share the global parameters in multiprocessing
@@ -84,7 +77,7 @@ def _train(args):
 
         filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_") + 'a3c-cont.pth'
         path = os.path.join(cwd, filedir, filename)
-        torch.save(global_net, path)
+        torch.save(global_net.state_dict(), path)
         print("Saved model to:", path)
 
     import matplotlib.pyplot as plt
@@ -97,14 +90,14 @@ def _train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=42, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--max_episodes", default=100, type=int)  # Max time steps to run environment for
+    parser.add_argument("--max_episodes", default=1000, type=int)  # Max time steps to run environment for
     parser.add_argument("--max_steps_per_episode", default=1000, type=int)  # Max time steps to run environment for
     parser.add_argument("--discount", default=0.99, type=float)  # Discount factor
-    parser.add_argument("--learning_rate", default=0.0002, type=float)  # Learning rate for the net
+    parser.add_argument("--learning_rate", default=0.0004, type=float)  # Learning rate for the net
     parser.add_argument("--sync_frequency", default=128, type=int)  # Time steps until sync of the nets
     parser.add_argument("--num_workers", default=4, type=int)  # Batch size for both actor and critic
     parser.add_argument("--save_models", default=True)  # Whether or not models are saved
     parser.add_argument('--model-dir', type=str, default='models')  # Name of the directory where the models are saved
-    parser.add_argument("--graphical_output", default=True)  # Whether to render the observation in a window
+    parser.add_argument("--graphical_output", default=False)  # Whether to render the observation in a window
 
     _train(parser.parse_args())
