@@ -16,7 +16,7 @@ class ResizeWrapper(gym.ObservationWrapper):
 
     def observation(self, observation):
         from PIL import Image
-        return np.array(Image.fromarray(observation).resize(self.shape))
+        return np.array(Image.fromarray(observation).resize(self.shape[0:2]))
 
 
 class NormalizeWrapper(gym.ObservationWrapper):
