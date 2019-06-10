@@ -50,8 +50,9 @@ def _train(args):
     global_episode, global_episode_reward, res_queue = mp.Value('i', 0), mp.Value('d', 0.), mp.Queue()
     print("Instantiating %i workers" % args.num_workers)
 
-    workers = [a3c.Worker(global_net, optimizer, global_episode, global_episode_reward, res_queue, i) for i in
-               range(args.num_workers)]
+    workers = [
+        a3c.Worker(global_net, optimizer, global_episode, global_episode_reward, res_queue, i, args.graphical_output)
+        for i in range(args.num_workers)]
 
     print("Start training...")
 
@@ -84,7 +85,8 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", default=32, type=int)  # Batch size for both actor and critic
     parser.add_argument("--discount", default=0.99, type=float)  # Discount factor
     parser.add_argument('--model-dir', type=str, default='models')
-    parser.add_argument("--num_workers", default=4, type=int)  # Batch size for both actor and critic
+    parser.add_argument("--num_workers", default=1, type=int)  # Batch size for both actor and critic
     parser.add_argument("--learning_rate", default=0.0002, type=float)  # Batch size for both actor and critic
+    parser.add_argument("--graphical_output", default=False)  # Batch size for both actor and critic
 
     _train(parser.parse_args())

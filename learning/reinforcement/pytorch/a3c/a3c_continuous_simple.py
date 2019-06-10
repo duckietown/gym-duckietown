@@ -56,9 +56,13 @@ class Net(nn.Module):
 
     def choose_action(self, s):
         self.training = False
+        s = v_wrap(s)
         mu, sigma, _ = self.forward(s)
-        m = self.distribution(mu.view(1, ).data, sigma.view(1, ).data)
-        return m.sample().numpy()
+        mu = mu.view(2, )
+        sigma = sigma.view(2, )
+        m = self.distribution(mu.view(2, ).data, sigma.view(2, ).data)
+        actions = torch.clamp(m.sample(), -1, 1)
+        return actions.numpy()
 
     def loss_func(self, s, a, v_t):
         self.train()
@@ -76,7 +80,8 @@ class Net(nn.Module):
 
 
 class Worker(mp.Process):
-    def __init__(self, global_net, optimizer, global_episode, global_episode_reward, res_queue, name):
+    def __init__(self, global_net, optimizer, global_episode, global_episode_reward, res_queue, name,
+                 graphical_output=False):
         super(Worker, self).__init__()
         self.name = 'Worker %i' % name
         self.env = None
@@ -87,11 +92,10 @@ class Worker(mp.Process):
         self.max_episodes = 20
         self.max_steps_per_episode = 10
         self.update_global_net_frequency = 20
-        self.graphical_output = True
+        self.graphical_output = graphical_output
         self.gamma = 0.9
 
     def run(self):
-        import numpy as np
         import gym
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
@@ -125,7 +129,8 @@ class Worker(mp.Process):
                 if self.graphical_output:
                     self.env.render()
 
-                action = np.array([0.5, 0.0])
+                action = self.local_net.choose_action(obs)
+                print('Chosen action:', action)
                 new_obs, reward, done, info = self.env.step(action)
                 episode_reward += reward
 
@@ -167,7 +172,6 @@ class Worker(mp.Process):
 
 
 def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, action_buffer, reward_buffer, gamma):
-    import numpy as np
     if done:
         v_next_state = 0.  # terminal
     else:
