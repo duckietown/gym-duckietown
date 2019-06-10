@@ -43,7 +43,7 @@ def _train(args):
     print("Instantiating %i workers" % args.num_workers)
 
     workers = [
-        a3c.Worker(global_net, optimizer, global_episode, global_episode_reward, res_queue, name=i,
+        a3c.Worker(global_net, optimizer, global_episode, global_episode_reward, res_queue, name=str(i),
                    graphical_output=args.graphical_output, max_episodes=args.max_episodes,
                    max_steps_per_episode=args.max_steps_per_episode, sync_frequency=args.sync_frequency,
                    gamma=args.discount)

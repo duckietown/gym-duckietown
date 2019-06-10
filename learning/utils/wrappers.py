@@ -71,3 +71,22 @@ class ActionWrapper(gym.ActionWrapper):
     def action(self, action):
         action_ = [action[0] * 0.8, action[1]]
         return action_
+
+
+class ActionClampWrapper(gym.ActionWrapper):
+    def __init__(self, env):
+        super(ActionClampWrapper, self).__init__(env)
+
+    def action(self, action):
+        action_ = np.clip(action, -1, 1)
+        return action_
+
+
+class PreventBackwardsWrapper(gym.ActionWrapper):
+    def __init__(self, env):
+        super(PreventBackwardsWrapper, self).__init__(env)
+
+    def action(self, action):
+        action_ = action
+        action_[0] = np.clip(action[0], 0, 1)
+        return action_
