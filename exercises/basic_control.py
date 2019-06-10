@@ -34,7 +34,7 @@ total_reward = 0
 
 while True:
 
-    lane_pose = env.get_lane_pos(env.cur_pos, env.cur_angle)
+    lane_pose = env.get_lane_pos2(env.cur_pos, env.cur_angle)
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
 
