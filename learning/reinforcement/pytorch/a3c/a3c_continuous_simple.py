@@ -81,7 +81,8 @@ class Net(nn.Module):
 
 class Worker(mp.Process):
     def __init__(self, global_net, optimizer, global_episode, global_episode_reward, res_queue, name,
-                 graphical_output=False):
+                 graphical_output=False, max_episodes=20, max_steps_per_episode=100, sync_frequency=100,
+                 gamma=0.9):
         super(Worker, self).__init__()
         self.name = 'Worker %i' % name
         self.env = None
@@ -89,11 +90,11 @@ class Worker(mp.Process):
         self.res_queue = res_queue
         self.global_net, self.optimizer = global_net, optimizer
         self.total_step = 0
-        self.max_episodes = 20
-        self.max_steps_per_episode = 10
-        self.update_global_net_frequency = 20
+        self.max_episodes = max_episodes
+        self.max_steps_per_episode = max_steps_per_episode
+        self.update_global_net_frequency = sync_frequency
         self.graphical_output = graphical_output
-        self.gamma = 0.9
+        self.gamma = gamma
 
     def run(self):
         import gym
@@ -130,7 +131,7 @@ class Worker(mp.Process):
                     self.env.render()
 
                 action = self.local_net.choose_action(obs)
-                print('Chosen action:', action)
+                # print('Chosen action:', action)
                 new_obs, reward, done, info = self.env.step(action)
                 episode_reward += reward
 
@@ -145,7 +146,7 @@ class Worker(mp.Process):
 
                 # Sync local net and global net
                 if self.total_step % self.update_global_net_frequency == 0 or done:
-                    print(self.name + ': Syncing nets')
+                    # print(self.name + ': Syncing nets')
 
                     sync_nets(self.optimizer, self.local_net, self.global_net, done, new_obs, buffer_states,
                               buffer_actions, buffer_rewards, self.gamma)
@@ -155,12 +156,16 @@ class Worker(mp.Process):
                     buffer_rewards = []
 
                     if done:
+                        with self.global_episode.get_lock():
+                            self.global_episode.value += 1
+
                         with self.global_episode_reward.get_lock():
                             if self.global_episode_reward.value == 0.:
                                 self.global_episode_reward.value = episode_reward
                             else:
-                                self.global_episode_reward.value = self.global_episode_reward.value * 0.99 + \
-                                                                   episode_reward * 0.01
+                                # Moving average
+                                self.global_episode_reward.value = self.global_episode_reward.value * 0.9 + \
+                                                                   episode_reward * 0.1
                         self.res_queue.put(self.global_episode_reward.value)
 
                         print(self.name, 'Global Episode:', self.global_episode.value,
