@@ -17,21 +17,22 @@ from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
 
 import numpy as np
 
+
 class Net(nn.Module):
     def __init__(self, state_shape, action_shape):
         super(Net, self).__init__()
         self.state_shape = state_shape
-        self.action_shape = 1 # We only want to train steering here.
+        self.action_shape = 1  # We only want to train steering here.
 
         self.conv1 = nn.Conv2d(in_channels=self.state_shape[0], out_channels=32, kernel_size=3, stride=2)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
         self.conv3 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
         self.conv4 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
 
-        self.dense_size = 32*6*9
+        self.dense_size = 32 * 6 * 9
         self.actor_1 = nn.Linear(self.dense_size, 256)
-        self.mu = nn.Linear(256, action_shape)
-        self.sigma = nn.Linear(256, action_shape)
+        self.mu = nn.Linear(256, self.action_shape)
+        self.sigma = nn.Linear(256, self.action_shape)
         self.critic_1 = nn.Linear(self.dense_size, 256)
         self.v = nn.Linear(256, 1)
 
@@ -85,7 +86,7 @@ class Net(nn.Module):
 class Worker(mp.Process):
     def __init__(self, global_net, optimizer, global_episode, global_episode_reward, res_queue, name,
                  graphical_output=False, max_episodes=20, max_steps_per_episode=100, sync_frequency=100,
-                 gamma=0.9):
+                 gamma=0.9, action_repeat=4):
         super(Worker, self).__init__()
         self.name = 'Worker %s' % name
         self.env = None
@@ -98,6 +99,7 @@ class Worker(mp.Process):
         self.update_global_net_frequency = sync_frequency
         self.graphical_output = graphical_output
         self.gamma = gamma
+        self.action_repeat = action_repeat
 
     def run(self):
         import gym
@@ -127,6 +129,7 @@ class Worker(mp.Process):
             t = 0
             episode_reward = 0
             done = False
+            self.action = None
 
             while done is False:
                 t += 1
@@ -135,14 +138,14 @@ class Worker(mp.Process):
                 if self.graphical_output:
                     self.env.render()
 
-                action = np.array([0.5, 0.0])
-                action[1] = self.local_net.choose_action(obs)[0]
-                # print('Chosen action:', action)
-                new_obs, reward, done, info = self.env.step(action)
+                if self.action is None or t % self.action_repeat == 0:
+                    self.action = np.array([0.5, 0.0])
+                    self.action[1] = self.local_net.choose_action(obs)[0]
+                new_obs, reward, done, info = self.env.step(self.action)
                 episode_reward += reward
 
                 buffer_states.append(obs)
-                buffer_actions.append(action)
+                buffer_actions.append(self.action)
                 buffer_rewards.append(reward)
 
                 if t == self.max_steps_per_episode:
@@ -152,8 +155,6 @@ class Worker(mp.Process):
 
                 # Sync local net and global net
                 if self.total_step % self.update_global_net_frequency == 0 or done:
-                    # print(self.name + ': Syncing nets')
-
                     sync_nets(self.optimizer, self.local_net, self.global_net, done, new_obs, buffer_states,
                               buffer_actions, buffer_rewards, self.gamma)
 
@@ -176,6 +177,8 @@ class Worker(mp.Process):
 
                         print(self.name, 'Global Episode:', self.global_episode.value,
                               '| Global Episode R: %.0f' % self.global_episode_reward.value)
+
+                        self.action = None
                         break
 
                 obs = new_obs
@@ -202,7 +205,6 @@ def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, 
             np.vstack(action_buffer)),
         v_wrap(np.array(buffer_v_target)[:, None]))
 
-    # TODO: Do we need locks here?
     # calculate local gradients
     optimizer.zero_grad()
     loss.backward()

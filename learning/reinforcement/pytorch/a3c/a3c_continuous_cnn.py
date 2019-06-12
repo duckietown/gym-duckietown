@@ -211,7 +211,6 @@ def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, 
             np.vstack(action_buffer)),
         v_wrap(np.array(buffer_v_target)[:, None]))
 
-    # TODO: Do we need locks here?
     # calculate local gradients
     optimizer.zero_grad()
     loss.backward()
