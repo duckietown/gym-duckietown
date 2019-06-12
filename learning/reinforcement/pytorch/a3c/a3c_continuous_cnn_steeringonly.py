@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # manual
 
+"""
+This script allows you to manually control the simulator or Duckiebot
+using the keyboard arrows.
+"""
+
 import math
 
 import torch
@@ -10,38 +15,41 @@ import torch.multiprocessing as mp
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper, ActionClampWrapper, PreventBackwardsWrapper
 
-"""
-env = gym.make('Duckietown-udem1-v0')
-SHAPE_OBS_SPACE = env.observation_space.shape[0]
-SHAPE_ACTION_SPACE = env.action_space.shape[0]
-GAMMA = 0.9
-MAX_EPISODES = 3000
-MAX_STEPS_PER_EPISODE = 200
-UPDATE_GLOBAL_NET_FREQUENCY = 5
-"""
 import numpy as np
-
 
 class Net(nn.Module):
     def __init__(self, state_shape, action_shape):
         super(Net, self).__init__()
         self.state_shape = state_shape
-        self.action_shape = action_shape
-        self.input_size = state_shape[0] * state_shape[1] * state_shape[2]
-        self.actor_1 = nn.Linear(self.input_size, 200)
-        self.mu = nn.Linear(200, action_shape)
-        self.sigma = nn.Linear(200, action_shape)
-        self.critic_1 = nn.Linear(self.input_size, 100)
-        self.v = nn.Linear(100, 1)
+        self.action_shape = 1 # We only want to train steering here.
 
-        for layer in [self.actor_1, self.mu, self.sigma, self.critic_1, self.v]:
+        self.conv1 = nn.Conv2d(in_channels=self.state_shape[0], out_channels=32, kernel_size=3, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
+        self.conv3 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
+        self.conv4 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
+
+        self.dense_size = 32*6*9
+        self.actor_1 = nn.Linear(self.dense_size, 256)
+        self.mu = nn.Linear(256, action_shape)
+        self.sigma = nn.Linear(256, action_shape)
+        self.critic_1 = nn.Linear(self.dense_size, 256)
+        self.v = nn.Linear(256, 1)
+
+        for layer in [self.actor_1, self.mu, self.sigma, self.critic_1, self.v, self.conv1, self.conv2,
+                      self.conv3, self.conv4]:
             nn.init.normal_(layer.weight, mean=0., std=0.1)
             nn.init.constant_(layer.bias, 0.)
 
         self.distribution = torch.distributions.Normal
 
     def forward(self, x):
-        x = x.contiguous().view(-1, self.input_size)
+        x = x.view(-1, self.state_shape[0], self.state_shape[1], self.state_shape[2])
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = x.contiguous().view(-1, self.dense_size)
+
         a1 = F.relu6(self.actor_1(x))
         mu = 2 * torch.tanh(self.mu(a1))
         sigma = F.softplus(self.sigma(a1)) + 0.001  # avoid 0
@@ -53,9 +61,9 @@ class Net(nn.Module):
         self.training = False
         s = v_wrap(s)
         mu, sigma, _ = self.forward(s)
-        mu = mu.view(2, )
-        sigma = sigma.view(2, )
-        m = self.distribution(mu.view(2, ).data, sigma.view(2, ).data)
+        mu = mu.view(self.action_shape, )
+        sigma = sigma.view(self.action_shape, )
+        m = self.distribution(mu.view(self.action_shape, ).data, sigma.view(self.action_shape, ).data)
         actions = torch.clamp(m.sample(), -1, 1)
         return actions.numpy()
 
@@ -79,7 +87,7 @@ class Worker(mp.Process):
                  graphical_output=False, max_episodes=20, max_steps_per_episode=100, sync_frequency=100,
                  gamma=0.9):
         super(Worker, self).__init__()
-        self.name = 'Worker %i' % name
+        self.name = 'Worker %s' % name
         self.env = None
         self.global_episode, self.global_episode_reward = global_episode, global_episode_reward
         self.res_queue = res_queue
@@ -105,7 +113,7 @@ class Worker(mp.Process):
         self.env = DtRewardWrapper(self.env)
 
         self.shape_obs_space = self.env.observation_space.shape  # (3, 120, 160)
-        self.shape_action_space = self.env.action_space.shape[0]  # (2,)
+        self.shape_action_space = self.env.action_space.shape[0]  # should be (1,)
 
         self.local_net = Net(self.shape_obs_space, self.shape_action_space)  # local network
 
@@ -127,7 +135,8 @@ class Worker(mp.Process):
                 if self.graphical_output:
                     self.env.render()
 
-                action = self.local_net.choose_action(obs)
+                action = np.array([0.5, 0.0])
+                action[1] = self.local_net.choose_action(obs)[0]
                 # print('Chosen action:', action)
                 new_obs, reward, done, info = self.env.step(action)
                 episode_reward += reward
