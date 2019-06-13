@@ -71,7 +71,7 @@ def _train(args):
             # directory already exists
             pass
 
-        filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_") + 'a3c-cont.pth'
+        filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_") + 'a3c-disc-cartpole.pth'
         path = os.path.join(cwd, filedir, filename)
         torch.save(global_net.state_dict(), path)
         print("Saved model to:", path)
