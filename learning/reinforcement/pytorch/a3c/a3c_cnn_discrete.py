@@ -7,53 +7,57 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.multiprocessing as mp
-from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper, ActionClampWrapper, PreventBackwardsWrapper
 
 import numpy as np
 
 
+def preprocess_state(obs):
+    from scipy.misc import imresize
+    return imresize(obs.mean(2), (60, 80)).astype(np.float32).reshape(1, 60, 80) / 255.
+
+
 class Net(nn.Module):
-    def __init__(self, state_shape, action_shape):
+    def __init__(self, channels, num_actions):
         super(Net, self).__init__()
-        self.state_shape = state_shape
-        self.action_shape = action_shape
+        self.channels = channels
+        self.num_actions = num_actions
 
-        self.conv1 = nn.Conv2d(in_channels=self.state_shape[0], out_channels=32, kernel_size=3, stride=2)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
-        self.conv4 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2)
+        # Conv Filter output size:
+        # o = output
+        # p = padding
+        # k = kernel_size
+        # s = stride
+        # d = dilation
 
-        self.dense_size = 32*6*9
-        self.actor_1 = nn.Linear(self.dense_size, 256)
-        self.pi = nn.Linear(256, action_shape)
-        self.critic_1 = nn.Linear(self.dense_size, 256)
-        self.v = nn.Linear(256, 1)
+        # o = [i + 2*p - k - (k-1)*(d-1)]/s + 1
 
-        for layer in [self.actor_1, pi, self.critic_1, self.v, self.conv1, self.conv2,
-                      self.conv3, self.conv4]:
+        self.conv1 = nn.Conv2d(in_channels=self.channels, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,30,40)
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,15,20)
+
+        self.dense_size = int(16 * (60 * .5 * .5) * (80 * .5 * .5))
+        self.pi = nn.Linear(self.dense_size, self.num_actions)  # actor
+        self.v = nn.Linear(self.dense_size, 1)  # critic
+
+        # Weight & bias initialization
+        for layer in [self.conv1, self.conv2, self.pi, self.v]:
             nn.init.normal_(layer.weight, mean=0., std=0.1)
             nn.init.constant_(layer.bias, 0.)
 
-        self.distribution = torch.distributions.Categorial
+        self.distribution = torch.distributions.Categorical
 
     def forward(self, x):
-        x = x.view(-1, self.state_shape[0], self.state_shape[1], self.state_shape[2])
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
+        x = F.elu(self.conv1(x))
+        x = F.elu(self.conv2(x))
         x = x.contiguous().view(-1, self.dense_size)
 
-        a1 = F.relu6(self.actor_1(x))
-        pi = self.pi(a1)
-        c1 = F.relu6(self.critic_1(x))
-        values = self.v(c1)
+        pi = self.pi(x)
+        values = self.v(x)
         return pi, values
 
     def choose_action(self, s):
         self.eval()
         s = v_wrap(s)
+        s.unsqueeze_(0)
         logits, _ = self.forward(s)
         prob = F.softmax(logits, dim=1).data
         m = self.distribution(prob)
@@ -76,11 +80,11 @@ class Net(nn.Module):
 
 class Worker(mp.Process):
     def __init__(self, global_net, optimizer, global_episode, global_episode_reward, res_queue, name,
-                 graphical_output=False, max_episodes=20, max_steps_per_episode=100, sync_frequency=100,
-                 gamma=0.9):
+                 env_name='Breakout-v0', graphical_output=False, max_episodes=20, max_steps_per_episode=100,
+                 sync_frequency=100, gamma=0.9):
         super(Worker, self).__init__()
         self.name = 'Worker %s' % name
-        self.env = None
+        self.env_name = env_name
         self.global_episode, self.global_episode_reward = global_episode, global_episode_reward
         self.res_queue = res_queue
         self.global_net, self.optimizer = global_net, optimizer
@@ -95,15 +99,19 @@ class Worker(mp.Process):
         import gym
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
-        self.env = gym.make('Breakout-v0').unwrapped
+        self.env = gym.make(self.env_name).unwrapped
 
-        self.shape_obs_space = self.env.observation_space.shape  # (3, 120, 160)
-        self.shape_action_space = self.env.action_space.shape[0]  # (2,)
+        self.shape_obs_space = self.env.observation_space.shape
+        self.shape_action_space = self.env.action_space.n
 
-        self.local_net = Net(self.shape_obs_space, self.shape_action_space)  # local network
+        self.local_net = Net(1, self.shape_action_space)  # local network
 
         while self.global_episode.value < self.max_episodes:
-            obs = self.env.reset()
+
+            # sync global parameters
+            self.local_net.load_state_dict(self.global_net.state_dict())
+
+            obs = preprocess_state(self.env.reset())
 
             buffer_states = []
             buffer_actions = []
@@ -117,12 +125,14 @@ class Worker(mp.Process):
                 t += 1
                 self.total_step += 1
 
-                if self.name == "worker 0" and self.graphical_output:
+                if self.name == "Worker 0" and self.graphical_output:
                     self.env.render()
 
                 action = self.local_net.choose_action(obs)
                 # print('Chosen action:', action)
                 new_obs, reward, done, info = self.env.step(action)
+                new_obs = preprocess_state(new_obs)
+
                 episode_reward += reward
 
                 buffer_states.append(obs)
@@ -181,7 +191,7 @@ def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, 
     buffer_v_target.reverse()
 
     loss = local_net.loss_func(
-        v_wrap(np.vstack(state_buffer)),
+        v_wrap(np.array(state_buffer)),
         v_wrap(np.array(action_buffer), dtype=np.int64) if action_buffer[0].dtype == np.int64 else v_wrap(
             np.vstack(action_buffer)),
         v_wrap(np.array(buffer_v_target)[:, None]))
@@ -194,9 +204,6 @@ def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, 
     for lp, gp in zip(local_net.parameters(), global_net.parameters()):
         gp._grad = lp.grad
     optimizer.step()
-
-    # pull global parameters
-    local_net.load_state_dict(global_net.state_dict())
 
 
 def v_wrap(np_array, dtype=np.float32):
