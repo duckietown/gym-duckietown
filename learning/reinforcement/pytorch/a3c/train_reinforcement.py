@@ -90,12 +90,12 @@ def _train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=42, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--max_episodes", default=2000, type=int)  # Max time steps to run environment for
+    parser.add_argument("--max_episodes", default=1000, type=int)  # Max time steps to run environment for
     parser.add_argument("--max_steps_per_episode", default=99999, type=int)  # Max time steps to run environment for
     parser.add_argument("--discount", default=0.99, type=float)  # Discount factor
     parser.add_argument("--learning_rate", default=0.0004, type=float)  # Learning rate for the net
-    parser.add_argument("--sync_frequency", default=40000, type=int)  # Time steps until sync of the nets
-    parser.add_argument("--num_workers", default=3, type=int)  # Batch size for both actor and critic
+    parser.add_argument("--sync_frequency", default=4000, type=int)  # Time steps until sync of the nets
+    parser.add_argument("--num_workers", default=3, type=int)  # Number of processes to spawn
     parser.add_argument("--save_models", default=True)  # Whether or not models are saved
     parser.add_argument('--model-dir', type=str, default='models')  # Name of the directory where the models are saved
     parser.add_argument('--action_repeat', type=int, default=4)
