@@ -6,7 +6,7 @@ import gym
 import numpy as np
 
 # Duckietown Specific
-from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete as a3c
+from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete_gru as a3c
 from learning.reinforcement.pytorch.a3c import CustomOptimizer
 from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
 from learning.utils.env import launch_env

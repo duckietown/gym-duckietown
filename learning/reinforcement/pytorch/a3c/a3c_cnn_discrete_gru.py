@@ -35,7 +35,7 @@ class Net(nn.Module):
                                padding=1)  # (16,30,40)
         self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,15,20)
 
-        self.gru = nn.GRUCell(16 * (60 * .5 * .5) * (80 * .5 * .5), 256)
+        self.gru = nn.GRUCell(int(16 * (60 * .5 * .5) * (80 * .5 * .5)), 256)
         # self.dense_size = int(16 * (60 * .5 * .5) * (80 * .5 * .5))
         self.pi = nn.Linear(256, self.num_actions)  # actor
         self.v = nn.Linear(256, 1)  # critic
@@ -45,13 +45,12 @@ class Net(nn.Module):
             nn.init.normal_(layer.weight, mean=0., std=0.1)
             nn.init.constant_(layer.bias, 0.)
 
-        self.distribution = torch.distributions.Categorical
-
     def forward(self, inputs):
         inputs, hx = inputs
         x = F.elu(self.conv1(inputs))
         x = F.elu(self.conv2(x))
-        hx = self.gru(x.view(-1, 16 * (60 * .5 * .5) * (80 * .5 * .5)), hx)
+        gru_input = x.view(-1, int(16 * (60 * .5 * .5) * (80 * .5 * .5)))
+        hx = self.gru(gru_input, hx)
 
         pi = self.pi(hx)
         values = self.v(hx)
@@ -61,14 +60,14 @@ class Net(nn.Module):
         self.eval()
         s = v_wrap(s)
         s.unsqueeze_(0)
-        logits, _, hx = self.forward(s)
+        logits, _, self.hx = self.forward((s, self.hx))
         prob = F.softmax(logits, dim=1).data
         m = self.distribution(prob)
         return m.sample().numpy()[0]
 
     def loss_func(self, s, a, v_t):
         self.train()
-        logits, values = self.forward(s)
+        logits, values, self.hx = self.forward((s, self.hx))
         td = v_t - values
         critic_loss = td.pow(2)
 
@@ -97,6 +96,7 @@ class Worker(mp.Process):
         self.update_global_net_frequency = sync_frequency
         self.graphical_output = graphical_output
         self.gamma = gamma
+        self.hx = None
 
     def run(self):
         import gym
@@ -109,22 +109,30 @@ class Worker(mp.Process):
 
         self.local_net = Net(1, self.shape_action_space)  # local network
 
+        done = True
+
         while self.global_episode.value < self.max_episodes:
 
+            # Begin a new episode
             # sync global parameters
             self.local_net.load_state_dict(self.global_net.state_dict())
 
             obs = preprocess_state(self.env.reset())
-            hx = torch.zeros(1, 256)
+
+            hx = torch.zeros(1, 256) if done else hx.detach()
 
             buffer_states = []
+            buffer_values = []
+            buffer_probs = []
             buffer_actions = []
             buffer_rewards = []
 
             t = 0
             episode_reward = 0
+
             done = False
 
+            # Generate trajectory
             while done is False:
                 t += 1
                 self.total_step += 1
@@ -132,8 +140,17 @@ class Worker(mp.Process):
                 if self.name == "Worker 0" and self.graphical_output:
                     self.env.render()
 
-                action = self.local_net.choose_action(obs)
-                # print('Chosen action:', action)
+                # Run a forward pass through the local net
+                state = v_wrap(obs)  # Ensure state is a pytorch tensor
+                state.unsqueeze_(0)  # Add batch dimension
+                logits, value, hx = self.local_net.forward((state, hx))
+
+                # Sample an action
+                action_probabilities = F.softmax(logits, dim=1).data  # Get probability for each action as tensor
+                action = torch.distributions.Categorical(action_probabilities).sample().data[
+                    0]  # Get action from distribution
+
+                # Execute action
                 new_obs, reward, done, info = self.env.step(action)
                 new_obs = preprocess_state(new_obs)
 
@@ -142,43 +159,68 @@ class Worker(mp.Process):
                 buffer_states.append(obs)
                 buffer_actions.append(action)
                 buffer_rewards.append(reward)
+                buffer_values.append(value)
+                buffer_probs.append(action_probabilities)
 
-                if t == self.max_steps_per_episode:
+                obs = new_obs
+
+                done = done or t >= self.max_steps_per_episode
+
+                if done:
+                    # Increase global episode counter
                     with self.global_episode.get_lock():
                         self.global_episode.value += 1
-                    done = True
 
-                # Sync local net and global net
-                if self.total_step % self.update_global_net_frequency == 0 or done:
-                    # print(self.name + ': Syncing nets')
+                    next_value = torch.zeros(1, 1) if done else self.local_net.forward((new_obs.unsqueeze(0), hx))[1]
+                    buffer_values.append(next_value.detach())
 
-                    sync_nets(self.optimizer, self.local_net, self.global_net, done, new_obs, buffer_states,
-                              buffer_actions, buffer_rewards, self.gamma)
+                    # Calculate loss + gradients
+                    loss = self.calc_loss(torch.cat(buffer_values), torch.cat(buffer_probs),
+                                          torch.stack(buffer_actions), np.asarray(buffer_rewards))
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.local_net.parameters(), 40)
 
-                    buffer_states = []
-                    buffer_actions = []
-                    buffer_rewards = []
+                    # Sync local net and global net
+                    for lp, gp in zip(self.local_net.parameters(), self.global_net.parameters()):
+                        if gp.grad is None:
+                            gp._grad = lp.grad
 
-                    if done:
-                        with self.global_episode.get_lock():
-                            self.global_episode.value += 1
+                    # Backpropagation
+                    self.optimizer.step()
 
-                        with self.global_episode_reward.get_lock():
-                            # Moving average
-                            if self.global_episode_reward.value == 0.:
-                                self.global_episode_reward.value = episode_reward
-                            else:
-                                self.global_episode_reward.value = self.global_episode_reward.value * 0.9 + \
-                                                                   episode_reward * 0.1
+                    # Update statistics
+                    with self.global_episode_reward.get_lock():
+                        # Moving average
+                        if self.global_episode_reward.value == 0.:
+                            self.global_episode_reward.value = episode_reward
+                        else:
+                            self.global_episode_reward.value = self.global_episode_reward.value * 0.9 + \
+                                                               episode_reward * 0.1
                         self.res_queue.put(self.global_episode_reward.value)
 
                         print(self.name, 'Global Episode:', self.global_episode.value,
                               '| Global Episode R: %.0f' % self.global_episode_reward.value)
-                        break
 
-                obs = new_obs
         self.env.close()
         self.res_queue.put(None)
+
+    def calc_loss(self, values, probs, actions, rewards):
+        np_values = values.view(-1).data.numpy()
+        delta_t = np.asarray(rewards) + self.gamma * np_values[1:] - np_values[:-1]
+        gather_indices = actions.clone().detach().view(-1, 1)
+        logpys = probs.gather(1, gather_indices)
+        gen_adv_est = discount(delta_t, self.gamma)
+        policy_loss = -(logpys.view(-1) * torch.FloatTensor(gen_adv_est.copy())).sum()
+
+        # l2 loss over value estimator
+        rewards[-1] += self.gamma * np_values[-1]
+        discounted_r = discount(np.asarray(rewards), self.gamma)
+        discounted_r = torch.tensor(discounted_r.copy(), dtype=torch.float32)
+        value_loss = .5 * (discounted_r - values[:-1, 0]).pow(2).sum()
+
+        entropy_loss = -probs.sum()  # entropy definition, for entropy regularization
+        return policy_loss + 0.5 * value_loss - 0.01 * entropy_loss
 
 
 def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, action_buffer, reward_buffer, gamma):
@@ -186,7 +228,7 @@ def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, 
         v_next_state = 0.  # terminal
     else:
         flattened_input = v_wrap(next_state[None, :])
-        v_next_state = local_net.forward(flattened_input)[-1].data.numpy()[0, 0]
+        v_next_state = local_net.forward((flattened_input, local_net.hx))[1].data.numpy()[0, 0]
 
     buffer_v_target = []
     for r in reward_buffer[::-1]:  # reverse buffer r
@@ -204,10 +246,10 @@ def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, 
     optimizer.zero_grad()
     loss.backward()
 
-    # push local parameters to global
-    for lp, gp in zip(local_net.parameters(), global_net.parameters()):
-        gp._grad = lp.grad
-    optimizer.step()
+
+def discount(x, gamma):
+    from scipy.signal import lfilter
+    return lfilter([1], [1, -gamma], x[::-1])[::-1]  # discounted rewards one liner
 
 
 def v_wrap(np_array, dtype=np.float32):
