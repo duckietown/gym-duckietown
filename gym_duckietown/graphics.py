@@ -93,6 +93,7 @@ def create_frame_buffers(width, height, num_samples):
         if not gl.gl_info.have_version(major=3, minor=2):
             raise Exception('OpenGL version 3.2+ required for \
                             GL_TEXTURE_2D_MULTISAMPLE')
+
         # Create a multisampled texture to render into
         fbTex = gl.GLuint(0)
         gl.glGenTextures( 1, byref(fbTex))
