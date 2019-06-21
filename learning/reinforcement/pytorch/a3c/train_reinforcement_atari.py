@@ -1,10 +1,10 @@
 import argparse
 import logging
 import datetime
-import os
+import os, sys
 
 # Duckietown Specific
-from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete_gru as a3c
+from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete as a3c
 from learning.reinforcement.pytorch.a3c import CustomOptimizer
 from learning.reinforcement.pytorch.utils import seed
 from learning.utils.wrappers import *
@@ -17,14 +17,17 @@ logger.setLevel(logging.DEBUG)
 
 
 def _train(args):
+    # Ensure that multiprocessing works properly without deadlock...
+    if sys.version_info[0] > 2:
+        mp.set_start_method('spawn')
+
     env = gym.make(args.env).unwrapped
 
     # Set seeds
     seed(args.seed)
 
     print("Initializing Global Network")
-    # Global Network
-    global_net = a3c.Net(channels=1, num_actions=env.action_space.n)  # global net that's updated by the workers
+    global_net = a3c.Net(channels=1, num_actions=env.action_space.n).to(device)  # global net that's updated by the workers
     global_net.share_memory()  # share the global parameters in multiprocessing
     optimizer = CustomOptimizer.SharedAdam(global_net.parameters(), lr=args.learning_rate)
 
