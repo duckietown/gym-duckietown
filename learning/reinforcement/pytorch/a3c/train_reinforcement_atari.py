@@ -75,7 +75,7 @@ if __name__ == '__main__':
     parser.add_argument("--steps_until_sync", default=20, type=int)  # Max time steps to run environment for
     parser.add_argument("--learning_rate", default=0.0001, type=float)  # Learning rate for the net
     parser.add_argument("--gamma", default=0.99, type=float)  # Learning rate for the net
-    parser.add_argument("--tau", default=0.99, type=float)  # generalized advantage estimation discount
+    parser.add_argument("--tau", default=1, type=float)  # generalized advantage estimation discount
     parser.add_argument("--num_workers", default=2, type=int)  # Number of processes to spawn
     parser.add_argument("--save_models", default=True)  # Whether or not models are saved
     parser.add_argument('--model-dir', type=str, default='models')  # Name of the directory where the models are saved
