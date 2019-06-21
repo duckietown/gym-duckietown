@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # manual
 
-import math
-
+import os
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,10 +10,12 @@ import torch.multiprocessing as mp
 
 import numpy as np
 
+os.environ['OMP_NUM_THREADS'] = '1'
+
 
 def preprocess_state(obs):
     from scipy.misc import imresize
-    return imresize(obs.mean(2), (60, 80)).astype(np.float32).reshape(1, 60, 80) / 255.
+    return imresize(obs.mean(2), (80, 80)).astype(np.float32).reshape(1, 80, 80) / 255.
 
 
 class Net(nn.Module):
@@ -35,7 +37,7 @@ class Net(nn.Module):
                                padding=1)  # (16,30,40)
         self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,15,20)
 
-        self.gru = nn.GRUCell(int(16 * (60 * .5 * .5) * (80 * .5 * .5)), 256)
+        self.gru = nn.GRUCell(int(16 * (80 * .5 * .5) * (80 * .5 * .5)), 256)
         # self.dense_size = int(16 * (60 * .5 * .5) * (80 * .5 * .5))
         self.pi = nn.Linear(256, self.num_actions)  # actor
         self.v = nn.Linear(256, 1)  # critic
@@ -49,24 +51,14 @@ class Net(nn.Module):
         inputs, hx = inputs
         x = F.elu(self.conv1(inputs))
         x = F.elu(self.conv2(x))
-        gru_input = x.view(-1, int(16 * (60 * .5 * .5) * (80 * .5 * .5)))
+        gru_input = x.view(-1, int(16 * (80 * .5 * .5) * (80 * .5 * .5)))
         hx = self.gru(gru_input, hx)
 
         pi = self.pi(hx)
         values = self.v(hx)
-        return pi, values, hx
-
-    def choose_action(self, s):
-        self.eval()
-        s = v_wrap(s)
-        s.unsqueeze_(0)
-        logits, _, self.hx = self.forward((s, self.hx))
-        prob = F.softmax(logits, dim=1).data
-        m = self.distribution(prob)
-        return m.sample().numpy()[0]
+        return values, pi, hx
 
     def loss_func(self, s, a, v_t):
-        self.train()
         logits, values, self.hx = self.forward((s, self.hx))
         td = v_t - values
         critic_loss = td.pow(2)
@@ -81,145 +73,133 @@ class Net(nn.Module):
 
 
 class Worker(mp.Process):
-    def __init__(self, global_net, optimizer, global_episode, global_episode_reward, res_queue, name,
-                 env_name='Breakout-v0', graphical_output=False, max_episodes=20, max_steps_per_episode=100,
-                 sync_frequency=100, gamma=0.9):
+    def __init__(self, global_net, optimizer, args, info, identifier):
         super(Worker, self).__init__()
-        self.name = 'Worker %s' % name
-        self.env_name = env_name
-        self.global_episode, self.global_episode_reward = global_episode, global_episode_reward
-        self.res_queue = res_queue
-        self.global_net, self.optimizer = global_net, optimizer
+        self.global_net = global_net
+        self.optimizer = optimizer
+        self.args = args
+        self.info = info
+        self.identifier = identifier
+        self.name = 'Worker %s' % identifier
         self.total_step = 0
-        self.max_episodes = max_episodes
-        self.max_steps_per_episode = max_steps_per_episode
-        self.update_global_net_frequency = sync_frequency
-        self.graphical_output = graphical_output
-        self.gamma = gamma
         self.hx = None
 
     def run(self):
         import gym
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
-        self.env = gym.make(self.env_name).unwrapped
+        self.env = gym.make(self.args.env).unwrapped
+
+        # Set seeds so we can reproduce our results
+        self.env.seed(self.args.seed + self.identifier)
+        torch.manual_seed(self.args.seed + self.identifier)
 
         self.shape_obs_space = self.env.observation_space.shape
-        self.shape_action_space = self.env.action_space.n
 
-        self.local_net = Net(1, self.shape_action_space)  # local network
+        self.local_net = Net(1, self.env.action_space.n)  # local network
 
-        done = True
+        start_time = last_disp_time = time.time()
 
-        while self.global_episode.value < self.max_episodes:
+        state = torch.tensor(preprocess_state(self.env.reset()))
+        episode_length, epr, eploss, done = 0, 0, 0, True  # bookkeeping
 
-            # Begin a new episode
-            # sync global parameters
+        while self.info['frames'][0] <= 8e7:  # 80 millione steps.
+
+            # Sync parameters from global net
             self.local_net.load_state_dict(self.global_net.state_dict())
 
-            obs = preprocess_state(self.env.reset())
-
+            # Reset hidden state of GRU cell / Remove hidden state from computational graph
             hx = torch.zeros(1, 256) if done else hx.detach()
 
-            buffer_states = []
-            buffer_values = []
-            buffer_probs = []
-            buffer_actions = []
-            buffer_rewards = []
+            # Values used to compute gradients
+            values, log_probs, actions, rewards = [], [], [], []
 
-            t = 0
-            episode_reward = 0
+            for step in range(self.args.steps_until_sync):
+                episode_length += 1
 
-            done = False
+                # Inference
+                value, logit, hx = self.local_net.forward((state.view(-1, 1, 80, 80), hx))
+                action_log_probs = F.log_softmax(logit, dim=-1)
 
-            # Generate trajectory
-            while done is False:
-                t += 1
-                self.total_step += 1
+                # Sample an action from the distribution
+                action = torch.exp(action_log_probs).multinomial(num_samples=1).data[0]
 
-                if self.name == "Worker 0" and self.graphical_output:
-                    self.env.render()
+                state, reward, done, _ = self.env.step(action.numpy()[0])
+                state = torch.tensor(preprocess_state(state))
+                epr += reward
+                reward = np.clip(reward, -1, 1)  # clip to -1 and 1
+                done = done or episode_length >= 1e4
 
-                # Run a forward pass through the local net
-                state = v_wrap(obs)  # Ensure state is a pytorch tensor
-                state.unsqueeze_(0)  # Add batch dimension
-                logits, value, hx = self.local_net.forward((state, hx))
+                self.info['frames'].add_(1)
 
-                # Sample an action
-                action_probabilities = F.softmax(logits, dim=1).data  # Get probability for each action as tensor
-                action = torch.distributions.Categorical(action_probabilities).sample().data[
-                    0]  # Get action from distribution
+                num_frames = int(self.info['frames'].item())
 
-                # Execute action
-                new_obs, reward, done, info = self.env.step(action)
-                new_obs = preprocess_state(new_obs)
+                if done:  # update shared data
+                    self.info['episodes'] += 1
 
-                episode_reward += reward
+                    # Moving average statistics
+                    interp_factor = 1 if self.info['episodes'][0] == 1 else 1 - 0.99
+                    self.info['run_epr'].mul_(1 - interp_factor).add_(interp_factor * epr)
+                    self.info['run_loss'].mul_(1 - interp_factor).add_(interp_factor * eploss)
 
-                buffer_states.append(obs)
-                buffer_actions.append(action)
-                buffer_rewards.append(reward)
-                buffer_values.append(value)
-                buffer_probs.append(action_probabilities)
-
-                obs = new_obs
-
-                done = done or t >= self.max_steps_per_episode
+                # print training info every minute
+                if self.identifier == 0 and time.time() - last_disp_time > 60:
+                    elapsed = time.strftime("%Hh %Mm %Ss", time.gmtime(time.time() - start_time))
+                    print('time {}, episodes {:.0f}, frames {:.1f}M, mean epr {:.2f}, run loss {:.2f}'
+                          .format(elapsed, self.info['episodes'].item(), num_frames / 1e6,
+                                  self.info['run_epr'].item(), self.info['run_loss'].item()))
+                    last_disp_time = time.time()
 
                 if done:
-                    # Increase global episode counter
-                    with self.global_episode.get_lock():
-                        self.global_episode.value += 1
+                    episode_length, epr, eploss = 0, 0, 0
+                    state = torch.tensor(preprocess_state(self.env.reset()))
 
-                    next_value = torch.zeros(1, 1) if done else self.local_net.forward((new_obs.unsqueeze(0), hx))[1]
-                    buffer_values.append(next_value.detach())
+                values.append(value)
+                log_probs.append(action_log_probs)
+                actions.append(action)
+                rewards.append(reward)
 
-                    # Calculate loss + gradients
-                    loss = self.calc_loss(torch.cat(buffer_values), torch.cat(buffer_probs),
-                                          torch.stack(buffer_actions), np.asarray(buffer_rewards))
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.local_net.parameters(), 40)
+            # Terminal value
+            next_value = torch.zeros(1, 1) if done else self.local_net.forward((state.unsqueeze(0), hx))[0]
+            values.append(next_value.detach())
 
-                    # Sync local net and global net
-                    for lp, gp in zip(self.local_net.parameters(), self.global_net.parameters()):
-                        if gp.grad is None:
-                            gp._grad = lp.grad
+            # Calculate loss
+            loss = self.calc_loss(self.args, torch.cat(values), torch.cat(log_probs), torch.cat(actions),
+                                  np.asarray(rewards))
+            eploss += loss.item()
 
-                    # Backpropagation
-                    self.optimizer.step()
+            # Calculate gradient
+            self.optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.local_net.parameters(), 40)
 
-                    # Update statistics
-                    with self.global_episode_reward.get_lock():
-                        # Moving average
-                        if self.global_episode_reward.value == 0.:
-                            self.global_episode_reward.value = episode_reward
-                        else:
-                            self.global_episode_reward.value = self.global_episode_reward.value * 0.9 + \
-                                                               episode_reward * 0.1
-                        self.res_queue.put(self.global_episode_reward.value)
+            # sync gradients with global network
+            for param, shared_param in zip(self.local_net.parameters(), self.global_net.parameters()):
+                if shared_param.grad is None:
+                    shared_param._grad = param.grad
 
-                        print(self.name, 'Global Episode:', self.global_episode.value,
-                              '| Global Episode R: %.0f' % self.global_episode_reward.value)
+            # Backpropagation
+            self.optimizer.step()
 
-        self.env.close()
-        self.res_queue.put(None)
-
-    def calc_loss(self, values, probs, actions, rewards):
+    def calc_loss(self, args, values, log_probs, actions, rewards):
         np_values = values.view(-1).data.numpy()
-        delta_t = np.asarray(rewards) + self.gamma * np_values[1:] - np_values[:-1]
-        gather_indices = actions.clone().detach().view(-1, 1)
-        logpys = probs.gather(1, gather_indices)
-        gen_adv_est = discount(delta_t, self.gamma)
+
+        # Actor loss: Generalized Advantage Estimation
+        delta_t = np.asarray(rewards) + args.gamma * np_values[1:] - np_values[:-1]
+
+        logpys = log_probs.gather(1,
+                                  torch.tensor(actions).view(-1, 1))  # Select logps of the actions the agent executed
+        gen_adv_est = discount(delta_t, args.gamma * args.tau)
         policy_loss = -(logpys.view(-1) * torch.FloatTensor(gen_adv_est.copy())).sum()
 
-        # l2 loss over value estimator
-        rewards[-1] += self.gamma * np_values[-1]
-        discounted_r = discount(np.asarray(rewards), self.gamma)
+        # Critic loss: l2 loss over value estimator
+        rewards[-1] += args.gamma * np_values[-1]
+        discounted_r = discount(np.asarray(rewards), args.gamma)
         discounted_r = torch.tensor(discounted_r.copy(), dtype=torch.float32)
         value_loss = .5 * (discounted_r - values[:-1, 0]).pow(2).sum()
 
-        entropy_loss = -probs.sum()  # entropy definition, for entropy regularization
+        # Entropy - Used for regularization
+        entropy_loss = -log_probs.sum()
         return policy_loss + 0.5 * value_loss - 0.01 * entropy_loss
 
 
