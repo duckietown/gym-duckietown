@@ -37,25 +37,35 @@ def _train(args):
 
     print("Start training...")
 
-    [w.start() for w in workers]
-    [w.join() for w in workers]
+    interrupted = False
 
-    print("Finished training.")
+    for w in workers:
+        w.daemon = True
+        w.start()
 
-    if args.save_models:
-        cwd = os.getcwd()
-        filedir = args.model_dir
+    try:
+        [w.join() for w in workers]
+    except KeyboardInterrupt:
+        [w.terminate() for w in workers]
+        interrupted = True
 
-        try:
-            os.makedirs(os.path.join(cwd, filedir))
-        except FileExistsError:
-            # directory already exists
-            pass
+    if not interrupted:
+        print("Finished training.")
 
-        filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_") + 'a3c-disc-pong.pth'
-        path = os.path.join(cwd, filedir, filename)
-        torch.save(global_net.state_dict(), path)
-        print("Saved model to:", path)
+        if args.save_models:
+            cwd = os.getcwd()
+            filedir = args.model_dir
+
+            try:
+                os.makedirs(os.path.join(cwd, filedir))
+            except FileExistsError:
+                # directory already exists
+                pass
+
+            filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_") + 'a3c-disc-pong.pth'
+            path = os.path.join(cwd, filedir, filename)
+            torch.save(global_net.state_dict(), path)
+            print("Saved model to:", path)
 
 
 if __name__ == '__main__':
