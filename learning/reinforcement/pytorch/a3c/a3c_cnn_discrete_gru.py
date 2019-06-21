@@ -35,10 +35,9 @@ class Net(nn.Module):
 
         self.conv1 = nn.Conv2d(in_channels=self.channels, out_channels=16, kernel_size=3, stride=2,
                                padding=1)  # (16,30,40)
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,15,20)
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,20,20)
 
         self.gru = nn.GRUCell(int(16 * (80 * .5 * .5) * (80 * .5 * .5)), 256)
-        # self.dense_size = int(16 * (60 * .5 * .5) * (80 * .5 * .5))
         self.pi = nn.Linear(256, self.num_actions)  # actor
         self.v = nn.Linear(256, 1)  # critic
 
@@ -58,19 +57,6 @@ class Net(nn.Module):
         values = self.v(hx)
         return values, pi, hx
 
-    def loss_func(self, s, a, v_t):
-        logits, values, self.hx = self.forward((s, self.hx))
-        td = v_t - values
-        critic_loss = td.pow(2)
-
-        probs = F.softmax(logits, dim=1)
-        m = self.distribution(probs)
-        exp_v = m.log_prob(a) * td.detach().squeeze()
-        a_loss = -exp_v
-        total_loss = (critic_loss + a_loss).mean()
-
-        return total_loss
-
 
 class Worker(mp.Process):
     def __init__(self, global_net, optimizer, args, info, identifier):
@@ -82,7 +68,6 @@ class Worker(mp.Process):
         self.identifier = identifier
         self.name = 'Worker %s' % identifier
         self.total_step = 0
-        self.hx = None
 
     def run(self):
         import gym
@@ -93,8 +78,6 @@ class Worker(mp.Process):
         # Set seeds so we can reproduce our results
         self.env.seed(self.args.seed + self.identifier)
         torch.manual_seed(self.args.seed + self.identifier)
-
-        self.shape_obs_space = self.env.observation_space.shape
 
         self.local_net = Net(1, self.env.action_space.n)  # local network
 
@@ -127,11 +110,10 @@ class Worker(mp.Process):
                 state, reward, done, _ = self.env.step(action.numpy()[0])
                 state = torch.tensor(preprocess_state(state))
                 epr += reward
-                reward = np.clip(reward, -1, 1)  # clip to -1 and 1
+                reward = np.clip(reward, -1, 1)
                 done = done or episode_length >= 1e4
 
                 self.info['frames'].add_(1)
-
                 num_frames = int(self.info['frames'].item())
 
                 if done:  # update shared data
@@ -203,36 +185,6 @@ class Worker(mp.Process):
         return policy_loss + 0.5 * value_loss - 0.01 * entropy_loss
 
 
-def sync_nets(optimizer, local_net, global_net, done, next_state, state_buffer, action_buffer, reward_buffer, gamma):
-    if done:
-        v_next_state = 0.  # terminal
-    else:
-        flattened_input = v_wrap(next_state[None, :])
-        v_next_state = local_net.forward((flattened_input, local_net.hx))[1].data.numpy()[0, 0]
-
-    buffer_v_target = []
-    for r in reward_buffer[::-1]:  # reverse buffer r
-        v_next_state = r + gamma * v_next_state
-        buffer_v_target.append(v_next_state)
-    buffer_v_target.reverse()
-
-    loss = local_net.loss_func(
-        v_wrap(np.array(state_buffer)),
-        v_wrap(np.array(action_buffer), dtype=np.int64) if action_buffer[0].dtype == np.int64 else v_wrap(
-            np.vstack(action_buffer)),
-        v_wrap(np.array(buffer_v_target)[:, None]))
-
-    # calculate local gradients
-    optimizer.zero_grad()
-    loss.backward()
-
-
 def discount(x, gamma):
     from scipy.signal import lfilter
     return lfilter([1], [1, -gamma], x[::-1])[::-1]  # discounted rewards one liner
-
-
-def v_wrap(np_array, dtype=np.float32):
-    if np_array.dtype != dtype:
-        np_array = np_array.astype(dtype)
-    return torch.from_numpy(np_array)
