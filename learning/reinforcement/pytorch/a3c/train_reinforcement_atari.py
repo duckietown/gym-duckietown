@@ -29,8 +29,7 @@ def _train(args):
     seed(args.seed)
 
     print("Initializing Global Network")
-    global_net = a3c.Net(channels=1, num_actions=env.action_space.n).to(
-        device)  # global net that's updated by the workers
+    global_net = a3c.Net(channels=1, num_actions=env.action_space.n)  # global net that's updated by the workers
     global_net.share_memory()  # share the global parameters in multiprocessing
     optimizer = CustomOptimizer.SharedAdam(global_net.parameters(), lr=args.learning_rate)
 
