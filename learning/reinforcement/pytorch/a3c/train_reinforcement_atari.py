@@ -5,7 +5,7 @@ import os
 import sys
 
 # Duckietown Specific
-from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete as a3c
+from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete_gru as a3c
 from learning.reinforcement.pytorch.a3c import CustomOptimizer
 from learning.reinforcement.pytorch.utils import seed
 from learning.utils.wrappers import *
