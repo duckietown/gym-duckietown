@@ -1,7 +1,8 @@
 import argparse
 import logging
 import datetime
-import os, sys
+import os
+import sys
 
 # Duckietown Specific
 from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete as a3c
@@ -11,6 +12,7 @@ from learning.utils.wrappers import *
 
 # PyTorch
 import torch
+import torch.multiprocessing as mp
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -27,7 +29,8 @@ def _train(args):
     seed(args.seed)
 
     print("Initializing Global Network")
-    global_net = a3c.Net(channels=1, num_actions=env.action_space.n).to(device)  # global net that's updated by the workers
+    global_net = a3c.Net(channels=1, num_actions=env.action_space.n).to(
+        device)  # global net that's updated by the workers
     global_net.share_memory()  # share the global parameters in multiprocessing
     optimizer = CustomOptimizer.SharedAdam(global_net.parameters(), lr=args.learning_rate)
 
