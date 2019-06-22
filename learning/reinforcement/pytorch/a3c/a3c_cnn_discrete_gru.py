@@ -15,7 +15,7 @@ os.environ['OMP_NUM_THREADS'] = '1'
 
 def preprocess_state(obs):
     from scipy.misc import imresize
-    return imresize(obs.mean(2), (80, 80)).astype(np.float32).reshape(1, 80, 80) / 255.
+    return imresize(obs[35:195].mean(2), (80, 80)).astype(np.float32).reshape(1, 80, 80) / 255.
 
 
 class Net(nn.Module):
@@ -33,11 +33,12 @@ class Net(nn.Module):
 
         # o = [i + 2*p - k - (k-1)*(d-1)]/s + 1
 
-        self.conv1 = nn.Conv2d(in_channels=self.channels, out_channels=16, kernel_size=3, stride=2,
-                               padding=1)  # (16,30,40)
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=2, padding=1)  # (16,20,20)
+        self.conv1 = nn.Conv2d(channels, 32, 3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
+        self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
+        self.conv4 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
 
-        self.gru = nn.GRUCell(int(16 * (80 * .5 * .5) * (80 * .5 * .5)), 256)
+        self.gru = nn.GRUCell(32 * 5 * 5, 256)
         self.pi = nn.Linear(256, self.num_actions)  # actor
         self.v = nn.Linear(256, 1)  # critic
 
@@ -50,7 +51,9 @@ class Net(nn.Module):
         inputs, hx = inputs
         x = F.elu(self.conv1(inputs))
         x = F.elu(self.conv2(x))
-        gru_input = x.view(-1, int(16 * (80 * .5 * .5) * (80 * .5 * .5)))
+        x = F.elu(self.conv3(x))
+        x = F.elu(self.conv4(x))
+        gru_input = x.view(-1, 32 * 5 * 5)
         hx = self.gru(gru_input, hx)
 
         pi = self.pi(hx)
@@ -69,6 +72,30 @@ class Worker(mp.Process):
         self.name = 'Worker %s' % identifier
         self.total_step = 0
 
+    def calc_loss(self, args, values, log_probs, actions, rewards):
+        np_values = values.view(-1).data.numpy()
+
+        # Actor loss: Generalized Advantage Estimation A = R(lamdda) - V(s), Schulman
+        # Paper:  High-Dimensional Continuous Control Using Generalized Advantage Estimation
+        delta_t = np.asarray(rewards) + args.gamma * np_values[1:] - np_values[:-1]
+        advantage = discount(delta_t, args.gamma)
+
+        # Select log probabilities of the actions the agent executed
+        action_log_probabilities = log_probs.gather(1, torch.tensor(actions).view(-1, 1))
+        policy_loss = -(action_log_probabilities.view(-1) * torch.FloatTensor(advantage.copy())).sum()
+
+        # Critic loss: l2 loss over value estimator
+        rewards[-1] += args.gamma * np_values[-1]
+        discounted_reward = discount(np.asarray(rewards), args.gamma)
+        discounted_reward = torch.tensor(discounted_reward.copy(), dtype=torch.float32)
+        value_loss = .5 * (discounted_reward - values[:-1, 0]).pow(2).sum()
+
+        # Entropy - Used for regularization
+        # Entropy is a metric for the distribution of probabilities
+        # -> We want to maximize entropy to encourage exploration
+        entropy_loss = (-log_probs * torch.exp(log_probs)).sum()
+        return policy_loss + 0.5 * value_loss - 0.01 * entropy_loss
+
     def run(self):
         import gym
 
@@ -80,11 +107,11 @@ class Worker(mp.Process):
         torch.manual_seed(self.args.seed + self.identifier)
 
         self.local_net = Net(1, self.env.action_space.n)  # local network
-
-        start_time = last_disp_time = time.time()
-
         state = torch.tensor(preprocess_state(self.env.reset()))
-        episode_length, epr, eploss, done = 0, 0, 0, True  # bookkeeping
+
+        # bookkeeping
+        start_time = last_disp_time = time.time()
+        episode_length, epr, eploss, done = 0, 0, 0, True
 
         while self.info['frames'][0] <= 8e7:  # 80 millione steps.
 
@@ -119,7 +146,9 @@ class Worker(mp.Process):
                 if done:  # update shared data
                     self.info['episodes'] += 1
 
-                    # Moving average statistics
+                    # Moving average statistics:
+                    # Linear interpolation between the current average and the new value
+                    # Allows us to better estimate quality of results with high variance
                     interp_factor = 1 if self.info['episodes'][0] == 1 else 1 - 0.99
                     self.info['run_epr'].mul_(1 - interp_factor).add_(interp_factor * epr)
                     self.info['run_loss'].mul_(1 - interp_factor).add_(interp_factor * eploss)
@@ -132,6 +161,7 @@ class Worker(mp.Process):
                                   self.info['run_epr'].item(), self.info['run_loss'].item()))
                     last_disp_time = time.time()
 
+                # reset buffers / environment
                 if done:
                     episode_length, epr, eploss = 0, 0, 0
                     state = torch.tensor(preprocess_state(self.env.reset()))
@@ -141,7 +171,7 @@ class Worker(mp.Process):
                 actions.append(action)
                 rewards.append(reward)
 
-            # Terminal value
+            # Reached sync step -> We need a terminal value
             next_value = torch.zeros(1, 1) if done else self.local_net.forward((state.unsqueeze(0), hx))[0]
             values.append(next_value.detach())
 
@@ -162,27 +192,6 @@ class Worker(mp.Process):
 
             # Backpropagation
             self.optimizer.step()
-
-    def calc_loss(self, args, values, log_probs, actions, rewards):
-        np_values = values.view(-1).data.numpy()
-
-        # Actor loss: Generalized Advantage Estimation
-        delta_t = np.asarray(rewards) + args.gamma * np_values[1:] - np_values[:-1]
-
-        logpys = log_probs.gather(1,
-                                  torch.tensor(actions).view(-1, 1))  # Select logps of the actions the agent executed
-        gen_adv_est = discount(delta_t, args.gamma * args.tau)
-        policy_loss = -(logpys.view(-1) * torch.FloatTensor(gen_adv_est.copy())).sum()
-
-        # Critic loss: l2 loss over value estimator
-        rewards[-1] += args.gamma * np_values[-1]
-        discounted_r = discount(np.asarray(rewards), args.gamma)
-        discounted_r = torch.tensor(discounted_r.copy(), dtype=torch.float32)
-        value_loss = .5 * (discounted_r - values[:-1, 0]).pow(2).sum()
-
-        # Entropy - Used for regularization
-        entropy_loss = -log_probs.sum()
-        return policy_loss + 0.5 * value_loss - 0.01 * entropy_loss
 
 
 def discount(x, gamma):
