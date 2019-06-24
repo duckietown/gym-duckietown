@@ -15,7 +15,7 @@ os.environ['OMP_NUM_THREADS'] = '1'
 
 def preprocess_state(obs):
     from scipy.misc import imresize
-    return imresize(obs[35:195].mean(2), (80, 80)).astype(np.float32).reshape(1, 80, 80) / 255.
+    return imresize(obs.mean(2), (80, 80)).astype(np.float32).reshape(1, 80, 80) / 255.
 
 
 class Net(nn.Module):
@@ -97,10 +97,18 @@ class Worker(mp.Process):
         return policy_loss + 0.5 * value_loss - 0.01 * entropy_loss
 
     def run(self):
-        import gym
+        from learning.utils.env import launch_env
+        from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+            DtRewardWrapper, ActionWrapper, ResizeWrapper, DiscreteWrapper
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
-        self.env = gym.make(self.args.env).unwrapped
+        self.env = launch_env()
+        self.env = ResizeWrapper(self.env)
+        self.env = NormalizeWrapper(self.env)
+        self.env = ImgWrapper(self.env)  # to make the images from 160x120x3 into 3x160x120
+        self.env = ActionWrapper(self.env)
+        self.env = DtRewardWrapper(self.env)
+        self.env = DiscreteWrapper(self.env)
 
         # Set seeds so we can reproduce our results
         self.env.seed(self.args.seed + self.identifier)
@@ -113,7 +121,10 @@ class Worker(mp.Process):
         start_time = last_disp_time = time.time()
         episode_length, epr, eploss, done = 0, 0, 0, True
 
+        render_this_episode = False
+
         while self.info['frames'][0] <= 8e7:  # 80 millione steps.
+            render_this_episode = render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0)
 
             # Sync parameters from global net
             self.local_net.load_state_dict(self.global_net.state_dict())
@@ -133,12 +144,16 @@ class Worker(mp.Process):
 
                 # Sample an action from the distribution
                 action = torch.exp(action_log_probs).multinomial(num_samples=1).data[0]
-
-                state, reward, done, _ = self.env.step(action.numpy()[0])
+                np_action = action.numpy()[0]
+                state, reward, done, _ = self.env.step(np_action)
                 state = torch.tensor(preprocess_state(state))
                 epr += reward
                 reward = np.clip(reward, -1, 1)
                 done = done or episode_length >= 1e4
+
+                if render_this_episode:
+                    self.env.render()
+                    #print('Action: ', np_action)
 
                 self.info['frames'].add_(1)
                 num_frames = int(self.info['frames'].item())
@@ -163,6 +178,7 @@ class Worker(mp.Process):
 
                 # reset buffers / environment
                 if done:
+                    render_this_episode = False
                     episode_length, epr, eploss = 0, 0, 0
                     state = torch.tensor(preprocess_state(self.env.reset()))
 
