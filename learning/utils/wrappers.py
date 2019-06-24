@@ -3,6 +3,30 @@ from gym import spaces
 import numpy as np
 
 
+class DiscreteWrapper(gym.ActionWrapper):
+    """
+    Discrete actions (left, right, forward) instead of continuous control
+    """
+
+    def __init__(self, env):
+        gym.ActionWrapper.__init__(self, env)
+        self.action_space = spaces.Discrete(3)
+
+    def action(self, action):
+        # Left
+        if action == 0:
+            vels = [0.35, +1.0]
+        # Right
+        elif action == 1:
+            vels = [0.35, -1.0]
+        # Forward
+        elif action == 2:
+            vels = [0.44, 0.0]
+        else:
+            assert False, "unknown action"
+        return np.array(vels)
+
+
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, shape=(120, 160, 3)):
         super(ResizeWrapper, self).__init__(env)
