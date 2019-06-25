@@ -2,6 +2,7 @@ import argparse
 import logging
 import datetime
 import os
+import sys
 import numpy as np
 
 # Duckietown Specific
@@ -21,6 +22,10 @@ logger.setLevel(logging.DEBUG)
 
 
 def _train(args):
+    # Ensure that multiprocessing works properly without deadlock...
+    if sys.version_info[0] > 2:
+        mp.set_start_method('spawn')
+
     env = launch_env()
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
