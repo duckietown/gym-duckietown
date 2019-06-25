@@ -62,7 +62,7 @@ def _train(args):
         [w.terminate() for w in workers]
         interrupted = True
 
-    if not interrupted:
+    if not interrupted or args.save_on_interrupt:
         print("Finished training.")
 
         if args.save_models:
@@ -92,4 +92,5 @@ if __name__ == '__main__':
     parser.add_argument('--model-dir', type=str, default='models')  # Name of the directory where the models are saved
     parser.add_argument('--graphical_output', default=True)  # Whether to render the observation in a window
     parser.add_argument('--env', default=None)
+    parser.add_argument('--save-on-interrupt', default=True)
     _train(parser.parse_args())
