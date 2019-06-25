@@ -55,6 +55,8 @@ def _train(args):
     episode_reward = None
     env_counter = 0
     reward = 0
+    episode_timesteps = 0
+    
     print("Starting training")
     while total_timesteps < args.max_timesteps:
         
