@@ -104,7 +104,7 @@ def _train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=1, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--max_steps", default=40000, type=int)  # Max time steps to run environment for
+    parser.add_argument("--max_steps", default=20_000_000, type=int)  # Max time steps to run environment for
     parser.add_argument("--steps_until_sync", default=20, type=int)  # Steps until nets are synced
     parser.add_argument("--learning_rate", default=1e-4, type=float)  # Learning rate for the net
     parser.add_argument("--gamma", default=0.99, type=float)  # Discount factor
