@@ -87,6 +87,17 @@ class DtRewardWrapper(gym.RewardWrapper):
         return reward
 
 
+class DtRewardWrapper2(gym.RewardWrapper):
+    def __init__(self, env):
+        super(DtRewardWrapper2, self).__init__(env)
+
+    def reward(self, reward):
+        if reward == -1000:
+            reward = -100
+
+        return reward
+
+
 # this is needed because at max speed the duckie can't turn anymore
 class ActionWrapper(gym.ActionWrapper):
     def __init__(self, env):

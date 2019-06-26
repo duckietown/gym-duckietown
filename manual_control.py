@@ -12,7 +12,7 @@ import pyglet
 from pyglet.window import key
 import numpy as np
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper, DiscreteWrapper
+    DtRewardWrapper, DtRewardWrapper2, ActionWrapper, ResizeWrapper, DiscreteWrapper
 from learning.utils.env import launch_env
 import gym
 import gym_duckietown
@@ -33,11 +33,11 @@ parser.add_argument('--seed', default=1, type=int, help='seed')
 args = parser.parse_args()
 
 env = launch_env()
-env = ResizeWrapper(env)
-env = NormalizeWrapper(env)
+#env = ResizeWrapper(env)
+#env = NormalizeWrapper(env)
 env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
-env = ActionWrapper(env)
-env = DtRewardWrapper(env)
+#env = ActionWrapper(env)
+env = DtRewardWrapper2(env)
 env = DiscreteWrapper(env)
 
 """
@@ -88,6 +88,7 @@ def on_key_press(symbol, modifiers):
 key_handler = key.KeyStateHandler()
 env.unwrapped.window.push_handlers(key_handler)
 
+rewards = 0
 
 def update(dt):
     """
@@ -121,19 +122,23 @@ def update(dt):
     if key_handler[key.LSHIFT]:
         action *= 1.5
 
+    global rewards
     obs, reward, done, info = env.step(action)
-    print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
+    print('step_count = %s, reward=%.3f, epr=%.3f' % (env.unwrapped.step_count, reward, rewards))
+
+    rewards += reward
 
     if key_handler[key.RETURN]:
         from PIL import Image
         im = Image.fromarray(obs)
-
         im.save('screen.png')
 
     if done:
         print('done!')
+        print('------------- Episode Rewards:', rewards)
+        rewards = 0
+        print('------------- New Episode Rewards:', rewards)
         env.reset()
-        env.render()
 
     env.render()
 

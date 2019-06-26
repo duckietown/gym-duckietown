@@ -99,7 +99,7 @@ class Worker(mp.Process):
     def run(self):
         from learning.utils.env import launch_env
         from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-            DtRewardWrapper, ActionWrapper, ResizeWrapper, DiscreteWrapper
+            DtRewardWrapper2, ActionWrapper, ResizeWrapper, DiscreteWrapper
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
         self.env = launch_env()
@@ -107,7 +107,7 @@ class Worker(mp.Process):
         #self.env = NormalizeWrapper(self.env)
         self.env = ImgWrapper(self.env)  # to make the images from 160x120x3 into 3x160x120
         #self.env = ActionWrapper(self.env)
-        self.env = DtRewardWrapper(self.env)
+        self.env = DtRewardWrapper2(self.env)
         self.env = DiscreteWrapper(self.env)
 
         # Set seeds so we can reproduce our results
