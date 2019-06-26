@@ -103,10 +103,10 @@ class Worker(mp.Process):
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
         self.env = launch_env()
-        self.env = ResizeWrapper(self.env)
-        self.env = NormalizeWrapper(self.env)
+        #self.env = ResizeWrapper(self.env)
+        #self.env = NormalizeWrapper(self.env)
         self.env = ImgWrapper(self.env)  # to make the images from 160x120x3 into 3x160x120
-        self.env = ActionWrapper(self.env)
+        #self.env = ActionWrapper(self.env)
         self.env = DtRewardWrapper(self.env)
         self.env = DiscreteWrapper(self.env)
 
@@ -123,8 +123,8 @@ class Worker(mp.Process):
 
         render_this_episode = False
 
-        while self.info['frames'][0] <= 8e7:  # 80 millione steps.
-            render_this_episode = render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0)
+        while self.info['frames'][0] <= self.args.max_steps:
+            render_this_episode = self.args.graphical_output and (render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0))
 
             # Sync parameters from global net
             self.local_net.load_state_dict(self.global_net.state_dict())
@@ -148,7 +148,7 @@ class Worker(mp.Process):
                 state, reward, done, _ = self.env.step(np_action)
                 state = torch.tensor(preprocess_state(state))
                 epr += reward
-                reward = np.clip(reward, -1, 1)
+                #reward = np.clip(reward, -1, 1)
                 done = done or episode_length >= 1e4
 
                 if render_this_episode:
@@ -188,6 +188,7 @@ class Worker(mp.Process):
                 rewards.append(reward)
 
             # Reached sync step -> We need a terminal value
+            # If the episode did not end use estimation of V(s) to bootstrap
             next_value = torch.zeros(1, 1) if done else self.local_net.forward((state.unsqueeze(0), hx))[0]
             values.append(next_value.detach())
 
@@ -208,7 +209,6 @@ class Worker(mp.Process):
 
             # Backpropagation
             self.optimizer.step()
-
 
 def discount(x, gamma):
     from scipy.signal import lfilter
