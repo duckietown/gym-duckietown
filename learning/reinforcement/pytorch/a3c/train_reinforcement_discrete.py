@@ -111,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_workers", default=3, type=int)  # Number of processes to spawn
     parser.add_argument("--save_models", default=True)  # Whether or not models are saved
     parser.add_argument('--model_dir', type=str, default='models')  # Name of the directory where the models are saved
-    parser.add_argument('--model_file', type=str, default='2019-06-26_18-06-53_a3c-disc-duckie.pth')  # Name of the model to load
+    parser.add_argument('--model_file', type=str, default=None)  # Name of the model to load
     parser.add_argument('--graphical_output', default=False)  # Whether to render the observation in a window
     parser.add_argument('--env', default=None)
     parser.add_argument('--save_on_interrupt', default=True)
