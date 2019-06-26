@@ -6,10 +6,10 @@ import os
 import numpy as np
 
 # Duckietown Specific
-from reinforcement.pytorch.ddpg import DDPG
-from reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
-from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
+from learning.reinforcement.pytorch.ddpg.ddpg import DDPG
+from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 logger = logging.getLogger(__name__)
@@ -136,6 +136,6 @@ if __name__ == '__main__':
     parser.add_argument("--policy_freq", default=2, type=int)  # Frequency of delayed policy updates
     parser.add_argument("--env_timesteps", default=500, type=int)  # Frequency of delayed policy updates
     parser.add_argument("--replay_buffer_max_size", default=10000, type=int)  # Maximum number of steps to keep in the replay buffer
-    parser.add_argument('--model-dir', type=str, default='reinforcement/pytorch/models/')
+    parser.add_argument('--model-dir', type=str, default='reinforcement/pytorch/ddpg/models/')
 
     _train(parser.parse_args())
