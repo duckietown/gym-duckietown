@@ -355,3 +355,26 @@ conda install -c conda-forge ffmpeg
 ```
 
 Alternatively, screencasting programs such as [Kazam](https://launchpad.net/kazam) can be used to record the graphical output of a single window.
+
+
+```bash
+#build the docker image with tensorflow and ppo_tensorflow_v7 training
+
+
+docker build . \
+       --file ./docker/standalone/Dockerfile \
+       --no-cache=true \
+       --network=host \
+       --tag a3c
+#run training
+
+docker run -t a3c:latest
+
+
+
+```
+
+```bash 
+
+docker cp 9b8e5c238373:/gym-duckietown/learning/reinforcement/pytorch/a3c .
+```
