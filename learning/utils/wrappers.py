@@ -26,6 +26,21 @@ class DiscreteWrapper(gym.ActionWrapper):
             assert False, "unknown action"
         return np.array(vels)
 
+class DiscreteWrapper_a6(gym.ActionWrapper):
+    """
+    Discrete actions (left, right, forward) instead of continuous control
+    """
+
+    def __init__(self, env):
+        gym.ActionWrapper.__init__(self, env)
+        self.action_space = spaces.Discrete(3)
+
+    def action(self, action):
+        speed = [0.4, 0.8]
+        angle = [-1., 0., 1.]
+        action_pool = [[speed[i],angle[j]] for i in range(len(speed)) for j in range(len(angle))]
+        return np.array(action_pool[action])
+
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, shape=(120, 160, 3)):

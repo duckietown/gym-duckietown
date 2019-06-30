@@ -3,7 +3,8 @@ import random
 import gym
 import numpy as np
 import torch
-
+import sys,os
+import datetime
 
 def seed(seed):
     torch.manual_seed(seed)
@@ -72,3 +73,23 @@ def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=500):
     avg_reward /= eval_episodes
 
     return avg_reward
+
+class Logger():
+    def __init__(self, cur_dir="models"):
+        self.curr_path = os.path.join(
+            os.getcwd(), f"learning/reinforcement/pytorch/a3c/{cur_dir}")
+        self.log_dir = os.path.abspath(
+            f"{self.curr_path}") + "/" + datetime.datetime.now().strftime("%Y_%m_%d__%H_%M")
+
+        # create ckpt directory
+        self.checkpoint_dir = os.path.join(self.log_dir, "ckpt")
+        self.checkpoint_path = os.path.join(self.checkpoint_dir, "model")
+
+
+        if not os.path.exists(self.checkpoint_dir):
+            os.makedirs(self.checkpoint_dir)
+
+
+    def get_log_dirs(self):
+
+        return self.checkpoint_dir, self.checkpoint_path, self.log_dir

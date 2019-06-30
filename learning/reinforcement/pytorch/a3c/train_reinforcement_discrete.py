@@ -4,14 +4,21 @@ import datetime
 import os
 import sys
 import numpy as np
+from time import time
+
+
+sys.path.append(os.path.join(os.getcwd(), "gym_duckietown"))
+sys.path.append(os.getcwd())
+sys.path.append(os.path.join(os.getcwd(), "learning"))
+sys.path.append(os.path.join(os.getcwd(), "/learning/utils_global"))
 
 # Duckietown Specific
 from learning.reinforcement.pytorch.a3c import a3c_cnn_discrete_gru as a3c
 from learning.reinforcement.pytorch.a3c import CustomOptimizer
-from learning.reinforcement.pytorch.utils import seed
+from learning.reinforcement.pytorch.utils import seed, Logger
 from learning.utils.env import launch_env
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper2, ActionWrapper, ResizeWrapper, DiscreteWrapper
+    DtRewardWrapper2, ActionWrapper, ResizeWrapper, DiscreteWrapper_a6
 
 # PyTorch
 import torch
@@ -32,10 +39,13 @@ def _train(args):
     env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
     # env = ActionWrapper(env)
     env = DtRewardWrapper2(env)
-    env = DiscreteWrapper(env)
+    env = DiscreteWrapper_a6(env)
 
     # Set seeds
     seed(args.seed)
+
+    logger = Logger("models")
+    ckpt_dir, ckpt_path, log_dir = logger.get_log_dirs()
 
     shape_obs_space = env.observation_space.shape  # (3, 120, 160)
     shape_action_space = env.action_space.n  # 3
@@ -58,12 +68,13 @@ def _train(args):
     print("Instantiating %i workers" % args.num_workers)
 
     workers = [
-        a3c.Worker(global_net, optimizer, args, info, identifier=i)
+        a3c.Worker(global_net, optimizer, args, info, identifier=i, logger=logger)
         for i in range(args.num_workers)]
 
     print("Start training...")
 
     interrupted = False
+    initialTime = time()
 
     for w in workers:
         w.daemon = True
@@ -79,32 +90,22 @@ def _train(args):
         print("Finished training.")
 
         if args.save_models:
-            cwd = os.getcwd()
-            filedir = args.model_dir
-
-            try:
-                os.makedirs(os.path.join(cwd, filedir))
-            except FileExistsError:
-                # directory already exists
-                pass
-
-            filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_") + 'a3c-disc-duckie.pth'
-            path = os.path.join(cwd, filedir, filename)
 
             torch.save({
                 'model_state_dict': global_net.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'info': info
-            }, path)
+            }, f"{ckpt_dir}/model-final")
 
-            # torch.save(global_net.state_dict(), path)
-            print("Saved model to:", path)
+            print("Saved model to:",  f"{ckpt_dir}/model-final")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=1, type=int)  # Sets Gym, PyTorch and Numpy seeds
+    parser.add_argument("--action_update_steps", default=10, type=int)  # after how many steps the agent chooses a new action
     parser.add_argument("--max_steps", default=20_000_000, type=int)  # Max time steps to run environment for
+    parser.add_argument("--max_episode_steps", default=1e4, type=int)  # Max steps per episode
     parser.add_argument("--steps_until_sync", default=20, type=int)  # Steps until nets are synced
     parser.add_argument("--learning_rate", default=1e-4, type=float)  # Learning rate for the net
     parser.add_argument("--gamma", default=0.99, type=float)  # Discount factor
@@ -114,5 +115,6 @@ if __name__ == '__main__':
     parser.add_argument('--model_file', type=str, default=None)  # Name of the model to load
     parser.add_argument('--graphical_output', default=False)  # Whether to render the observation in a window
     parser.add_argument('--env', default=None)
+    parser.add_argument('--render_env', default=False) # show how the agent learns
     parser.add_argument('--save_on_interrupt', default=True)
     _train(parser.parse_args())

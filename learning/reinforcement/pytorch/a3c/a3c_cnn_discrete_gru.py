@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-# manual
-
 import os
 import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.multiprocessing as mp
+from learning.reinforcement.pytorch.a3c import CustomOptimizer
 
 import numpy as np
 
@@ -62,15 +60,17 @@ class Net(nn.Module):
 
 
 class Worker(mp.Process):
-    def __init__(self, global_net, optimizer, args, info, identifier):
+    def __init__(self, global_net, optimizer, args, info, identifier, logger):
         super(Worker, self).__init__()
         self.global_net = global_net
         self.optimizer = optimizer
         self.args = args
         self.info = info
         self.identifier = identifier
-        self.name = 'Worker %s' % identifier
+        self.name = f'worker-{identifier}'
         self.total_step = 0
+        self.args = args
+        self.ckpt_dir, self.ckpt_path, self.log_dir = logger.get_log_dirs()
 
     def calc_loss(self, args, values, log_probs, actions, rewards):
         np_values = values.view(-1).data.numpy()
@@ -121,7 +121,7 @@ class Worker(mp.Process):
         start_time = last_disp_time = time.time()
         episode_length, epr, eploss, done = 0, 0, 0, True
 
-        render_this_episode = False
+        render_this_episode = self.args.render_env
 
         while self.info['frames'][0] <= self.args.max_steps:
             render_this_episode = self.args.graphical_output and (render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0))
@@ -145,11 +145,17 @@ class Worker(mp.Process):
                 # Sample an action from the distribution
                 action = torch.exp(action_log_probs).multinomial(num_samples=1).data[0]
                 np_action = action.numpy()[0]
-                state, reward, done, _ = self.env.step(np_action)
+
+                done = False
+                for x in range(self.args.action_update_steps):
+                    if done == False:
+                        state, reward, done, _ = self.env.step(np_action)
+                        reward += reward
+
                 state = torch.tensor(preprocess_state(state))
                 epr += reward
                 #reward = np.clip(reward, -1, 1)
-                done = done or episode_length >= 1e4
+                done = done or episode_length >= self.args.max_episode_steps
 
                 if render_this_episode:
                     self.env.render()
@@ -168,17 +174,33 @@ class Worker(mp.Process):
                     self.info['run_epr'].mul_(1 - interp_factor).add_(interp_factor * epr)
                     self.info['run_loss'].mul_(1 - interp_factor).add_(interp_factor * eploss)
 
+                    elapsed = time.time() - start_time
+
+                    with open(f"{self.log_dir}/performance-{self.name}.txt", "a") as myfile:
+                        myfile.write(f"{self.info['episodes'].item():.0f} {num_frames} {epr} {self.info['run_loss'].item()} {elapsed}\n")
+                    
+                    if self.info['episodes'].item() % 1000 == 0 and self.args.save_models:
+                        optimizer = CustomOptimizer.SharedAdam(self.global_net.parameters(), lr=self.args.learning_rate)
+                        info = {k: torch.DoubleTensor([0]).share_memory_() for k in ['run_epr', 'run_loss', 'episodes', 'frames']}
+
+                        torch.save({
+                            'model_state_dict': self.global_net.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'info': info
+                        }, f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
+
+                        print("Saved model to:",  f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
+
                 # print training info every minute
                 if self.identifier == 0 and time.time() - last_disp_time > 60:
                     elapsed = time.strftime("%Hh %Mm %Ss", time.gmtime(time.time() - start_time))
-                    print('time {}, episodes {:.0f}, frames {:.1f}M, mean epr {:.2f}, run loss {:.2f}'
-                          .format(elapsed, self.info['episodes'].item(), num_frames / 1e6,
-                                  self.info['run_epr'].item(), self.info['run_loss'].item()))
+                    print(f"[time]: {elapsed}, [episodes]: {self.info['episodes'].item():.0f}, [frames]: {num_frames:.0f},"+
+                        f"[mean epr]:{self.info['run_epr'].item():.2f}, [run loss]: {self.info['run_loss'].item():.2f}")
+                
                     last_disp_time = time.time()
 
                 # reset buffers / environment
                 if done:
-                    render_this_episode = False
                     episode_length, epr, eploss = 0, 0, 0
                     state = torch.tensor(preprocess_state(self.env.reset()))
 
