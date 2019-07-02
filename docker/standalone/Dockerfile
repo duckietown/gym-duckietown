@@ -23,4 +23,4 @@ RUN TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX" \
 # Export your display id
 ENV DISPLAY=:1
 
-#CMD learning/start-xvbf.sh && python learning/reinforcement/pytorch/a3c/train_reinforcement_discrete.py
+CMD learning/start-xvbf.sh && python learning/reinforcement/pytorch/a3c/train_reinforcement_discrete.py
