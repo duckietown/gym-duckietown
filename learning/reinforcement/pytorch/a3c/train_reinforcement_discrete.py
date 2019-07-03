@@ -74,7 +74,6 @@ def _train(args):
     print("Start training...")
 
     interrupted = False
-    initialTime = time()
 
     for w in workers:
         w.daemon = True
@@ -91,11 +90,13 @@ def _train(args):
 
         if args.save_models:
 
+            path = os.path.join(ckpt_dir, 'model-final.pth')
+
             torch.save({
                 'model_state_dict': global_net.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'info': info
-            }, f"{ckpt_dir}/model-final")
+            }, path)
 
             print("Saved model to:",  f"{ckpt_dir}/model-final")
 
