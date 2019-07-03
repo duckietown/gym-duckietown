@@ -69,7 +69,6 @@ class Worker(mp.Process):
         self.identifier = identifier
         self.name = f'worker-{identifier}'
         self.total_step = 0
-        self.args = args
         self.ckpt_dir, self.ckpt_path, self.log_dir = logger.get_log_dirs()
 
     def calc_loss(self, args, values, log_probs, actions, rewards):
@@ -103,10 +102,10 @@ class Worker(mp.Process):
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
         self.env = launch_env()
-        #self.env = ResizeWrapper(self.env)
-        #self.env = NormalizeWrapper(self.env)
+        # self.env = ResizeWrapper(self.env)
+        # self.env = NormalizeWrapper(self.env)
         self.env = ImgWrapper(self.env)  # to make the images from 160x120x3 into 3x160x120
-        #self.env = ActionWrapper(self.env)
+        # self.env = ActionWrapper(self.env)
         self.env = DtRewardWrapper2(self.env)
         self.env = DiscreteWrapper(self.env)
 
@@ -121,10 +120,11 @@ class Worker(mp.Process):
         start_time = last_disp_time = time.time()
         episode_length, epr, eploss, done = 0, 0, 0, True
 
-        render_this_episode = self.args.render_env
+        render_this_episode = False
 
         while self.info['frames'][0] <= self.args.max_steps:
-            render_this_episode = self.args.graphical_output and (render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0))
+            render_this_episode = self.args.graphical_output and (
+                        render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0))
 
             # Sync parameters from global net
             self.local_net.load_state_dict(self.global_net.state_dict())
@@ -148,18 +148,18 @@ class Worker(mp.Process):
 
                 done = False
                 for x in range(self.args.action_update_steps):
-                    if done == False:
+                    if not done:
                         state, reward, done, _ = self.env.step(np_action)
                         reward += reward
 
                 state = torch.tensor(preprocess_state(state))
                 epr += reward
-                #reward = np.clip(reward, -1, 1)
+                # reward = np.clip(reward, -1, 1)
                 done = done or episode_length >= self.args.max_episode_steps
 
                 if render_this_episode:
                     self.env.render()
-                    #print('Action: ', np_action)
+                    # print('Action: ', np_action)
 
                 self.info['frames'].add_(1)
                 num_frames = int(self.info['frames'].item())
@@ -177,11 +177,13 @@ class Worker(mp.Process):
                     elapsed = time.time() - start_time
 
                     with open(f"{self.log_dir}/performance-{self.name}.txt", "a") as myfile:
-                        myfile.write(f"{self.info['episodes'].item():.0f} {num_frames} {epr} {self.info['run_loss'].item()} {elapsed}\n")
-                    
+                        myfile.write(f"{self.info['episodes'].item():.0f} {num_frames} {epr} {self.info[
+                            'run_loss'].item()} {elapsed}\n")
+
                     if self.info['episodes'].item() % 1000 == 0 and self.args.save_models:
                         optimizer = CustomOptimizer.SharedAdam(self.global_net.parameters(), lr=self.args.learning_rate)
-                        info = {k: torch.DoubleTensor([0]).share_memory_() for k in ['run_epr', 'run_loss', 'episodes', 'frames']}
+                        info = {k: torch.DoubleTensor([0]).share_memory_() for k in
+                                ['run_epr', 'run_loss', 'episodes', 'frames']}
 
                         torch.save({
                             'model_state_dict': self.global_net.state_dict(),
@@ -189,14 +191,16 @@ class Worker(mp.Process):
                             'info': info
                         }, f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
 
-                        print("Saved model to:",  f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
+                        print("Saved model to:", f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
 
                 # print training info every minute
                 if self.identifier == 0 and time.time() - last_disp_time > 60:
                     elapsed = time.strftime("%Hh %Mm %Ss", time.gmtime(time.time() - start_time))
-                    print(f"[time]: {elapsed}, [episodes]: {self.info['episodes'].item():.0f}, [frames]: {num_frames:.0f},"+
-                        f"[mean epr]:{self.info['run_epr'].item():.2f}, [run loss]: {self.info['run_loss'].item():.2f}")
-                
+                    print(f"[time]: {elapsed}, [episodes]: {self.info[
+                        'episodes'].item():.0f}, [frames]: {num_frames:.0f}," +
+                          f"[mean epr]:{self.info['run_epr'].item():.2f}, [run loss]: {self.info[
+                              'run_loss'].item():.2f}")
+
                     last_disp_time = time.time()
 
                 # reset buffers / environment
@@ -231,6 +235,7 @@ class Worker(mp.Process):
 
             # Backpropagation
             self.optimizer.step()
+
 
 def discount(x, gamma):
     from scipy.signal import lfilter
