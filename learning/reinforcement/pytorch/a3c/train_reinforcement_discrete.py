@@ -109,12 +109,12 @@ if __name__ == '__main__':
     parser.add_argument("--steps_until_sync", default=20, type=int)  # Steps until nets are synced
     parser.add_argument("--learning_rate", default=1e-4, type=float)  # Learning rate for the net
     parser.add_argument("--gamma", default=0.99, type=float)  # Discount factor
-    parser.add_argument("--num_workers", default=8, type=int)  # Number of processes to spawn
+    parser.add_argument("--num_workers", default=4, type=int)  # Number of processes to spawn
     parser.add_argument("--save_models", default=True)  # Whether or not models are saved
+    parser.add_argument("--save_frequency", default=1500, type=int)  # Whether or not models are saved
+    parser.add_argument('--save_on_interrupt', default=True)
     parser.add_argument('--model_dir', type=str, default='models')  # Name of the directory where the models are saved
     parser.add_argument('--model_file', type=str, default=None)  # Name of the model to load
     parser.add_argument('--graphical_output', default=False)  # Whether to render the observation in a window
     parser.add_argument('--env', default=None)
-    parser.add_argument('--render_env', default=False) # show how the agent learns
-    parser.add_argument('--save_on_interrupt', default=True)
     _train(parser.parse_args())

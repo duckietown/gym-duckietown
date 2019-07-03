@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.multiprocessing as mp
-from learning.reinforcement.pytorch.a3c import CustomOptimizer
 
 import numpy as np
 
@@ -98,16 +97,16 @@ class Worker(mp.Process):
     def run(self):
         from learning.utils.env import launch_env
         from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-            DtRewardWrapper2, ActionWrapper, ResizeWrapper, DiscreteWrapper
+            DtRewardWrapper2, ActionWrapper, ResizeWrapper, DiscreteWrapper_a6
 
         # We have to initialize the gym here, otherwise the multiprocessing will crash
         self.env = launch_env()
         # self.env = ResizeWrapper(self.env)
         # self.env = NormalizeWrapper(self.env)
-        self.env = ImgWrapper(self.env)  # to make the images from 160x120x3 into 3x160x120
+        self.env = ImgWrapper(self.env)  # to convert the images from 160x120x3 into 3x160x120
         # self.env = ActionWrapper(self.env)
         self.env = DtRewardWrapper2(self.env)
-        self.env = DiscreteWrapper(self.env)
+        self.env = DiscreteWrapper_a6(self.env)
 
         # Set seeds so we can reproduce our results
         self.env.seed(self.args.seed + self.identifier)
@@ -124,7 +123,7 @@ class Worker(mp.Process):
 
         while self.info['frames'][0] <= self.args.max_steps:
             render_this_episode = self.args.graphical_output and (
-                        render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0))
+                    render_this_episode or (self.info['episodes'] % 10 == 0 and self.identifier == 0))
 
             # Sync parameters from global net
             self.local_net.load_state_dict(self.global_net.state_dict())
@@ -159,12 +158,13 @@ class Worker(mp.Process):
 
                 if render_this_episode:
                     self.env.render()
-                    # print('Action: ', np_action)
 
                 self.info['frames'].add_(1)
                 num_frames = int(self.info['frames'].item())
 
-                if done:  # update shared data
+                elapsed = time.time() - start_time
+
+                if done:  # Update statistics and save model frequently
                     self.info['episodes'] += 1
 
                     # Moving average statistics:
@@ -174,44 +174,38 @@ class Worker(mp.Process):
                     self.info['run_epr'].mul_(1 - interp_factor).add_(interp_factor * epr)
                     self.info['run_loss'].mul_(1 - interp_factor).add_(interp_factor * eploss)
 
-                    elapsed = time.time() - start_time
-
-                    with open(f"{self.log_dir}/performance-{self.name}.txt", "a") as myfile:
-                        myfile.write(f"{self.info['episodes'].item():.0f} {num_frames} {epr} {self.info[
-                            'run_loss'].item()} {elapsed}\n")
-
-                    if self.info['episodes'].item() % 1000 == 0 and self.args.save_models:
-                        optimizer = CustomOptimizer.SharedAdam(self.global_net.parameters(), lr=self.args.learning_rate)
-                        info = {k: torch.DoubleTensor([0]).share_memory_() for k in
-                                ['run_epr', 'run_loss', 'episodes', 'frames']}
+                    # Save model every 100_000 episodes
+                    if self.args.save_models and self.info['episodes'][0] % self.args.save_frequency == 0:
+                        with open(f"{self.log_dir}/performance-{self.name}.txt", "a") as myfile:
+                            myfile.write(f"{self.info['episodes'].item():.0f} {num_frames} {epr}"
+                                         + f"{self.info['run_loss'].item()} {elapsed}\n")
 
                         torch.save({
                             'model_state_dict': self.global_net.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict(),
-                            'info': info
-                        }, f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
+                            'optimizer_state_dict': self.optimizer.state_dict(),
+                            'info': self.info
+                        }, f"{self.ckpt_dir}/model-{self.name}-{int(self.info['episodes'].item())}.pth")
 
-                        print("Saved model to:", f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
+                        print("Saved model to:",
+                              f"{self.ckpt_dir}/model-{self.name}-{self.info['episodes'].item()}")
 
                 # print training info every minute
                 if self.identifier == 0 and time.time() - last_disp_time > 60:
                     elapsed = time.strftime("%Hh %Mm %Ss", time.gmtime(time.time() - start_time))
-                    print(f"[time]: {elapsed}, [episodes]: {self.info[
-                        'episodes'].item():.0f}, [frames]: {num_frames:.0f}," +
-                          f"[mean epr]:{self.info['run_epr'].item():.2f}, [run loss]: {self.info[
-                              'run_loss'].item():.2f}")
-
+                    print(f"[time]: {elapsed}, [episodes]: {self.info['episodes'].item(): .0f},"
+                          + f" [frames]: {num_frames: .0f}, [mean epr]:{self.info['run_epr'].item():.2f},"
+                          + f" [run loss]: {self.info['run_loss'].item(): .2f}")
                     last_disp_time = time.time()
 
-                # reset buffers / environment
-                if done:
-                    episode_length, epr, eploss = 0, 0, 0
-                    state = torch.tensor(preprocess_state(self.env.reset()))
+            # reset buffers / environment
+            if done:
+                episode_length, epr, eploss = 0, 0, 0
+            state = torch.tensor(preprocess_state(self.env.reset()))
 
-                values.append(value)
-                log_probs.append(action_log_probs)
-                actions.append(action)
-                rewards.append(reward)
+            values.append(value)
+            log_probs.append(action_log_probs)
+            actions.append(action)
+            rewards.append(reward)
 
             # Reached sync step -> We need a terminal value
             # If the episode did not end use estimation of V(s) to bootstrap
