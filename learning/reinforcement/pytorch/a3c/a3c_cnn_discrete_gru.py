@@ -197,15 +197,15 @@ class Worker(mp.Process):
                           + f" [run loss]: {self.info['run_loss'].item(): .2f}")
                     last_disp_time = time.time()
 
-            # reset buffers / environment
-            if done:
-                episode_length, epr, eploss = 0, 0, 0
-            state = torch.tensor(preprocess_state(self.env.reset()))
+                # reset buffers / environment
+                if done:
+                    episode_length, epr, eploss = 0, 0, 0
+                state = torch.tensor(preprocess_state(self.env.reset()))
 
-            values.append(value)
-            log_probs.append(action_log_probs)
-            actions.append(action)
-            rewards.append(reward)
+                values.append(value)
+                log_probs.append(action_log_probs)
+                actions.append(action)
+                rewards.append(reward)
 
             # Reached sync step -> We need a terminal value
             # If the episode did not end use estimation of V(s) to bootstrap
