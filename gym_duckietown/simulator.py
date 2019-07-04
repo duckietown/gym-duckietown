@@ -153,6 +153,8 @@ class Simulator(gym.Env):
             camera_height=DEFAULT_CAMERA_HEIGHT,
             robot_speed=DEFAULT_ROBOT_SPEED,
             accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
+            start_angle_deg = -999,
+            start_pos=None,
             full_transparency=False,
             user_tile_start=None,
             seed=None,
@@ -281,6 +283,8 @@ class Simulator(gym.Env):
 
         # allowed angle in lane for starting position
         self.accept_start_angle_deg = accept_start_angle_deg
+        self.start_angle_deg = start_angle_deg
+        self.start_pos = start_pos
 
         # Load the map
         self._load_map(map_name)
@@ -502,6 +506,7 @@ class Simulator(gym.Env):
                 continue
             M = self.accept_start_angle_deg
             ok = -M < lp.angle_deg < +M
+
             if not ok:
                 continue
             # Found a valid initial pose
@@ -509,6 +514,12 @@ class Simulator(gym.Env):
         else:
             msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
             raise Exception(msg)
+
+        if self.start_angle_deg != -999:
+            propose_angle = self.start_angle_deg
+
+        if self.start_pos is not None:
+            propose_pos = self.start_pos
 
         self.cur_pos = propose_pos
         self.cur_angle = propose_angle

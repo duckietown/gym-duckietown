@@ -33,23 +33,25 @@ parser.add_argument('--seed', default=1, type=int, help='seed')
 args = parser.parse_args()
 
 env = DuckietownEnv(
-            seed=123,  # random seed
-            map_name="medianight",
-            max_steps=500001,  # we don't want the gym to reset itself
-            domain_rand=0,
-            camera_width=640,
-            camera_height=480,
-            accept_start_angle_deg=4,  # start close to straight
-            full_transparency=True,
-            distortion=False,
+    seed=123,  # random seed
+    map_name="medianight",
+    max_steps=500001,  # we don't want the gym to reset itself
+    domain_rand=0,
+    camera_width=640,
+    camera_height=480,
+    accept_start_angle_deg=4,  # start close to straight
+    full_transparency=True,
+    distortion=False,
+    start_angle_deg=-1.5,
+    start_pos=np.array([0.77, 0.0, 1.73])
 )
 
-#env = ResizeWrapper(env)
-#env = NormalizeWrapper(env)
+# env = ResizeWrapper(env)
+# env = NormalizeWrapper(env)
 env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
-#env = ActionWrapper(env)
+# env = ActionWrapper(env)
 env = DtRewardWrapper2(env)
-#env = DiscreteWrapper(env)
+# env = DiscreteWrapper(env)
 
 """
 if args.env_name and args.env_name.find('Duckietown') != -1:
@@ -101,19 +103,20 @@ env.unwrapped.window.push_handlers(key_handler)
 
 rewards = 0
 
+
 def update(dt):
     """
     This function is called at every frame to handle
     movement/stepping and redrawing
     """
 
-    #action = 3
+    # action = 3
 
-    #if key_handler[key.UP]:
+    # if key_handler[key.UP]:
     #    action = 2
-    #if key_handler[key.LEFT]:
+    # if key_handler[key.LEFT]:
     #    action = 0
-    #if key_handler[key.RIGHT]:
+    # if key_handler[key.RIGHT]:
     #    action = 1
 
     action = np.array([0.0, 0.0])
@@ -130,7 +133,7 @@ def update(dt):
         action = np.array([0, 0])
 
     # Speed boost
-    #if key_handler[key.LSHIFT]:
+    # if key_handler[key.LSHIFT]:
     #    action *= 1.5
 
     global rewards
