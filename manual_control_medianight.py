@@ -32,7 +32,18 @@ parser.add_argument('--frame-skip', default=1, type=int, help='number of frames 
 parser.add_argument('--seed', default=1, type=int, help='seed')
 args = parser.parse_args()
 
-env = launch_env()
+env = DuckietownEnv(
+            seed=123,  # random seed
+            map_name="medianight",
+            max_steps=500001,  # we don't want the gym to reset itself
+            domain_rand=0,
+            camera_width=640,
+            camera_height=480,
+            accept_start_angle_deg=4,  # start close to straight
+            full_transparency=True,
+            distortion=False,
+)
+
 #env = ResizeWrapper(env)
 #env = NormalizeWrapper(env)
 env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
