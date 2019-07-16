@@ -28,6 +28,35 @@ This simulator was created as part of work done at [Mila](https://mila.quebec/).
 Welcome to <b>Duckietown</b>! 
 </h2>
 
+---
+
+1. [Gym-Duckietown](#Gym-Duckietown)
+   1. [Introduction](#Introduction)
+   2. [Installation](#Installation)
+      1. [Installation Using Conda (Alternative Method)](#Installation-Using-Conda-Alternative-Method)
+   3. [Usage](#Usage)
+      1. [Testing](#Testing)
+      2. [Learning](#Learning)
+   4. [Design](#Design)
+      1. [Map File Format](#Map-File-Format)
+      2. [Observations](#Observations)
+      3. [Actions](#Actions)
+      4. [Reward Function](#Reward-Function)
+   5. [Troubleshooting](#Troubleshooting)
+      1. [ImportError: Library "GLU" not found](#ImportError-Library-GLU-not-found)
+      2. [NoSuchDisplayException: Cannot connect to "None"](#NoSuchDisplayException-Cannot-connect-to-None)
+      3. [Running headless](#Running-headless)
+      4. [Running headless and training in a cloud based environment (AWS)](#Running-headless-and-training-in-a-cloud-based-environment-AWS)
+      5. [Poor performance, low frame rate](#Poor-performance-low-frame-rate)
+      6. [RL training doesn't converge](#RL-training-doesnt-converge)
+      7. [Unknown encoder 'libx264' when using gym.wrappers.Monitor](#Unknown-encoder-libx264-when-using-gymwrappersMonitor)
+   6. [Transfer learned model to real world](#Transfer-learned-model-to-real-world)
+      1. [Some important hints to when it comes to working with the duckiebot](#Some-important-hints-to-when-it-comes-to-working-with-the-duckiebot)
+
+---
+
+
+
 ## Introduction
 
 Gym-Duckietown is a simulator for the [Duckietown](https://duckietown.org) Universe, written in pure Python/OpenGL (Pyglet). It places your agent, a Duckiebot, inside of an instance of a Duckietown: a loop of roads with turns, intersections, obstacles, Duckie pedestrians, and other Duckiebots. It can be a pretty hectic place!
@@ -303,3 +332,39 @@ conda install -c conda-forge ffmpeg
 ```
 
 Alternatively, screencasting programs such as [Kazam](https://launchpad.net/kazam) can be used to record the graphical output of a single window.
+
+## Transfer learned model to real world
+ > sadly this section is missing 😔
+ > However it would be awesome to know how to transfer our great model on our robot ☝️
+
+### Some important hints to when it comes to working with the duckiebot
+ 1. sadly there is only a QR code pointing to the duckietown website, on which the link to the documentation points to DT18. This did not work for us and resulted in multiple times reflushing our SD card, when we finally found out that [DT19](https://docs.duckietown.org/DT19/opmanual_duckiebot/out/building_duckiebot_c0.html) does work for us
+ 2. By the way there is a 32GB in the package
+    1. we really were missing some package description telling us exactly what small pieces are in the box
+    2. do not try the 16GB SD card. After you made your duckiebot move, there will be no space left for anything else! You can not download any demo anymore or put your RL algorithm *(if you new how)* on the bot
+ 3. Furthermore, there is a second motor hut in the box
+    1. ours did not work and we spend a couple of days on trying to find out why our motors would not react, thinking there was a problem with the containers
+ 4. [wheel calibration](https://docs.duckietown.org/DT19/opmanual_duckiebot/out/wheel_calibration.html)
+    1. ` roslaunch indefinite_navigation calibrate_kinematics.test veh:=$veh_name`
+    2. this did not work for us - some arguments could not be found
+       1. solution delete 'Software/catkin_ws/src/00-infrastructure'
+       2. replace with 'catkin_ws/src/00-infrastructure' from [duckietown/Software](https://github.com/duckietown/Software)
+       3. you will only get a success message - our bot did not drive down the line  
+       but we were then able to run the demo of lane-following  
+       we did the calibration with the joystick demo
+  5. sometimes you get a large red error message
+     1. try to run the command again
+     2. check running docker containers
+     3. run the command in new terminal window
+     4. reboot boot (careful)
+  6. Initial build of the duckiebot
+     1. be careful, our build took more then an our *(docs sais 20min)*
+        1. starting before the 'creating logs' on the bot `sudo tail -f /var/log/syslog` will very likely result in your installation to fail 
+  7. After loading the battery and connecting to the bot, your bot will power on!
+     1. remove the SD card before you connect the battery to the bot ❗️
+     2. __especially important on initial boot ❗️__
+   
+So much to our experiences 😅  
+Have fun! 😄 🎊
+
+
