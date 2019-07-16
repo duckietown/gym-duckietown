@@ -356,9 +356,9 @@ Alternatively, screencasting programs such as [Kazam](https://launchpad.net/kaza
      1. try to run the command again
      2. check running docker containers
      3. run the command in new terminal window
-     4. reboot boot (careful)
+     4. reboot bot (careful)
   6. Initial build of the duckiebot
-     1. be careful, our build took more then an our *(docs sais 20min)*
+     1. be careful, our build took more then an hour *(docs sais 20min)*
         1. starting before the 'creating logs' on the bot `sudo tail -f /var/log/syslog` will very likely result in your installation to fail 
   7. After loading the battery and connecting to the bot, your bot will power on!
      1. remove the SD card before you connect the battery to the bot ❗️
