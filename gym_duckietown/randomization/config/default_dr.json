@@ -15,5 +15,10 @@
         "low": -0.005,
         "high": 0.005,
         "size": 3
-    }
+    },
+    "frame_skip": {
+        "type": "int",
+        "low": 1,
+        "high": 5
+    },
 }
