@@ -1334,7 +1334,12 @@ class Simulator(gym.Env):
         action = np.clip(action, -1, 1)
         # Actions could be a Python list
         action = np.array(action)
-        for _ in range(self.frame_skip):
+        
+        frame_skip = self.frame_skip
+        if self.domain_rand:
+            frame_skip = self.randomization_settings["frame_skip"]
+        
+        for _ in range(frame_skip):
             self.update_physics(action)
 
         # Generate the current camera image
