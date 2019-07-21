@@ -28,6 +28,32 @@ This simulator was created as part of work done at [Mila](https://mila.quebec/).
 Welcome to <b>Duckietown</b>! 
 </h2>
 
+## Table of Contents
+
+
+1. [Gym-Duckietown](#Gym-Duckietown)
+   1. [Introduction](#Introduction)
+   2. [Installation](#Installation)
+      1. [Installation Using Conda (Alternative Method)](#Installation-Using-Conda-Alternative-Method)
+   3. [Usage](#Usage)
+      1. [Testing](#Testing)
+      2. [Learning](#Learning)
+   4. [Design](#Design)
+      1. [Map File Format](#Map-File-Format)
+      2. [Observations](#Observations)
+      3. [Actions](#Actions)
+      4. [Reward Function](#Reward-Function)
+   5. [Troubleshooting](#Troubleshooting)
+      1. [ImportError: Library "GLU" not found](#ImportError-Library-GLU-not-found)
+      2. [NoSuchDisplayException: Cannot connect to "None"](#NoSuchDisplayException-Cannot-connect-to-None)
+      3. [Running headless](#Running-headless)
+      4. [Running headless and training in a cloud based environment (AWS)](#Running-headless-and-training-in-a-cloud-based-environment-AWS)
+      5. [Poor performance, low frame rate](#Poor-performance-low-frame-rate)
+      6. [RL training doesn't converge](#RL-training-doesnt-converge)
+      7. [Unknown encoder 'libx264' when using gym.wrappers.Monitor](#Unknown-encoder-libx264-when-using-gymwrappersMonitor)
+
+Thanks @na018 for contributing this!
+
 ## Introduction
 
 Gym-Duckietown is a simulator for the [Duckietown](https://duckietown.org) Universe, written in pure Python/OpenGL (Pyglet). It places your agent, a Duckiebot, inside of an instance of a Duckietown: a loop of roads with turns, intersections, obstacles, Duckie pedestrians, and other Duckiebots. It can be a pretty hectic place!
