@@ -52,7 +52,7 @@ WALL_COLOR = np.array([0.64, 0.71, 0.28])
 GROUND_COLOR = np.array([0.15, 0.15, 0.15])
 
 # Angle at which the camera is pitched downwards
-CAMERA_ANGLE = 20
+CAMERA_ANGLE = 5
 
 # Camera field of view angle in the Y direction
 # Note: robot uses Raspberri Pi camera module V1.3
