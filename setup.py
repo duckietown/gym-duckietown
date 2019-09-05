@@ -33,6 +33,7 @@ setup(
             'cloudpickle',
             'duckietown_world',
             'pygeometry',
+            'dataclasses'
             
         ],
         entry_points={
