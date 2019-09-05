@@ -55,6 +55,7 @@ def _train(args):
     episode_reward = None
     env_counter = 0
     reward = 0
+    episode_timesteps = 0
     print("Starting training")
     while total_timesteps < args.max_timesteps:
         
@@ -81,7 +82,6 @@ def _train(args):
             obs = env.reset()
             done = False
             episode_reward = 0
-            episode_timesteps = 0
             episode_num += 1
 
         # Select action randomly or according to policy
