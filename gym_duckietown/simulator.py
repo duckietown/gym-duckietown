@@ -72,7 +72,7 @@ WHEEL_DIST = 0.102
 # Total robot width at wheel base, used for collision detection
 # Note: the actual robot width is 13cm, but we add a litte bit of buffer
 #       to faciliate sim-to-real transfer.
-ROBOT_WIDTH = 0.13  + 0.02
+ROBOT_WIDTH = 0.13 + 0.02
 
 # Total robot length
 # Note: the center of rotation (between the wheels) is not at the
@@ -283,7 +283,7 @@ class Simulator(gym.Env):
         # Array to render the image into (for human rendering)
         self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
 
-        
+
 
         # allowed angle in lane for starting position
         self.accept_start_angle_deg = accept_start_angle_deg
@@ -316,7 +316,7 @@ class Simulator(gym.Env):
 
         self.last_action = np.array([0, 0])
         self.wheelVels = np.array([0, 0])
-        
+
     def _init_vlists(self):
         import pyglet
         # Create the vertex list for our road quad
@@ -965,7 +965,7 @@ class Simulator(gym.Env):
         # Rotate and align each curve with its place in global frame
         if kind.startswith('4way'):
             fourway_pts = []
-            # Generate all four sides' curves, 
+            # Generate all four sides' curves,
             # with 3-points template above
             for rot in np.arange(0, 4):
                 mat = gen_rot_matrix(np.array([0, 1, 0]), rot * math.pi / 2)
@@ -1230,11 +1230,8 @@ class Simulator(gym.Env):
         prev_pos = self.cur_pos
 
         # Update the robot's position
-        self.cur_pos, self.cur_angle = _update_pos(self.cur_pos,
-                                                   self.cur_angle,
-                                                   self.wheel_dist,
-                                                   wheelVels=self.wheelVels,
-                                                   deltaTime=delta_time)
+        self.cur_pos, self.cur_angle = _update_pos(self, action)
+
         self.step_count += 1
         self.timestamp += delta_time
 
@@ -1350,15 +1347,7 @@ class Simulator(gym.Env):
         # Actions could be a Python list
         action = np.array(action)
         for _ in range(self.frame_skip):
-            self.update_physics(action=np.array([0., 0.]))
-
-            action = DynamicsInfo(motor_left=action[0], motor_right=action[1])
-            self.state = self.state.integrate(self.delta_time, action)
-            q = self.state.TSE2_from_state()[0]
-            cur_pos, cur_angle = self.weird_from_cartesian(q)
-            self.cur_pos = cur_pos
-            self.cur_angle = cur_angle
-
+            self.update_physics(action)
 
         # Generate the current camera image
         obs = self.render_obs()
@@ -1435,7 +1424,7 @@ class Simulator(gym.Env):
         logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
         if self.domain_rand:
             pos = pos + self.randomization_settings['camera_noise']
-            
+
         x, y, z = pos + self.cam_offset
         dx, dy, dz = get_dir_vec(angle)
         gl.glMatrixMode(gl.GL_MODELVIEW)
@@ -1725,40 +1714,18 @@ def get_right_vec(cur_angle):
     return np.array([x, 0, z])
 
 
-def _update_pos(pos, angle, wheel_dist, wheelVels, deltaTime):
+def _update_pos(self, action):
     """
     Update the position of the robot, simulating differential drive
 
-    returns new_pos, new_angle
+    returns pos, angle
     """
 
-    Vl, Vr = wheelVels
-    l = wheel_dist
-
-    # If the wheel velocities are the same, then there is no rotation
-    if Vl == Vr:
-        pos = pos + deltaTime * Vl * get_dir_vec(angle)
-        return pos, angle
-
-    # Compute the angular rotation velocity about the ICC (center of curvature)
-    w = (Vr - Vl) / l
-
-    # Compute the distance to the center of curvature
-    r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
-
-    # Compute the rotation angle for this time step
-    rotAngle = w * deltaTime
-
-    # Rotate the robot's position around the center of rotation
-    r_vec = get_right_vec(angle)
-    px, py, pz = pos
-    cx = px + r * r_vec[0]
-    cz = pz + r * r_vec[2]
-    npx, npz = rotate_point(px, pz, cx, cz, rotAngle)
-    pos = np.array([npx, py, npz])
-
-    # Update the robot's direction angle
-    angle += rotAngle
+    action = DynamicsInfo(motor_left=action[0], motor_right=action[1])
+    self.state = self.state.integrate(self.delta_time, action)
+    q = self.state.TSE2_from_state()[0]
+    pos, angle = self.weird_from_cartesian(q)
+    pos = np.asarray(pos)
     return pos, angle
 
 
