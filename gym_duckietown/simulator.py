@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple
 import geometry
 
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal
+from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_uncalibrated
 
 @dataclass
 class DoneRewardInfo:
@@ -15,6 +15,7 @@ class DoneRewardInfo:
     done_why: str
     done_code: str
     reward: float
+
 
 @dataclass
 class DynamicsInfo:
@@ -253,7 +254,9 @@ class Simulator(gym.Env):
 
         import pyglet
         # Invisible window to render into (shadow OpenGL context)
-        self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
+        self.shadow_window = pyglet.window.Window(width=1,
+                                                  height=1,
+                                                  visible=False)
 
         # For displaying text
         self.text_label = pyglet.text.Label(
@@ -271,7 +274,8 @@ class Simulator(gym.Env):
         )
 
         # Array to render the image into (for observation rendering)
-        self.img_array = np.zeros(shape=self.observation_space.shape, dtype=np.uint8)
+        self.img_array = np.zeros(shape=self.observation_space.shape,
+                                  dtype=np.uint8)
 
         # Create a frame buffer object for human rendering
         self.multi_fbo_human, self.final_fbo_human = create_frame_buffers(
@@ -281,9 +285,8 @@ class Simulator(gym.Env):
         )
 
         # Array to render the image into (for human rendering)
-        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
-
-
+        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3),
+                                        dtype=np.uint8)
 
         # allowed angle in lane for starting position
         self.accept_start_angle_deg = accept_start_angle_deg
@@ -335,7 +338,8 @@ class Simulator(gym.Env):
             0.0, 1.0,
             1.0, 1.0
         ]
-        self.road_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
+        self.road_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts),
+                                                      ('t2f', texCoords))
 
         # Create the vertex list for the ground quad
         verts = [
@@ -358,7 +362,6 @@ class Simulator(gym.Env):
 
         # Robot's current speed
         self.speed = 0
-
 
         if self.randomize_maps_on_reset:
             map_name = np.random.choice(self.map_names)
@@ -525,7 +528,7 @@ class Simulator(gym.Env):
         init_vel = np.array([0, 0])
 
         # Initialize Dynamics model
-        p = get_DB18_nominal(delay=0.15)
+        p = get_DB18_uncalibrated(delay=0.15, trim=0)
         q = self.cartesian_from_weird(self.cur_pos, self.cur_angle)
         v0 = geometry.se2_from_linear_angular(init_vel, 0)
         c0 = q, v0
@@ -1314,7 +1317,6 @@ class Simulator(gym.Env):
         # cp = [gx, (grid_height - 1) * tile_size - gz]
         cp = [gx, grid_height * tile_size - gz]
 
-
         return geometry.SE2_from_translation_angle(cp, angle)
 
     def weird_from_cartesian(self, q: np.ndarray) -> Tuple[list, float]:
@@ -1386,9 +1388,11 @@ class Simulator(gym.Env):
             reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
             msg = ''
             done_code = 'in-progress'
-        return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
+        return DoneRewardInfo(done=done, done_why=msg,
+                              reward=reward, done_code=done_code)
 
-    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True):
+    def _render_img(self, width, height, multi_fbo,
+                    final_fbo, img_array, top_down=True):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1730,6 +1734,7 @@ def _update_pos(self, action):
     """
 
     action = DynamicsInfo(motor_left=action[0], motor_right=action[1])
+
     self.state = self.state.integrate(self.delta_time, action)
     q = self.state.TSE2_from_state()[0]
     pos, angle = self.weird_from_cartesian(q)
