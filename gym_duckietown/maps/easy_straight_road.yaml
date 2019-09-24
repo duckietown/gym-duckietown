@@ -1,0 +1,12 @@
+# Linear stretch of road. Basic test case.
+tiles:
+- [straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E, straight/E]
+
+# Always start driving on the leftmost tile
+start_tile: [0, 0]
+
+# Easy initial pose
+start_pose: [[0.2925, 0, 0.2925], 0]
+
+
+tile_size: 0.585

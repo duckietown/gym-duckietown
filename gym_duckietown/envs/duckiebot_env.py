@@ -28,6 +28,7 @@ IMG_SHAPE = (3, CAMERA_HEIGHT, CAMERA_WIDTH)
 # Port to connect to on the server
 SERVER_PORT = 7777
 
+
 def recvArray(socket):
     """Receive a numpy array over zmq"""
     md = socket.recv_json()
@@ -37,12 +38,13 @@ def recvArray(socket):
     A = A.reshape(md['shape'])
     return A
 
+
 class DuckiebotEnv(gym.Env):
     """An environment that is the actual real robot """
 
     metadata = {
         'render.modes': ['human', 'rgb_array', 'app'],
-        'video.frames_per_second' : 30
+        'video.frames_per_second': 30
     }
 
     def __init__(
@@ -82,8 +84,8 @@ class DuckiebotEnv(gym.Env):
         self.textLabel = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
-            x = 5,
-            y = WINDOW_HEIGHT - 19
+            x=5,
+            y=WINDOW_HEIGHT - 19
         )
 
         # Connect to the Gym bridge ROS node
@@ -106,8 +108,8 @@ class DuckiebotEnv(gym.Env):
         # Receive a camera image from the server
         self.img = recvArray(self.socket)
 
-        #h, w, _ = self.img.shape
-        #if w > h:
+        # h, w, _ = self.img.shape
+        # if w > h:
         #    d = (w - h) // 2
         #    self.img = self.img[:, d:(w-d), :]
 
@@ -116,10 +118,10 @@ class DuckiebotEnv(gym.Env):
         self.img = cv2.resize(
             self.img,
             (CAMERA_WIDTH, CAMERA_HEIGHT),
-            interpolation = cv2.INTER_AREA
+            interpolation=cv2.INTER_AREA
         )
 
-        #print(self.img.shape)
+        # print(self.img.shape)
 
         # BGR to RGB
         self.img = self.img[:, :, ::-1]
@@ -132,7 +134,7 @@ class DuckiebotEnv(gym.Env):
         self.step_count = 0
 
         self.socket.send_json({
-            "command":"reset"
+            "command": "reset"
         })
 
         # Receive a camera image from the server
@@ -154,8 +156,8 @@ class DuckiebotEnv(gym.Env):
 
         # Send the action to the server
         self.socket.send_json({
-            "command":"action",
-            "values": [ float(action[0]), float(action[1]) ]
+            "command": "action",
+            "values": [float(action[0]), float(action[1])]
         })
 
         # Receive a camera image from the server
@@ -204,7 +206,7 @@ class DuckiebotEnv(gym.Env):
             height,
             'RGB',
             self.img.tobytes(),
-            pitch = width * 3,
+            pitch=width * 3,
         )
         imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 

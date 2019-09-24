@@ -469,52 +469,55 @@ class Simulator(gym.Env):
                 tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
                 tile = self.drivable_tiles[tile_idx]
 
-        # Keep trying to find a valid spawn position on this tile
-
-
-        for _ in range(MAX_SPAWN_ATTEMPTS):
-            i, j = tile['coords']
-
-            # Choose a random position on this tile
-            x = self.np_random.uniform(i, i + 1) * self.road_tile_size
-            z = self.np_random.uniform(j, j + 1) * self.road_tile_size
-            propose_pos = np.array([x, 0, z])
-
-            # Choose a random direction
-            propose_angle = self.np_random.uniform(0, 2 * math.pi)
-
-            # logger.debug('Sampled %s %s angle %s' % (propose_pos[0],
-            #                                          propose_pos[1],
-            #                                          np.rad2deg(propose_angle)))
-
-            # If this is too close to an object or not a valid pose, retry
-            inconvenient = self._inconvenient_spawn(propose_pos)
-
-            if inconvenient:
-                # msg = 'The spawn was inconvenient.'
-                # logger.warning(msg)
-                continue
-
-            invalid = not self._valid_pose(propose_pos, propose_angle, safety_factor=1.3)
-            if invalid:
-                # msg = 'The spawn was invalid.'
-                # logger.warning(msg)
-                continue
-
-            # If the angle is too far away from the driving direction, retry
-            try:
-                lp = self.get_lane_pos2(propose_pos, propose_angle)
-            except NotInLane:
-                continue
-            M = self.accept_start_angle_deg
-            ok = -M < lp.angle_deg < +M
-            if not ok:
-                continue
-            # Found a valid initial pose
-            break
+        # If the map specifies a starting pose
+        if self.start_pose is not None:
+            logger.info('using map pose start: %s' % self.start_pose)
+            propose_pos, propose_angle = self.start_pose
         else:
-            msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
-            raise Exception(msg)
+            # Keep trying to find a valid spawn position on this tile
+            for _ in range(MAX_SPAWN_ATTEMPTS):
+                i, j = tile['coords']
+
+                # Choose a random position on this tile
+                x = self.np_random.uniform(i, i + 1) * self.road_tile_size
+                z = self.np_random.uniform(j, j + 1) * self.road_tile_size
+                propose_pos = np.array([x, 0, z])
+
+                # Choose a random direction
+                propose_angle = self.np_random.uniform(0, 2 * math.pi)
+
+                # logger.debug('Sampled %s %s angle %s' % (propose_pos[0],
+                #                                          propose_pos[1],
+                #                                          np.rad2deg(propose_angle)))
+
+                # If this is too close to an object or not a valid pose, retry
+                inconvenient = self._inconvenient_spawn(propose_pos)
+
+                if inconvenient:
+                    # msg = 'The spawn was inconvenient.'
+                    # logger.warning(msg)
+                    continue
+
+                invalid = not self._valid_pose(propose_pos, propose_angle, safety_factor=1.3)
+                if invalid:
+                    # msg = 'The spawn was invalid.'
+                    # logger.warning(msg)
+                    continue
+
+                # If the angle is too far away from the driving direction, retry
+                try:
+                    lp = self.get_lane_pos2(propose_pos, propose_angle)
+                except NotInLane:
+                    continue
+                M = self.accept_start_angle_deg
+                ok = -M < lp.angle_deg < +M
+                if not ok:
+                    continue
+                # Found a valid initial pose
+                break
+            else:
+                msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
+                raise Exception(msg)
 
         self.cur_pos = propose_pos
         self.cur_angle = propose_angle
@@ -622,6 +625,11 @@ class Simulator(gym.Env):
         if 'start_tile' in map_data:
             coords = map_data['start_tile']
             self.start_tile = self._get_tile(*coords)
+
+        # Get the starting pose from the map, if specified
+        self.start_pose = None
+        if 'start_pose' in map_data:
+            self.start_pose = map_data['start_pose']
 
     def _load_objects(self, map_data):
         # Create the objects array
