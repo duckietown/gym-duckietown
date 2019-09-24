@@ -15,5 +15,10 @@
         "low": -0.005,
         "high": 0.005,
         "size": 3
+    },
+    "trim": {
+        "type": "normal",
+        "loc": 0,
+        "scale": 0.02
     }
 }

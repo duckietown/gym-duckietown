@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple
 import geometry
 
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_uncalibrated
+from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 
 @dataclass
 class DoneRewardInfo:
@@ -528,7 +528,12 @@ class Simulator(gym.Env):
         init_vel = np.array([0, 0])
 
         # Initialize Dynamics model
-        p = get_DB18_uncalibrated(delay=0.15, trim=0)
+        if self.domain_rand:
+            trim = 0 + self.randomization_settings['trim']
+            p = get_DB18_uncalibrated(delay=0.15, trim=trim)
+        else:
+            p = get_DB18_nominal(delay=0.15)
+
         q = self.cartesian_from_weird(self.cur_pos, self.cur_angle)
         v0 = geometry.se2_from_linear_angular(init_vel, 0)
         c0 = q, v0
