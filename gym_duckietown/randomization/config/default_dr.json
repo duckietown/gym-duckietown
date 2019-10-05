@@ -20,5 +20,20 @@
         "type": "normal",
         "loc": 0,
         "scale": 0.02
+    },
+    "camera_height": {
+        "type": "uniform",
+        "low": 0.92,
+        "high": 1.08,
+    },
+    "camera_angle": {
+        "type": "uniform",
+        "low": 0.8,
+        "high": 1.2,
+    },
+    "camera_fov_y": {
+        "type": "uniform",
+        "low": 0.8,
+        "high": 1.2,
     }
 }

@@ -78,7 +78,7 @@ class Distortion(object):
         # Create a ParameterSampler:
         sampler = cm.ParameterSampler(ranges=ranges, cal_width=self.W, cal_height=self.H)
 
-        # # Create a UniformAPPDSampler
+        # Create a UniformAPPDSampler
         # sampler = cm.UniformAPPDSampler(ranges=ranges, cal_width=self.W, cal_height=self.H, reference=reference,
         #                                 temperature=5, appd_range_dicovery_samples=1000, appd_range_bins=10,
         #                                 width=int(self.W / 6), height=int(self.H / 6),
@@ -88,10 +88,9 @@ class Distortion(object):
         calibration = sampler.next()
 
         # Do that to stop the background sampling
-        sampler.stop()
+        # sampler.stop()
 
         return calibration.get_K(), calibration.get_D()
-
 
     def distort(self, observation):
         """

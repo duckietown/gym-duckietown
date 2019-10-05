@@ -32,13 +32,14 @@ args = parser.parse_args()
 
 if args.env_name and args.env_name.find('Duckietown') != -1:
     env = DuckietownEnv(
-        seed = args.seed,
-        map_name = args.map_name,
-        draw_curve = args.draw_curve,
-        draw_bbox = args.draw_bbox,
-        domain_rand = args.domain_rand,
-        frame_skip = args.frame_skip,
-        distortion = args.distortion,
+        seed=args.seed,
+        map_name=args.map_name,
+        draw_curve=args.draw_curve,
+        draw_bbox=args.draw_bbox,
+        domain_rand=args.domain_rand,
+        frame_skip=args.frame_skip,
+        distortion=args.distortion,
+        camera_rand=args.camera_rand,
     )
 else:
     env = gym.make(args.env_name)

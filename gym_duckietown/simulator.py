@@ -58,13 +58,13 @@ CAMERA_ANGLE = 15
 # Camera field of view angle in the Y direction
 # Note: robot uses Raspberri Pi camera module V1.3
 # https://www.raspberrypi.org/documentation/hardware/camera/README.md
-CAMERA_FOV_Y = 42
+CAMERA_FOV_Y = 41.41 # FIXME this is wrong! was 42
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
 
 # Forward distance between the camera (at the front)
-# and the center of rotation (6.6cm)
+# and the center of rotation (6.6cm) # FIXME center of rotation changes with car-like dynamics
 CAMERA_FORWARD_DIST = 0.066
 
 # Distance (diameter) between the center of the robot wheels (10.2cm)
@@ -412,14 +412,22 @@ class Simulator(gym.Env):
         # Distance between the robot's wheels
         self.wheel_dist = self._perturb(WHEEL_DIST)
 
+        # Set default values
+
         # Distance bewteen camera and ground
-        self.cam_height = self._perturb(CAMERA_FLOOR_DIST, 0.08)
+        self.cam_height = CAMERA_FLOOR_DIST
 
         # Angle at which the camera is rotated
-        self.cam_angle = [self._perturb(CAMERA_ANGLE, 0.2), 0, 0]
+        self.cam_angle = [CAMERA_ANGLE, 0, 0]
 
         # Field of view angle of the camera
-        self.cam_fov_y = self._perturb(CAMERA_FOV_Y, 0.2)
+        self.cam_fov_y = CAMERA_FOV_Y
+
+        # Perturb using randomization API (either if domain rand or only camera rand
+        if self.domain_rand or self.camera_rand:
+            self.cam_height *= self.randomization_settings['camera_height']
+            self.cam_angle = [CAMERA_ANGLE * self.randomization_settings['camera_angle'], 0, 0]
+            self.cam_fov_y *= self.randomization_settings['camera_fov_y']
 
         # Camera offset for use in free camera mode
         self.cam_offset = np.array([0, 0, 0])
