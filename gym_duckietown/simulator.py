@@ -164,6 +164,7 @@ class Simulator(gym.Env):
             user_tile_start=None,
             seed=None,
             distortion=False,
+            camera_rand=False,
             randomize_maps_on_reset=False,
     ):
         """
@@ -183,6 +184,7 @@ class Simulator(gym.Env):
         :param user_tile_start: If None, sample randomly. Otherwise (i,j). Overrides map start tile
         :param seed:
         :param distortion: If true, distorts the image with fish-eye approximation
+        :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
         # first initialize the RNG
@@ -298,8 +300,9 @@ class Simulator(gym.Env):
         self.distortion = distortion and not draw_bbox
         if not draw_bbox and distortion:
             if distortion:
+                self.camera_rand = camera_rand
                 from .distortion import Distortion
-                self.camera_model = Distortion()
+                self.camera_model = Distortion(camera_rand=self.camera_rand)
 
         # Used by the UndistortWrapper, always initialized to False
         self.undistort = False

@@ -10,3 +10,4 @@ cloudpickle
 pygeometry
 dataclasses
 duckietown_world
+carnivalmirror==0.6.2
