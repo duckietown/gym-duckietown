@@ -1109,7 +1109,7 @@ class Simulator(gym.Env):
 
         return True
 
-    def _proximity_penalty2(self, pos, angle):
+    def proximity_penalty2(self, pos, angle):
         """
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
@@ -1281,7 +1281,7 @@ class Simulator(gym.Env):
                 pass
 
             info['robot_speed'] = self.speed
-            info['proximity_penalty'] = self._proximity_penalty2(pos, angle)
+            info['proximity_penalty'] = self.proximity_penalty2(pos, angle)
             info['cur_pos'] = [float(pos[0]), float(pos[1]), float(pos[2])]
             info['cur_angle'] = float(angle)
             info['wheel_velocities'] = [self.wheelVels[0], self.wheelVels[1]]
@@ -1328,7 +1328,7 @@ class Simulator(gym.Env):
 
     def compute_reward(self, pos, angle, speed):
         # Compute the collision avoidance penalty
-        col_penalty = self._proximity_penalty2(pos, angle)
+        col_penalty = self.proximity_penalty2(pos, angle)
 
         # Get the position relative to the right lane tangent
         try:
