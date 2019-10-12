@@ -18,8 +18,10 @@ def get_version(filename):
 
 version = get_version(filename='gym_duckietown/__init__.py')
 
+line = 'daffy'
+
 setup(
-        name='gym_duckietown',
+        name=f'duckietown-gym-{line}',
         version=version,
         keywords='duckietown, environment, agent, rl, openaigym, openai-gym, gym',
         install_requires=[
@@ -31,9 +33,9 @@ setup(
             'opencv-python>=3.4',
             'pyyaml>=3.11',
             'cloudpickle',
-            'duckietown_world',
+            'duckietown-world-daffy',
             'pygeometry',
-            'dataclasses'            
+            'dataclasses',
         ],
         entry_points={
             'console_scripts': [
