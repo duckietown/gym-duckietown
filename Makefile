@@ -72,3 +72,11 @@ shell-docker-python2-ros:
 
 other_deps:
 	apt install x11-apps
+
+bump-upload:
+	bumpversion patch
+	git push --tags
+	git push --all
+	rm -f dist/*
+	python setup.py sdist
+	twine upload dist/*
