@@ -47,8 +47,14 @@ push-docker-python2:
 build-docker-python3:
 	docker build -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
 
+build-docker-python3-no-cache:
+	docker build -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
+
+
 push-docker-python3:
 	docker push $(img3)
+
+
 
 build-docker-python2-ros:
 	docker build -t $(img2-ros) -f docker/AIDO1/server-python2-ros/Dockerfile .

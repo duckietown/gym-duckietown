@@ -3,4 +3,4 @@ cloudpickle==0.6.1
 matplotlib==2.2.3
 scikit-image==0.14.1
 pyzmq==16.0.0
-numpy>=1.15
+numpy<1.17
