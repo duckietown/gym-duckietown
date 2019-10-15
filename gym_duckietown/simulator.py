@@ -283,7 +283,7 @@ class Simulator(gym.Env):
         # Array to render the image into (for human rendering)
         self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
 
-        
+
 
         # allowed angle in lane for starting position
         self.accept_start_angle_deg = accept_start_angle_deg
@@ -316,7 +316,7 @@ class Simulator(gym.Env):
 
         self.last_action = np.array([0, 0])
         self.wheelVels = np.array([0, 0])
-        
+
     def _init_vlists(self):
         import pyglet
         # Create the vertex list for our road quad
@@ -965,7 +965,7 @@ class Simulator(gym.Env):
         # Rotate and align each curve with its place in global frame
         if kind.startswith('4way'):
             fourway_pts = []
-            # Generate all four sides' curves, 
+            # Generate all four sides' curves,
             # with 3-points template above
             for rot in np.arange(0, 4):
                 mat = gen_rot_matrix(np.array([0, 1, 0]), rot * math.pi / 2)
@@ -1432,10 +1432,10 @@ class Simulator(gym.Env):
         # Note: we add a bit of noise to the camera position for data augmentation
         pos = self.cur_pos
         angle = self.cur_angle
-        logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
+        # logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
         if self.domain_rand:
             pos = pos + self.randomization_settings['camera_noise']
-            
+
         x, y, z = pos + self.cam_offset
         dx, dy, dz = get_dir_vec(angle)
         gl.glMatrixMode(gl.GL_MODELVIEW)
