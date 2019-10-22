@@ -7,3 +7,4 @@ xvfb.log
 bin
 
 trained_models
+dist

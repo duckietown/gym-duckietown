@@ -7,7 +7,7 @@ scikit-image>=0.13.1
 opencv-python>=3.4
 pyyaml>=3.11
 cloudpickle
-pygeometry
+PyGeometry
 dataclasses
-duckietown_world
 carnivalmirror==0.6.2
+duckietown-world-daffy>=5.0.6

@@ -58,13 +58,13 @@ CAMERA_ANGLE = 15
 # Camera field of view angle in the Y direction
 # Note: robot uses Raspberri Pi camera module V1.3
 # https://www.raspberrypi.org/documentation/hardware/camera/README.md
-CAMERA_FOV_Y = 41.41 # FIXME this is wrong! was 42
+CAMERA_FOV_Y = 42
 
 # Distance from camera to floor (10.8cm)
 CAMERA_FLOOR_DIST = 0.108
 
 # Forward distance between the camera (at the front)
-# and the center of rotation (6.6cm) # FIXME center of rotation changes with car-like dynamics
+# and the center of rotation (6.6cm)
 CAMERA_FORWARD_DIST = 0.066
 
 # Distance (diameter) between the center of the robot wheels (10.2cm)
@@ -1136,7 +1136,7 @@ class Simulator(gym.Env):
 
         return True
 
-    def _proximity_penalty2(self, pos, angle):
+    def proximity_penalty2(self, pos, angle):
         """
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
@@ -1305,7 +1305,7 @@ class Simulator(gym.Env):
                 pass
 
             info['robot_speed'] = self.speed
-            info['proximity_penalty'] = self._proximity_penalty2(pos, angle)
+            info['proximity_penalty'] = self.proximity_penalty2(pos, angle)
             info['cur_pos'] = [float(pos[0]), float(pos[1]), float(pos[2])]
             info['cur_angle'] = float(angle)
             info['wheel_velocities'] = [self.wheelVels[0], self.wheelVels[1]]
@@ -1351,7 +1351,7 @@ class Simulator(gym.Env):
 
     def compute_reward(self, pos, angle, speed):
         # Compute the collision avoidance penalty
-        col_penalty = self._proximity_penalty2(pos, angle)
+        col_penalty = self.proximity_penalty2(pos, angle)
 
         # Get the position relative to the right lane tangent
         try:
@@ -1404,8 +1404,7 @@ class Simulator(gym.Env):
             reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
             msg = ''
             done_code = 'in-progress'
-        return DoneRewardInfo(done=done, done_why=msg,
-                              reward=reward, done_code=done_code)
+        return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
     def _render_img(self, width, height, multi_fbo,
                     final_fbo, img_array, top_down=True):
@@ -1449,7 +1448,7 @@ class Simulator(gym.Env):
         # Note: we add a bit of noise to the camera position for data augmentation
         pos = self.cur_pos
         angle = self.cur_angle
-        logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
+        # logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
         if self.domain_rand:
             pos = pos + self.randomization_settings['camera_noise']
 

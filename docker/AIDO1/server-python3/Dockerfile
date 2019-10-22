@@ -14,6 +14,7 @@ RUN TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
     pip install -v -e .
 
+RUN pip list
 
 #FROM nvidia/cuda:9.1-runtime-ubuntu16.04
 #
