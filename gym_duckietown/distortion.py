@@ -112,7 +112,7 @@ class Distortion(object):
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
 
-        return cv2.remap(observation, self.rmapx, self.rmapy, interpolation=cv2.INTER_LINEAR)
+        return cv2.remap(observation, self.rmapx, self.rmapy, interpolation=cv2.INTER_NEAREST)
 
     def _undistort(self, observation):
         """

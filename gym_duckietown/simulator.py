@@ -298,6 +298,7 @@ class Simulator(gym.Env):
 
         # Distortion params, if so, load the library, only if not bbox mode
         self.distortion = distortion and not draw_bbox
+        self.camera_rand = False
         if not draw_bbox and distortion:
             if distortion:
                 self.camera_rand = camera_rand
