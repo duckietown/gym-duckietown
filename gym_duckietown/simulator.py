@@ -164,6 +164,7 @@ class Simulator(gym.Env):
             user_tile_start=None,
             seed=None,
             distortion=False,
+            dynamics_rand=False,
             camera_rand=False,
             randomize_maps_on_reset=False,
     ):
@@ -184,6 +185,7 @@ class Simulator(gym.Env):
         :param user_tile_start: If None, sample randomly. Otherwise (i,j). Overrides map start tile
         :param seed:
         :param distortion: If true, distorts the image with fish-eye approximation
+        :param dynamics_rand: If true, perturbs the trim of the Duckiebot
         :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
@@ -307,6 +309,9 @@ class Simulator(gym.Env):
 
         # Used by the UndistortWrapper, always initialized to False
         self.undistort = False
+
+        # Dynamics randomization
+        self.dynamics_rand = dynamics_rand
 
         # Start tile
         self.user_tile_start = user_tile_start
@@ -540,7 +545,7 @@ class Simulator(gym.Env):
         init_vel = np.array([0, 0])
 
         # Initialize Dynamics model
-        if self.domain_rand:
+        if self.dynamics_rand:
             trim = 0 + self.randomization_settings['trim']
             p = get_DB18_uncalibrated(delay=0.15, trim=trim)
         else:
