@@ -21,7 +21,7 @@ def reg_map_env(map_file):
     map_name, _ = map_name.split('.')
     gym_id = 'Duckietown-%s-v0' % map_name
 
-    logger.info('Registering gym environment id: %s' % gym_id)
+    # logger.info('Registering gym environment id: %s' % gym_id)
 
     register(
             id=gym_id,
