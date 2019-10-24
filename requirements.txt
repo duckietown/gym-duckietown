@@ -9,4 +9,4 @@ pyyaml>=3.11
 cloudpickle
 PyGeometry
 dataclasses
-duckietown-world-daffy>=5.0.6
+duckietown-world-daffy>=5.0.7 
