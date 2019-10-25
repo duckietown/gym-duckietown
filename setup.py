@@ -1,5 +1,4 @@
-from setuptools import setup
-
+from setuptools import find_packages, setup
 
 def get_version(filename):
     import ast
@@ -22,6 +21,9 @@ line = 'daffy'
 
 setup(
         name=f'duckietown-gym-{line}',
+        package_dir={'': 'src'},
+        packages=find_packages('src'),
+        zip_safe=False,
         version=version,
         keywords='duckietown, environment, agent, rl, openaigym, openai-gym, gym',
         install_requires=[
