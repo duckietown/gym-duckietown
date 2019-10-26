@@ -106,6 +106,8 @@ Requirements:
 - Pyglet
 - PyYAML
 - cloudpickle
+- pygeometry
+- dataclasses (if using Python3.6)
 - PyTorch or Tensorflow (to use the scripts in `learning/`)
 
 You can install all the dependencies except PyTorch with `pip3`:
