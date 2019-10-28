@@ -1,0 +1,7 @@
+graft src/gym_duckietown
+recursive-include src/gym_duckietown *.png
+recursive-include src/gym_duckietown *.obj
+recursive-include src/gym_duckietown *.mtl
+recursive-include src/gym_duckietown *.json
+recursive-include src/gym_duckietown *.yaml
+recursive-include src/gym_duckietown *.jpg
