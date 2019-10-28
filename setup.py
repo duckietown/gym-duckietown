@@ -26,10 +26,11 @@ setup(
         zip_safe=False,
         version=version,
         keywords='duckietown, environment, agent, rl, openaigym, openai-gym, gym',
+        include_package_data=True,
         install_requires=[
             'gym>=0.9.0',
             'numpy>=1.10.0',
-            'pyglet',
+            'pyglet<=1.3.2,>=1.2.0',
             'pyzmq>=16.0.0',
             'scikit-image>=0.13.1',
             'opencv-python>=3.4',
