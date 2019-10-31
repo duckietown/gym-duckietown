@@ -1,11 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import time
 
 import numpy as np
 
-import gym
-import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
 
 # Benchmark loading time

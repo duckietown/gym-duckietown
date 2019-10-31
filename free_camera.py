@@ -1,16 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 This script allows you to manually control the simulator or Duckiebot
 using the keyboard arrows.
 """
 
-import sys
 import argparse
+import sys
+
+import gym
 from pyglet import app, clock
 from pyglet.window import key
-import gym
-import gym_duckietown
+
 from gym_duckietown.envs import DuckietownEnv
 from gym_duckietown.simulator import Simulator
 
@@ -38,6 +39,7 @@ env.reset()
 env.render()
 
 assert isinstance(env.unwrapped, Simulator)
+
 
 @env.unwrapped.window.event
 def on_key_press(symbol, modifiers):
@@ -92,6 +94,7 @@ def on_key_press(symbol, modifiers):
     #         save_img('screenshot.png', img)
     #     except BaseException as e:
     #         print(str(e))
+
 
 def update(dt):
     env.render('free_cam')

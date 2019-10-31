@@ -1,19 +1,19 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 This script allows you to manually control the simulator or Duckiebot
 using a Logitech Game Controller, as well as record trajectories.
 """
 
-import sys
 import argparse
-import math
 import json
+import sys
+
+import gym
+import numpy as np
 import pyglet
 from pyglet.window import key
-import numpy as np
-import gym
-import gym_duckietown
+
 from gym_duckietown.envs import DuckietownEnv
 
 parser = argparse.ArgumentParser()
@@ -26,10 +26,10 @@ args = parser.parse_args()
 
 if args.env_name is None:
     env = DuckietownEnv(
-        map_name = args.map_name,
-        distortion= args.distortion,
-        domain_rand = args.domain_rand,
-        max_steps = np.inf
+        map_name=args.map_name,
+        distortion=args.distortion,
+        domain_rand=args.domain_rand,
+        max_steps=np.inf
     )
 else:
     env = gym.make(args.env_name)
@@ -43,6 +43,7 @@ actions = []
 demos = []
 recording = False
 
+
 def write_to_file(demos):
     num_steps = 0
     for demo in demos:
@@ -52,7 +53,8 @@ def write_to_file(demos):
 
     # Store the trajectories in a JSON file
     with open('experiments/demos_{}.json'.format(args.map_name), 'w') as outfile:
-        json.dump({ 'demos': demos }, outfile)
+        json.dump({'demos': demos}, outfile)
+
 
 def process_recording():
     global positions, actions, demos
@@ -67,7 +69,7 @@ def process_recording():
         write_to_file(demos)
         return
 
-    p = list(map(lambda p: [ p[0].tolist(), p[1] ], positions))
+    p = list(map(lambda p: [p[0].tolist(), p[1]], positions))
     a = list(map(lambda a: a.tolist(), actions))
 
     demo = {
@@ -79,6 +81,7 @@ def process_recording():
 
     # Write all demos to this moment
     write_to_file(demos)
+
 
 @env.unwrapped.window.event
 def on_key_press(symbol, modifiers):
@@ -97,6 +100,7 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.ESCAPE:
         env.close()
         sys.exit(0)
+
 
 @env.unwrapped.window.event
 def on_joybutton_press(joystick, button):
@@ -144,6 +148,7 @@ def on_joybutton_press(joystick, button):
 
         print("Help:\n{}{}".format(helpstr1, helpstr2))
 
+
 def update(dt):
     """
     This function is called at every frame to handle
@@ -183,6 +188,7 @@ def update(dt):
             print('Saved Recoding')
 
     env.render()
+
 
 pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
