@@ -104,31 +104,35 @@ class WorldObj:
 
 
 class DuckiebotObj(WorldObj):
-    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist, 
-            robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318, 
-            k=27.0, limit=1.0):
+    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist,
+                 robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318,
+                 k=27.0, limit=1.0):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         if self.domain_rand:
             self.follow_dist = np.random.uniform(0.3, 0.4)
             self.velocity = np.random.uniform(0.05, 0.15)
+            self.gain = gain + np.random.uniform(-0.3, 0.3)
+            self.trim = trim + np.random.uniform(-0.1, 0.1) + 2
+            self.radius = radius + 0.0002 * np.random.uniform(-1, 1)
+            self.wheel_dist = wheel_dist + 0.01 * np.random.uniform(-1, 1)
+            self.robot_width = robot_width + 0.01 * np.random.uniform(-1, 1)
+            self.robot_length = robot_length + 0.01 * np.random.uniform(-1, 1)
         else:
             self.follow_dist = 0.3
             self.velocity = 0.1
+            self.gain = gain
+            self.trim = trim
+            self.radius = radius
+            self.wheel_dist = wheel_dist
+            self.robot_width = robot_width
+            self.robot_length = robot_length
 
-        self.max_iterations = 1000 
+        self.max_iterations = 1000
 
         # TODO: Make these DR as well
-        self.gain = gain
-        self.trim = trim
-        self.radius = radius
         self.k = k
         self.limit = limit
-
-        self.wheel_dist = wheel_dist 
-
-        self.robot_width = robot_width
-        self.robot_length = robot_length
 
     # FIXME: this does not follow the same signature as WorldOb
     def step(self, delta_time, closest_curve_point, objects):
@@ -140,7 +144,7 @@ class DuckiebotObj(WorldObj):
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
 
         iterations = 0
-        
+
         lookup_distance = self.follow_dist
         curve_point = None
         while iterations < self.max_iterations:
@@ -245,7 +249,7 @@ class DuckiebotObj(WorldObj):
 
         # Update the robot's direction angle
         self.angle += rotAngle
-        self.y_rot += rotAngle * 180 / np.pi 
+        self.y_rot += rotAngle * 180 / np.pi
 
         # Recompute the bounding boxes (BB) for the duckiebot
         self.obj_corners = agent_boundbox(

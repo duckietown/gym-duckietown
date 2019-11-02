@@ -3,10 +3,14 @@ import itertools
 
 import cv2
 import numpy as np
+import carnivalmirror as cm
 
 
 class Distortion(object):
-    def __init__(self):
+    def __init__(self, camera_rand=False):
+        # Image size
+        self.H = 480
+        self.W = 640
         # K - Intrinsic camera matrix for the raw (distorted) images.
         camera_matrix = [
             305.5718893575089, 0, 303.0797142544728,
@@ -26,15 +30,6 @@ class Distortion(object):
         # R - Rectification matrix - stereo cameras only, so identity
         self.rectification_matrix = np.eye(3)
 
-        # P - Projection Matrix - specifies the intrinsic (camera) matrix
-        #  of the processed (rectified) image
-        projection_matrix = [
-            220.2460277141687, 0, 301.8668918355899, 0,
-            0, 238.6758484095299, 227.0880056118307, 0,
-            0, 0, 1, 0,
-        ]
-        self.projection_matrix = np.reshape(projection_matrix, (3, 4))
-
         # Initialize mappings
 
         # Used for rectification
@@ -44,6 +39,40 @@ class Distortion(object):
         # Used for distortion
         self.rmapx = None
         self.rmapy = None
+        if camera_rand:
+            self.camera_matrix, self.distortion_coefs = self.randomize_camera()
+
+        # New camera matrix - specifies the intrinsic (camera) matrix
+        #  of the processed (rectified) image
+        self.new_camera_matrix, _ = cv2.getOptimalNewCameraMatrix(cameraMatrix=self.camera_matrix,
+                                                                  distCoeffs=self.distortion_coefs,
+                                                                  imageSize=(self.W, self.H),
+                                                                  alpha=0)
+
+    def randomize_camera(self):
+        """Randomizes parameters of the camera according to a specified range"""
+        K = self.camera_matrix
+        D = self.distortion_coefs
+
+        # Define ranges for the parameters:
+        # TODO move this to config file
+        ranges = {'fx': (0.95 * K[0, 0], 1.05 * K[0, 0]),
+                  'fy': (0.95 * K[1, 1], 1.05 * K[1, 1]),
+                  'cx': (0.95 * K[0, 2], 1.05 * K[0, 2]),
+                  'cy': (0.95 * K[1, 2], 1.05 * K[1, 2]),
+                  'k1': (0.95 * D[0, 0], 1.05 * D[0, 0]),
+                  'k2': (0.95 * D[0, 1], 1.05 * D[0, 1]),
+                  'p1': (0.95 * D[0, 2], 1.05 * D[0, 2]),
+                  'p2': (0.95 * D[0, 3], 1.05 * D[0, 3]),
+                  'k3': (0.95 * D[0, 4], 1.05 * D[0, 4])}
+
+        # Create a ParameterSampler:
+        sampler = cm.ParameterSampler(ranges=ranges, cal_width=self.W, cal_height=self.H)
+
+        # Get a calibration from sampler
+        calibration = sampler.next()
+
+        return calibration.get_K(self.H), calibration.get_D()
 
     def distort(self, observation):
         """
@@ -58,9 +87,12 @@ class Distortion(object):
             H, W, _ = observation.shape
 
             # Initialize self.mapx and self.mapy (updated)
-            self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.camera_matrix,
-                                                               self.distortion_coefs, self.rectification_matrix,
-                                                               self.projection_matrix, (W, H), cv2.CV_32FC1)
+            self.mapx, self.mapy = cv2.initUndistortRectifyMap(cameraMatrix=self.camera_matrix,
+                                                               distCoeffs=self.distortion_coefs,
+                                                               R=self.rectification_matrix,
+                                                               newCameraMatrix=self.new_camera_matrix,
+                                                               size=(W, H),
+                                                               m1type=cv2.CV_32FC1)
 
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
