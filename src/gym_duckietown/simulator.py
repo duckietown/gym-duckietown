@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple
 import geometry
 
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal
+from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 
 @dataclass
 class DoneRewardInfo:
@@ -15,6 +15,7 @@ class DoneRewardInfo:
     done_why: str
     done_code: str
     reward: float
+
 
 @dataclass
 class DynamicsInfo:
@@ -72,7 +73,7 @@ WHEEL_DIST = 0.102
 # Total robot width at wheel base, used for collision detection
 # Note: the actual robot width is 13cm, but we add a litte bit of buffer
 #       to faciliate sim-to-real transfer.
-ROBOT_WIDTH = 0.13  + 0.02
+ROBOT_WIDTH = 0.13 + 0.02
 
 # Total robot length
 # Note: the center of rotation (between the wheels) is not at the
@@ -163,6 +164,8 @@ class Simulator(gym.Env):
             user_tile_start=None,
             seed=None,
             distortion=False,
+            dynamics_rand=False,
+            camera_rand=False,
             randomize_maps_on_reset=False,
     ):
         """
@@ -182,6 +185,8 @@ class Simulator(gym.Env):
         :param user_tile_start: If None, sample randomly. Otherwise (i,j). Overrides map start tile
         :param seed:
         :param distortion: If true, distorts the image with fish-eye approximation
+        :param dynamics_rand: If true, perturbs the trim of the Duckiebot
+        :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
         # first initialize the RNG
@@ -253,7 +258,9 @@ class Simulator(gym.Env):
 
         import pyglet
         # Invisible window to render into (shadow OpenGL context)
-        self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
+        self.shadow_window = pyglet.window.Window(width=1,
+                                                  height=1,
+                                                  visible=False)
 
         # For displaying text
         self.text_label = pyglet.text.Label(
@@ -271,7 +278,8 @@ class Simulator(gym.Env):
         )
 
         # Array to render the image into (for observation rendering)
-        self.img_array = np.zeros(shape=self.observation_space.shape, dtype=np.uint8)
+        self.img_array = np.zeros(shape=self.observation_space.shape,
+                                  dtype=np.uint8)
 
         # Create a frame buffer object for human rendering
         self.multi_fbo_human, self.final_fbo_human = create_frame_buffers(
@@ -281,9 +289,8 @@ class Simulator(gym.Env):
         )
 
         # Array to render the image into (for human rendering)
-        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
-
-
+        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3),
+                                        dtype=np.uint8)
 
         # allowed angle in lane for starting position
         self.accept_start_angle_deg = accept_start_angle_deg
@@ -293,13 +300,18 @@ class Simulator(gym.Env):
 
         # Distortion params, if so, load the library, only if not bbox mode
         self.distortion = distortion and not draw_bbox
+        self.camera_rand = False
         if not draw_bbox and distortion:
             if distortion:
+                self.camera_rand = camera_rand
                 from .distortion import Distortion
-                self.camera_model = Distortion()
+                self.camera_model = Distortion(camera_rand=self.camera_rand)
 
         # Used by the UndistortWrapper, always initialized to False
         self.undistort = False
+
+        # Dynamics randomization
+        self.dynamics_rand = dynamics_rand
 
         # Start tile
         self.user_tile_start = user_tile_start
@@ -335,7 +347,8 @@ class Simulator(gym.Env):
             0.0, 1.0,
             1.0, 1.0
         ]
-        self.road_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts), ('t2f', texCoords))
+        self.road_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts),
+                                                      ('t2f', texCoords))
 
         # Create the vertex list for the ground quad
         verts = [
@@ -358,7 +371,6 @@ class Simulator(gym.Env):
 
         # Robot's current speed
         self.speed = 0
-
 
         if self.randomize_maps_on_reset:
             map_name = np.random.choice(self.map_names)
@@ -406,14 +418,22 @@ class Simulator(gym.Env):
         # Distance between the robot's wheels
         self.wheel_dist = self._perturb(WHEEL_DIST)
 
+        # Set default values
+
         # Distance bewteen camera and ground
-        self.cam_height = self._perturb(CAMERA_FLOOR_DIST, 0.08)
+        self.cam_height = CAMERA_FLOOR_DIST
 
         # Angle at which the camera is rotated
-        self.cam_angle = [self._perturb(CAMERA_ANGLE, 0.2), 0, 0]
+        self.cam_angle = [CAMERA_ANGLE, 0, 0]
 
         # Field of view angle of the camera
-        self.cam_fov_y = self._perturb(CAMERA_FOV_Y, 0.2)
+        self.cam_fov_y = CAMERA_FOV_Y
+
+        # Perturb using randomization API (either if domain rand or only camera rand
+        if self.domain_rand or self.camera_rand:
+            self.cam_height *= self.randomization_settings['camera_height']
+            self.cam_angle = [CAMERA_ANGLE * self.randomization_settings['camera_angle'], 0, 0]
+            self.cam_fov_y *= self.randomization_settings['camera_fov_y']
 
         # Camera offset for use in free camera mode
         self.cam_offset = np.array([0, 0, 0])
@@ -469,52 +489,55 @@ class Simulator(gym.Env):
                 tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
                 tile = self.drivable_tiles[tile_idx]
 
-        # Keep trying to find a valid spawn position on this tile
-
-
-        for _ in range(MAX_SPAWN_ATTEMPTS):
-            i, j = tile['coords']
-
-            # Choose a random position on this tile
-            x = self.np_random.uniform(i, i + 1) * self.road_tile_size
-            z = self.np_random.uniform(j, j + 1) * self.road_tile_size
-            propose_pos = np.array([x, 0, z])
-
-            # Choose a random direction
-            propose_angle = self.np_random.uniform(0, 2 * math.pi)
-
-            # logger.debug('Sampled %s %s angle %s' % (propose_pos[0],
-            #                                          propose_pos[1],
-            #                                          np.rad2deg(propose_angle)))
-
-            # If this is too close to an object or not a valid pose, retry
-            inconvenient = self._inconvenient_spawn(propose_pos)
-
-            if inconvenient:
-                # msg = 'The spawn was inconvenient.'
-                # logger.warning(msg)
-                continue
-
-            invalid = not self._valid_pose(propose_pos, propose_angle, safety_factor=1.3)
-            if invalid:
-                # msg = 'The spawn was invalid.'
-                # logger.warning(msg)
-                continue
-
-            # If the angle is too far away from the driving direction, retry
-            try:
-                lp = self.get_lane_pos2(propose_pos, propose_angle)
-            except NotInLane:
-                continue
-            M = self.accept_start_angle_deg
-            ok = -M < lp.angle_deg < +M
-            if not ok:
-                continue
-            # Found a valid initial pose
-            break
+        # If the map specifies a starting pose
+        if self.start_pose is not None:
+            logger.info('using map pose start: %s' % self.start_pose)
+            propose_pos, propose_angle = self.start_pose
         else:
-            msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
-            raise Exception(msg)
+            # Keep trying to find a valid spawn position on this tile
+            for _ in range(MAX_SPAWN_ATTEMPTS):
+                i, j = tile['coords']
+
+                # Choose a random position on this tile
+                x = self.np_random.uniform(i, i + 1) * self.road_tile_size
+                z = self.np_random.uniform(j, j + 1) * self.road_tile_size
+                propose_pos = np.array([x, 0, z])
+
+                # Choose a random direction
+                propose_angle = self.np_random.uniform(0, 2 * math.pi)
+
+                # logger.debug('Sampled %s %s angle %s' % (propose_pos[0],
+                #                                          propose_pos[1],
+                #                                          np.rad2deg(propose_angle)))
+
+                # If this is too close to an object or not a valid pose, retry
+                inconvenient = self._inconvenient_spawn(propose_pos)
+
+                if inconvenient:
+                    # msg = 'The spawn was inconvenient.'
+                    # logger.warning(msg)
+                    continue
+
+                invalid = not self._valid_pose(propose_pos, propose_angle, safety_factor=1.3)
+                if invalid:
+                    # msg = 'The spawn was invalid.'
+                    # logger.warning(msg)
+                    continue
+
+                # If the angle is too far away from the driving direction, retry
+                try:
+                    lp = self.get_lane_pos2(propose_pos, propose_angle)
+                except NotInLane:
+                    continue
+                M = self.accept_start_angle_deg
+                ok = -M < lp.angle_deg < +M
+                if not ok:
+                    continue
+                # Found a valid initial pose
+                break
+            else:
+                msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
+                raise Exception(msg)
 
         self.cur_pos = propose_pos
         self.cur_angle = propose_angle
@@ -522,7 +545,12 @@ class Simulator(gym.Env):
         init_vel = np.array([0, 0])
 
         # Initialize Dynamics model
-        p = get_DB18_nominal(delay=0.15)
+        if self.dynamics_rand:
+            trim = 0 + self.randomization_settings['trim']
+            p = get_DB18_uncalibrated(delay=0.15, trim=trim)
+        else:
+            p = get_DB18_nominal(delay=0.15)
+
         q = self.cartesian_from_weird(self.cur_pos, self.cur_angle)
         v0 = geometry.se2_from_linear_angular(init_vel, 0)
         c0 = q, v0
@@ -622,6 +650,11 @@ class Simulator(gym.Env):
         if 'start_tile' in map_data:
             coords = map_data['start_tile']
             self.start_tile = self._get_tile(*coords)
+
+        # Get the starting pose from the map, if specified
+        self.start_pose = None
+        if 'start_pose' in map_data:
+            self.start_pose = map_data['start_pose']
 
     def _load_objects(self, map_data):
         # Create the objects array
@@ -1230,11 +1263,8 @@ class Simulator(gym.Env):
         prev_pos = self.cur_pos
 
         # Update the robot's position
-        self.cur_pos, self.cur_angle = _update_pos(self.cur_pos,
-                                                   self.cur_angle,
-                                                   self.wheel_dist,
-                                                   wheelVels=self.wheelVels,
-                                                   deltaTime=delta_time)
+        self.cur_pos, self.cur_angle = _update_pos(self, action)
+
         self.step_count += 1
         self.timestamp += delta_time
 
@@ -1309,7 +1339,6 @@ class Simulator(gym.Env):
         # cp = [gx, (grid_height - 1) * tile_size - gz]
         cp = [gx, grid_height * tile_size - gz]
 
-
         return geometry.SE2_from_translation_angle(cp, angle)
 
     def weird_from_cartesian(self, q: np.ndarray) -> Tuple[list, float]:
@@ -1350,15 +1379,7 @@ class Simulator(gym.Env):
         # Actions could be a Python list
         action = np.array(action)
         for _ in range(self.frame_skip):
-            self.update_physics(action=np.array([0., 0.]))
-
-            action = DynamicsInfo(motor_left=action[0], motor_right=action[1])
-            self.state = self.state.integrate(self.delta_time, action)
-            q = self.state.TSE2_from_state()[0]
-            cur_pos, cur_angle = self.weird_from_cartesian(q)
-            self.cur_pos = cur_pos
-            self.cur_angle = cur_angle
-
+            self.update_physics(action)
 
         # Generate the current camera image
         obs = self.render_obs()
@@ -1391,7 +1412,8 @@ class Simulator(gym.Env):
             done_code = 'in-progress'
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
-    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True):
+    def _render_img(self, width, height, multi_fbo,
+                    final_fbo, img_array, top_down=True):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1725,40 +1747,19 @@ def get_right_vec(cur_angle):
     return np.array([x, 0, z])
 
 
-def _update_pos(pos, angle, wheel_dist, wheelVels, deltaTime):
+def _update_pos(self, action):
     """
     Update the position of the robot, simulating differential drive
 
-    returns new_pos, new_angle
+    returns pos, angle
     """
 
-    Vl, Vr = wheelVels
-    l = wheel_dist
+    action = DynamicsInfo(motor_left=action[0], motor_right=action[1])
 
-    # If the wheel velocities are the same, then there is no rotation
-    if Vl == Vr:
-        pos = pos + deltaTime * Vl * get_dir_vec(angle)
-        return pos, angle
-
-    # Compute the angular rotation velocity about the ICC (center of curvature)
-    w = (Vr - Vl) / l
-
-    # Compute the distance to the center of curvature
-    r = (l * (Vl + Vr)) / (2 * (Vl - Vr))
-
-    # Compute the rotation angle for this time step
-    rotAngle = w * deltaTime
-
-    # Rotate the robot's position around the center of rotation
-    r_vec = get_right_vec(angle)
-    px, py, pz = pos
-    cx = px + r * r_vec[0]
-    cz = pz + r * r_vec[2]
-    npx, npz = rotate_point(px, pz, cx, cz, rotAngle)
-    pos = np.array([npx, py, npz])
-
-    # Update the robot's direction angle
-    angle += rotAngle
+    self.state = self.state.integrate(self.delta_time, action)
+    q = self.state.TSE2_from_state()[0]
+    pos, angle = self.weird_from_cartesian(q)
+    pos = np.asarray(pos)
     return pos, angle
 
 
