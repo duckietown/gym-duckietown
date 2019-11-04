@@ -39,6 +39,7 @@ setup(
             'duckietown-world-daffy',
             'pygeometry',
             'dataclasses',
+            'carnivalmirror==0.6.2',
         ],
         entry_points={
             'console_scripts': [
