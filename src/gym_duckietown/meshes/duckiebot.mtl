@@ -1,8 +1,8 @@
-# Blender MTL File: 'rear-panel.blend'
-# Material Count: 6
+# Blender MTL File: 'None'
+# Material Count: 7
 
 newmtl CircleGridMat
-Ns 94.117647
+Ns 92.156863
 Ka 1.000000 1.000000 1.000000
 Kd 0.640000 0.640000 0.640000
 Ks 0.500000 0.500000 0.500000
@@ -10,7 +10,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../textures/circlegrid.jpg
+map_Kd /home/anthony/Projects/Duckiedev/gym-duckietown/src/gym_duckietown/textures/circlegrid.jpg
 
 newmtl JoinedMaterial_#4
 Ns 9.803922
@@ -41,6 +41,17 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
+
+newmtl blinn3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/anthony/Projects/Duckiedev/gym-duckietown/src/gym_duckietown/textures/duckie.png
 
 newmtl gkmodel0_chassis_geom0_mat_001-material
 Ns 9.803922
