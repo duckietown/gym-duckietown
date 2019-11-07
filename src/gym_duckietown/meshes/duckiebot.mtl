@@ -1,8 +1,38 @@
-# Blender MTL File: 'None'
-# Material Count: 3
+# Blender MTL File: 'rear-panel.blend'
+# Material Count: 6
 
-# Wheels
+newmtl CircleGridMat
+Ns 94.117647
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd ../textures/circlegrid.jpg
+
 newmtl JoinedMaterial_#4
+Ns 9.803922
+Ka 0.000000 0.000000 0.000000
+Kd 0.140000 0.140000 0.140000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl JoinedMaterial_#4.001
+Ns 9.803922
+Ka 0.000000 0.000000 0.000000
+Kd 0.140000 0.140000 0.140000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl JoinedMaterial_#4_NONE
 Ns 9.803922
 Ka 0.000000 0.000000 0.000000
 Kd 0.140000 0.140000 0.140000
@@ -22,10 +52,10 @@ Ni 1.000000
 d 1.000000
 illum 2
 
-newmtl gkmodel0_computer_geom0_mat_001-material
+newmtl gkmodel0_chassis_geom0_mat_001-material.001
 Ns 9.803922
 Ka 0.000000 0.000000 0.000000
-Kd 0.000000 0.000000 0.800000
+Kd 0.800000 0.000000 0.000000
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
