@@ -10,7 +10,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd /home/anthony/Projects/Duckiedev/gym-duckietown/src/gym_duckietown/textures/circlegrid.jpg
+map_Kd ../textures/circlegrid.jpg
 
 newmtl JoinedMaterial_#4
 Ns 9.803922
@@ -51,7 +51,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd /home/anthony/Projects/Duckiedev/gym-duckietown/src/gym_duckietown/textures/duckie.png
+map_Kd ../textures/duckie.png
 
 newmtl gkmodel0_chassis_geom0_mat_001-material
 Ns 9.803922
