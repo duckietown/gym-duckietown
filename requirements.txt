@@ -10,4 +10,4 @@ cloudpickle
 PyGeometry
 dataclasses
 carnivalmirror==0.6.2
-duckietown-world-daffy>=5.0.8
+duckietown-world-daffy>=5.0.10
