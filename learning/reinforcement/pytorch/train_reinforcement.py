@@ -10,17 +10,17 @@ from reinforcement.pytorch.ddpg import DDPG
 from reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
 from utils.env import launch_env
 from utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+    DtRewardWrapper, ActionWrapper, ResizeWrapper, MetricsWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def _train(args):   
+def _train(args):
     if not os.path.exists("./results"):
         os.makedirs("./results")
     if not os.path.exists(args.model_dir):
         os.makedirs(args.model_dir)
-        
+
     # Launch the env with our helper function
     env = launch_env()
     print("Initialized environment")
@@ -29,10 +29,11 @@ def _train(args):
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
     env = ImgWrapper(env) # to make the images from 160x120x3 into 3x160x120
-    env = ActionWrapper(env)
     env = DtRewardWrapper(env)
+    env = MetricsWrapper(env)
+    env = ActionWrapper(env)
     print("Initialized Wrappers")
-    
+
     # Set seeds
     seed(args.seed)
 
@@ -44,10 +45,10 @@ def _train(args):
     policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
     replay_buffer = ReplayBuffer(args.replay_buffer_max_size)
     print("Initialized DDPG")
-    
+
     # Evaluate untrained policy
     evaluations= [evaluate_policy(env, policy)]
-   
+
     total_timesteps = 0
     timesteps_since_eval = 0
     episode_num = 0
@@ -56,12 +57,12 @@ def _train(args):
     env_counter = 0
     reward = 0
     episode_timesteps = 0
-    
+
     print("Starting training")
     while total_timesteps < args.max_timesteps:
-        
+
         print("timestep: {} | reward: {}".format(total_timesteps, reward))
-            
+
         if done:
             if total_timesteps != 0:
                 print(("Total T: %d Episode Num: %d Episode T: %d Reward: %f") % (
@@ -115,14 +116,14 @@ def _train(args):
         episode_timesteps += 1
         total_timesteps += 1
         timesteps_since_eval += 1
-    
+
     print("Training done, about to save..")
     policy.save(filename='ddpg', directory=args.model_dir)
     print("Finished saving..should return now!")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    
+
     # DDPG Args
     parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--start_timesteps", default=1e4, type=int)  # How many time steps purely random policy is run for

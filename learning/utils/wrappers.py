@@ -1,7 +1,7 @@
 import gym
 from gym import spaces
 import numpy as np
-
+from utils.metrics import Metrics
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, shape=(120, 160, 3)):
@@ -71,3 +71,27 @@ class ActionWrapper(gym.ActionWrapper):
     def action(self, action):
         action_ = [action[0] * 0.8, action[1]]
         return action_
+
+class MetricsWrapper(gym.Wrapper):
+    def __init__(self, env=None):
+        super(MetricsWrapper, self).__init__(env)
+        self.metrics = Metrics()
+        self.count = 0
+        self.total_reward = 0
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+
+        self.count = self.count + 1
+        xy = self.env.cur_pos # xzy ??
+        angle = self.env.cur_angle
+        speed = action[0]
+        steering = action[1]
+        lane_pose = self.env.get_lane_pos2(xy, angle)
+        center_dist = lane_pose.dist
+        center_angle = lane_pose.angle_rad
+        self.total_reward = self.total_reward + reward
+
+        self.metrics.record(self.count, xy[0], xy[2], angle, speed, steering, center_dist, center_angle,
+                            reward, self.total_reward)
+        return observation, reward, done, info
