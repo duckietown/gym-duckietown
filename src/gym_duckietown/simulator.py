@@ -216,8 +216,8 @@ class Simulator(gym.Env):
 
         # Flag to enable/disable domain randomization
         self.domain_rand = domain_rand
-        if self.domain_rand:
-            self.randomizer = Randomizer()
+
+        self.randomizer = Randomizer()
 
         # Frame rate to run at
         self.frame_rate = frame_rate
@@ -376,8 +376,7 @@ class Simulator(gym.Env):
             map_name = np.random.choice(self.map_names)
             self._load_map(map_name)
 
-        if self.domain_rand:
-            self.randomization_settings = self.randomizer.randomize()
+        self.randomization_settings = self.randomizer.randomize()
 
         # Horizon color
         # Note: we explicitly sample white and grey/black because
@@ -554,7 +553,7 @@ class Simulator(gym.Env):
 
         # Initialize Dynamics model
         if self.dynamics_rand:
-            trim = 0 + self.randomization_settings['trim']
+            trim = 0 + self.randomization_settings['trim'][0]
             p = get_DB18_uncalibrated(delay=0.15, trim=trim)
         else:
             p = get_DB18_nominal(delay=0.15)
@@ -1763,7 +1762,6 @@ def _update_pos(self, action):
     """
 
     action = DynamicsInfo(motor_left=action[0], motor_right=action[1])
-
     self.state = self.state.integrate(self.delta_time, action)
     q = self.state.TSE2_from_state()[0]
     pos, angle = self.weird_from_cartesian(q)
