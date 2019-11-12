@@ -1,0 +1,24 @@
+# The following section defines the grid layout.
+#
+# Each row is an array of tiles descriptions.
+# The top-left tile in this file maps to coordinates (0, 0) in the world
+# Each tile contains a string with the kind of tile and its orientation.
+# The orientations are North, South, East, West. This is the direction in
+# which the agent is expected to drive when going onto this tile.
+tiles:
+- [asphalt         , asphalt            , asphalt            , asphalt]
+- [asphalt         , asphalt            , asphalt            , asphalt]
+- [asphalt         , asphalt            , asphalt            , asphalt]
+- [straight/E      , calibration_tile   , asphalt            , asphalt]
+- [asphalt         , asphalt            , asphalt            , asphalt]
+- [asphalt         , asphalt            , asphalt            , asphalt]
+- [asphalt         , asphalt            , asphalt            , asphalt]
+
+
+tile_size: 0.585
+
+# Always start on the drivable tile
+start_tile: [0, 3]
+
+# Fixed initial pose
+start_pose: [[0.2925, 0, 0.2925], 0]
