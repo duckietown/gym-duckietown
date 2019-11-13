@@ -52,15 +52,10 @@ class DtRewardWrapper(gym.RewardWrapper):
     def __init__(self, env):
         super(DtRewardWrapper, self).__init__(env)
 
-    def reward(self, reward):
-        if reward == -1000:
-            reward = -10
-        elif reward > 0:
-            reward += 10
-        else:
-            reward += 4
-
-        return reward
+    def reward(self, rewardUnused):
+         lane_pose = self.env.get_lane_pos2(self.env.cur_pos, self.env.cur_angle)
+         reward = 20.0 - (10 * abs(lane_pose.angle_rad) * abs(lane_pose.angle_rad)) - (300 * abs(lane_pose.dist) * abs(lane_pose.dist))
+         return reward
 
 
 # this is needed because at max speed the duckie can't turn anymore
@@ -69,7 +64,7 @@ class ActionWrapper(gym.ActionWrapper):
         super(ActionWrapper, self).__init__(env)
 
     def action(self, action):
-        action_ = [action[0] * 0.8, action[1]]
+        action_ = [0.5 + action[0] / 4, action[1]] # speed from +0.25 to +0.75
         return action_
 
 class MetricsWrapper(gym.Wrapper):

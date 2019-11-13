@@ -18,7 +18,7 @@ import torch.optim as optim
 
 from utils.env import launch_env
 from utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+    DtRewardWrapper, ActionWrapper, ResizeWrapper, MetricsWrapper
 from utils.teacher import PurePursuitExpert
 
 from imitation.pytorch.model import Model
@@ -29,10 +29,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def _train(args):
     env = launch_env()
     env = ResizeWrapper(env)
-    env = NormalizeWrapper(env) 
+    env = NormalizeWrapper(env)
     env = ImgWrapper(env)
-    env = ActionWrapper(env)
     env = DtRewardWrapper(env)
+    env = MetricsWrapper(env)
+    env = ActionWrapper(env)
     print("Initialized Wrappers")
 
     observation_shape = (None, ) + env.observation_space.shape
