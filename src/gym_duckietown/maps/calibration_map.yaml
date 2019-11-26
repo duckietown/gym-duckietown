@@ -21,4 +21,4 @@ tile_size: 0.585
 start_tile: [0, 3]
 
 # Fixed initial pose
-start_pose: [[0.2925, 0, 0.2925], 0]
+start_pose: [[0.480, 0, 0.2925], 0]
