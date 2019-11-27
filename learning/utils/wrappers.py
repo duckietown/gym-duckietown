@@ -63,11 +63,11 @@ class DtRewardWrapper(gym.RewardWrapper):
         return reward
 
 
-# this is needed because at max speed the duckie can't turn anymore
+# Deprecated
 class ActionWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super(ActionWrapper, self).__init__(env)
 
     def action(self, action):
-        action_ = [action[0] * 0.8, action[1]]
+        action_ = [action[0], action[1]]
         return action_
