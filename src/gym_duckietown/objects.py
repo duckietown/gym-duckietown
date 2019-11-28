@@ -316,6 +316,9 @@ class DuckieObj(WorldObj):
         Use a motion model to move the object in the world
         """
 
+        print("stepping duckie")
+        print("current pos:", self.pos)
+
         self.time += delta_time
 
         # If not walking, no need to do anything
@@ -339,6 +342,7 @@ class DuckieObj(WorldObj):
         angle_delta = self.wiggle * math.sin(48 * self.time)
         self.y_rot = (self.angle + angle_delta) * (180 / np.pi)
         self.obj_norm = generate_norm(self.obj_corners)
+        print("now at pos", self.pos)
 
     def finish_walk(self):
         """
@@ -403,3 +407,131 @@ class TrafficLightObj(WorldObj):
             elif self.y_rot == 225 or self.y_rot == 315:
                 return self.pattern == 0
         return False
+
+
+class CheckerboardObj(WorldObj):
+    # Copied from the duckie class above
+    def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
+        WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
+
+        self.walk_distance = walk_distance + 0.25
+
+        # Dynamic checkerboard
+        self.pedestrian_wait_time = 0
+        self.vel = 0.01
+
+        # Randomize velocity and wait time
+        # if self.domain_rand:
+        #     self.pedestrian_wait_time = np.random.randint(3, 20)
+        #     self.vel = np.abs(np.random.normal(0.02, 0.005))
+        # else:
+        #     self.pedestrian_wait_time = 8
+        #     self.vel = 0.02
+
+        # # Movement parameters
+        self.heading = heading_vec(self.angle)
+        self.start = np.copy(self.pos)
+        self.center = self.pos
+        self.pedestrian_active = False
+
+        # # Walk wiggle parameter
+        self.wiggle = np.random.choice([14, 15, 16], 1)
+        self.wiggle = np.pi / self.wiggle
+
+        self.time = 0
+
+    def check_collision(self, agent_corners, agent_norm):
+        """
+        See if the agent collided with this object
+        """
+        return intersects_single_obj(
+            agent_corners,
+            self.obj_corners.T,
+            agent_norm,
+            self.obj_norm
+        )
+
+    def proximity(self, agent_pos, agent_safety_rad):
+        """
+        See if the agent is too close to this object
+        based on a heuristic for the "overlap" between
+        their safety circles
+        """
+        d = np.linalg.norm(agent_pos - self.center)
+        score = d - agent_safety_rad - self.safety_radius
+
+        return min(0, score)
+
+    def step(self, delta_time):
+        """
+        Use a motion model to move the object in the world
+        """
+
+        # print("stepping duckie")
+        # print("current pos:", self.pos)
+
+        self.time += delta_time
+
+        fast_time = self.time * 10
+        x = np.sin(fast_time)
+        z = np.cos(fast_time)
+        self.center += 0.01 * np.array([x, 0, z])
+        self.pos = self.center
+
+        angle_delta = fast_time * 0.9
+        self.y_rot = (self.angle + angle_delta) * (180 / np.pi) % 1
+
+
+        # vel_adjust = self.heading * self.vel
+
+        # self.center += vel_adjust
+
+
+        # angle_delta = self.wiggle * math.sin(48 * self.time)
+        # self.y_rot = (self.angle + angle_delta) * (180 / np.pi)
+
+
+
+        # We'll move it in a circle to begin with
+
+        # If not walking, no need to do anything
+        # if not self.pedestrian_active:
+        #     self.pedestrian_wait_time -= delta_time
+        #     if self.pedestrian_wait_time <= 0:
+        #         self.pedestrian_active = True
+        #     return
+
+        # # Update centers and bounding box
+        # vel_adjust = self.heading * self.vel
+        # self.center += vel_adjust
+        # self.obj_corners += vel_adjust[[0, -1]]
+
+        # distance = np.linalg.norm(self.center - self.start)
+
+        # if distance > self.walk_distance:
+        #     self.finish_walk()
+
+        # self.pos = self.center
+        # angle_delta = self.wiggle * math.sin(48 * self.time)
+        # self.y_rot = (self.angle + angle_delta) * (180 / np.pi)
+        # self.obj_norm = generate_norm(self.obj_corners)
+        # print("now at pos", self.pos)
+
+    def finish_walk(self):
+        """
+        After duckie crosses, update relevant attributes
+        (vel, rot, wait time until next walk)
+        """
+        self.start = np.copy(self.center)
+        self.angle += np.pi
+        self.pedestrian_active = False
+
+        if self.domain_rand:
+            # Assign a random velocity (in opp. direction) and a wait time
+            # TODO: Fix this: This will go to 0 over time
+            self.vel = -1 * np.sign(self.vel) * np.abs(np.random.normal(0.02, 0.005))
+            self.pedestrian_wait_time = np.random.randint(3, 20)
+        else:
+            # Just give it the negative of its current velocity
+            self.vel *= -1
+            self.pedestrian_wait_time = 8
