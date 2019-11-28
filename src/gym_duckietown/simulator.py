@@ -706,8 +706,8 @@ class Simulator(gym.Env):
                 scale = desc['scale']
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
-            # static = desc.get('static', True)
-            static = desc.get('static', False)
+            static = desc.get('static', True)
+            #static = desc.get('static', False)
             print('static is now', static)
 
             obj_desc = {

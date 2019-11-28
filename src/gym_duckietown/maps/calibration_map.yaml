@@ -27,5 +27,5 @@ objects:
 - kind: checkerboard
   pos: [1.5, 3.5]
   rotate: 180
-  height: 0.1
+  height: 0.17
   static: False
