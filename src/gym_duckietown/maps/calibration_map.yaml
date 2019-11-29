@@ -42,5 +42,5 @@ start_pose: [[0.5, 0, 0.2925], 0] # [[0.480, 0, 0.2925], 0]
 # - kind: checkerboard
 #   pos: [2.5, 3.5]
 #   rotate: 180
-#   height: 0.1
+#   height: 0.17
 #   static: False
