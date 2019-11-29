@@ -5,27 +5,42 @@
 # Each tile contains a string with the kind of tile and its orientation.
 # The orientations are North, South, East, West. This is the direction in
 # which the agent is expected to drive when going onto this tile.
+
+# TODO: merge intrinsic and extrinsic
+
+# For Extrinsic
 tiles:
-- [asphalt         , asphalt            , asphalt            , asphalt]
-- [asphalt         , asphalt            , asphalt            , asphalt]
-- [asphalt         , asphalt            , asphalt            , asphalt]
-- [straight/E      , grass              , asphalt            , asphalt]
-- [asphalt         , asphalt            , asphalt            , asphalt]
-- [asphalt         , asphalt            , asphalt            , asphalt]
-- [asphalt         , asphalt            , asphalt            , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
+- [asphalt           , straight/E         , calibration_tile   , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
+
+# For Intrinsic
+# tiles:
+# - [asphalt           , asphalt            , asphalt            , asphalt]
+# - [asphalt           , asphalt            , asphalt            , asphalt]
+# - [asphalt           , asphalt            , asphalt            , asphalt]
+# - [calibration_tile  , straight/E         , asphalt            , asphalt]
+# - [asphalt           , asphalt            , asphalt            , asphalt]
+# - [asphalt           , asphalt            , asphalt            , asphalt]
+# - [asphalt           , asphalt            , asphalt            , asphalt]
 
 
 tile_size: 0.585
 
 # Always start on the drivable tile
-start_tile: [0, 3]
+start_tile: [1, 3]
 
 # Fixed initial pose
-start_pose: [[0.480, 0, 0.2925], 0]
+start_pose: [[0.5, 0, 0.2925], 0] # [[0.480, 0, 0.2925], 0]
 
-objects:
-- kind: checkerboard
-  pos: [1.5, 3.5]
-  rotate: 180
-  height: 0.1
-  static: False
+# For Intrinsic only
+# objects:
+# - kind: checkerboard
+#   pos: [2.5, 3.5]
+#   rotate: 180
+#   height: 0.1
+#   static: False
