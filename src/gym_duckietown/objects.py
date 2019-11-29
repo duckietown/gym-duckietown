@@ -26,6 +26,9 @@ class WorldObj:
 
         self.generate_geometry()
 
+        self.x_rot = 0 # Niki-added
+        self.z_rot = 0 # Niki-added
+
     def generate_geometry(self):
         # Find corners and normal vectors assoc w. object
         self.obj_corners = generate_corners(self.pos,
@@ -68,7 +71,9 @@ class WorldObj:
         gl.glPushMatrix()
         gl.glTranslatef(*self.pos)
         gl.glScalef(self.scale, self.scale, self.scale)
+        gl.glRotatef(self.x_rot, 1, 0, 0) # Niki-added
         gl.glRotatef(self.y_rot, 0, 1, 0)
+        gl.glRotatef(self.z_rot, 0, 0, 1) # Niki-added
         gl.glColor3f(*self.color)
         self.mesh.render()
         gl.glPopMatrix()
@@ -316,9 +321,6 @@ class DuckieObj(WorldObj):
         Use a motion model to move the object in the world
         """
 
-        print("stepping duckie")
-        print("current pos:", self.pos)
-
         self.time += delta_time
 
         # If not walking, no need to do anything
@@ -467,19 +469,76 @@ class CheckerboardObj(WorldObj):
         Use a motion model to move the object in the world
         """
 
+        # DEFAULT_FRAMERATE = 30
+        # delta_time = 1.0 / DEFAULT_FRAMERATE (seconds)
+
         # print("stepping duckie")
         # print("current pos:", self.pos)
 
         self.time += delta_time
+        # Move the checkerboard in place
+        if self.time < 9:
+            fast_time = self.time * 10
+            x = np.sin(fast_time)
+            z = np.cos(fast_time)
+            self.center += 0.002 * np.array([x, 0, z])
 
-        fast_time = self.time * 10
-        x = np.sin(fast_time)
-        z = np.cos(fast_time)
-        self.center += 0.01 * np.array([x, 0, z])
+        # Move left and right
+        elif self.time < 10:
+            self.center = self.start
+        elif self.time < 20:
+            remaining = 20 - self.time
+            offset = 5 - remaining
+            scaled_offset = offset * 1. / 1600
+            self.center += np.array([0, 0, scaled_offset])
+        elif self.time < 30:
+            remaining = 30 - self.time
+            offset = 5 - remaining
+            scaled_offset = offset * 1. / 1600
+            self.center -= np.array([0, 0, scaled_offset])
+
+        # Turn left and right
+        elif self.time < 35:
+            self.y_rot += 0.05 * (self.time - 30)
+        elif self.time < 45:
+            self.y_rot -= 0.05 * (self.time - 35)
+        elif self.time < 50:
+            self.y_rot += 0.05 * (self.time - 45)
+        
+        # Turn in x
+        elif self.time < 55:
+            self.x_rot += 0.005 * (self.time - 30)
+        elif self.time < 65:
+            self.x_rot -= 0.005 * (self.time - 35)
+        elif self.time < 70:
+            self.x_rot += 0.005 * (self.time - 45)
+
+        # Turn in z
+        elif self.time < 75:
+            self.z_rot += 0.001 * (self.time - 30)
+        elif self.time < 85:
+            self.z_rot -= 0.001 * (self.time - 35)
+        elif self.time < 90:
+            self.z_rot += 0.001 * (self.time - 45)
+        
+        # Move back and forward
+        elif self.time < 90:
+            remaining = 90 - self.time
+            offset = 5 - remaining
+            scaled_offset = offset * 1. / 3000
+            self.center += np.array([scaled_offset, 0, 0])
+        elif self.time < 100:
+            remaining = 100 - self.time
+            offset = 5 - remaining
+            scaled_offset = offset * 1. / 3000
+            self.center -= np.array([scaled_offset, 0, 0])
+ 
         self.pos = self.center
 
-        angle_delta = fast_time * 0.9
-        self.y_rot = (self.angle + angle_delta) * (180 / np.pi) % 1
+        # angle_delta = fast_time * 0.9
+        # self.y_rot = angle_delta * (180 / np.pi)
+        # self.x_rot = angle_delta * (180 / np.pi)
+        # self.z_rot = angle_delta * (180 / np.pi)
 
 
         # vel_adjust = self.heading * self.vel
