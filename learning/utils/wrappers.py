@@ -2,6 +2,7 @@ import gym
 from gym import spaces
 import numpy as np
 
+from gym_duckietown.simulator import Simulator
 
 class MotionBlurWrapper(Simulator):
     def __init__(self, env=None):
