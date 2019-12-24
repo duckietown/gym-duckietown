@@ -1268,7 +1268,7 @@ class Simulator(gym.Env):
         return res
 
     def update_physics(self, action, delta_time=None):
-        print("updating physics")
+        #print("updating physics")
         if delta_time is None:
             delta_time = self.delta_time
         self.wheelVels = action * self.robot_speed * 1
@@ -1297,7 +1297,7 @@ class Simulator(gym.Env):
 
                 obj.step(delta_time, self.closest_curve_point, same_tile_obj)
             else:
-                print("stepping all objects")
+                #print("stepping all objects")
                 obj.step(delta_time)
 
     def get_agent_info(self):

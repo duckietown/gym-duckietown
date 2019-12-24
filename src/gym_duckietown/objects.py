@@ -441,7 +441,7 @@ class CheckerboardObj(WorldObj):
         self.wiggle = np.pi / self.wiggle
 
         self.time = 0
-
+        self.steps = -20
     def check_collision(self, agent_corners, agent_norm):
         """
         See if the agent collided with this object
@@ -476,6 +476,52 @@ class CheckerboardObj(WorldObj):
         # print("current pos:", self.pos)
 
         self.time += delta_time
+        max_steps = 1000
+        step = self.steps%max_steps
+        offset = 20
+        scaled_offset = offset * 1. / 3000
+        # move the checkerboard back and foreward
+        if step<0:
+            pass
+        if step<50:
+            self.center += np.array([scaled_offset, 0, 0])
+        elif step<135:
+            self.center -= np.array([scaled_offset, 0, 0])
+        elif step<170:
+            self.center += np.array([scaled_offset, 0, 0])
+        
+        # Move left and right
+        elif step<200:
+            self.center += np.array([0, 0, scaled_offset])
+        elif step<260:
+            self.center -= np.array([0, 0, scaled_offset])
+        elif step<290:
+            self.center += np.array([0, 0, scaled_offset])
+        
+        # Move up and down
+        elif step<310:
+            self.center += np.array([0, scaled_offset, 0])
+        elif step<330:
+            self.center -= np.array([0, scaled_offset, 0])
+        
+        # move forward
+        elif step<355:
+            self.center -= np.array([scaled_offset, 0, 0])
+        
+        # repeat move up and down
+        elif step<370:
+            self.center -= np.array([0, scaled_offset, 0])
+        elif step<385:
+            self.center += np.array([0, scaled_offset, 0])
+        
+        # move backward
+        elif step<410:
+            self.center += np.array([scaled_offset, 0, 0])
+
+
+
+        self.steps+=1
+        """
         # Move the checkerboard in place
         if self.time < 9:
             fast_time = self.time * 10
@@ -532,7 +578,7 @@ class CheckerboardObj(WorldObj):
             offset = 5 - remaining
             scaled_offset = offset * 1. / 3000
             self.center -= np.array([scaled_offset, 0, 0])
- 
+        """
         self.pos = self.center
 
         # angle_delta = fast_time * 0.9
