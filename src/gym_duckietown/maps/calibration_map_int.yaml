@@ -6,16 +6,11 @@
 # The orientations are North, South, East, West. This is the direction in
 # which the agent is expected to drive when going onto this tile.
 
-# TODO: merge intrinsic and extrinsic
-
 tiles:
 - [asphalt           , asphalt            , asphalt            , asphalt]
 - [asphalt           , asphalt            , asphalt            , asphalt]
 - [asphalt           , asphalt            , asphalt            , asphalt]
-# For Extrinsic
-- [straight/E        , calibration_tile   ,asphalt             ,  asphalt]
-# For Intrinsic
-#- [asphalt           , asphalt            , asphalt            , asphalt]
+- [asphalt           , asphalt            , asphalt            , asphalt]
 - [asphalt           , asphalt            , asphalt            , asphalt]
 - [asphalt           , asphalt            , asphalt            , asphalt]
 - [asphalt           , asphalt            , asphalt            , asphalt]
@@ -32,7 +27,7 @@ start_pose: [[0.480, 0, 0.2925], 0]
 # For Intrinsic only
 objects:
 - kind: checkerboard
-  pos: [.5, 2.5]
+  pos: [1.5, 3.5]
   rotate: 180
   height: 0.17
   static: False

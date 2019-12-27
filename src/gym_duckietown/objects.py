@@ -477,13 +477,13 @@ class CheckerboardObj(WorldObj):
 
         self.time += delta_time
         max_steps = 1000
-        step = self.steps%max_steps
+        step = self.steps%max_steps if self.steps>=0 else self.steps
         offset = 20
         scaled_offset = offset * 1. / 3000
         # move the checkerboard back and foreward
         if step<0:
             pass
-        if step<50:
+        elif step<40:
             self.center += np.array([scaled_offset, 0, 0])
         elif step<135:
             self.center -= np.array([scaled_offset, 0, 0])
@@ -520,7 +520,7 @@ class CheckerboardObj(WorldObj):
 
 
 
-        self.steps+=1
+        self.steps+=2
         """
         # Move the checkerboard in place
         if self.time < 9:
