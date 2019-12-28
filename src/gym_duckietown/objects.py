@@ -441,7 +441,8 @@ class CheckerboardObj(WorldObj):
         self.wiggle = np.pi / self.wiggle
 
         self.time = 0
-        self.steps = -20
+        #increase this paramter to delay the intrinsic calibration
+        self.steps = -30
     def check_collision(self, agent_corners, agent_norm):
         """
         See if the agent collided with this object
@@ -468,12 +469,6 @@ class CheckerboardObj(WorldObj):
         """
         Use a motion model to move the object in the world
         """
-
-        # DEFAULT_FRAMERATE = 30
-        # delta_time = 1.0 / DEFAULT_FRAMERATE (seconds)
-
-        # print("stepping duckie")
-        # print("current pos:", self.pos)
 
         self.time += delta_time
         max_steps = 1000
@@ -518,109 +513,8 @@ class CheckerboardObj(WorldObj):
         elif step<410:
             self.center += np.array([scaled_offset, 0, 0])
 
-
-
         self.steps+=2
-        """
-        # Move the checkerboard in place
-        if self.time < 9:
-            fast_time = self.time * 10
-            x = np.sin(fast_time)
-            z = np.cos(fast_time)
-            self.center += 0.002 * np.array([x, 0, z])
-
-        # Move left and right
-        elif self.time < 10:
-            self.center = self.start
-        elif self.time < 20:
-            remaining = 20 - self.time
-            offset = 5 - remaining
-            scaled_offset = offset * 1. / 1600
-            self.center += np.array([0, 0, scaled_offset])
-        elif self.time < 30:
-            remaining = 30 - self.time
-            offset = 5 - remaining
-            scaled_offset = offset * 1. / 1600
-            self.center -= np.array([0, 0, scaled_offset])
-
-        # Turn left and right
-        elif self.time < 35:
-            self.y_rot += 0.05 * (self.time - 30)
-        elif self.time < 45:
-            self.y_rot -= 0.05 * (self.time - 35)
-        elif self.time < 50:
-            self.y_rot += 0.05 * (self.time - 45)
-        
-        # Turn in x
-        elif self.time < 55:
-            self.x_rot += 0.005 * (self.time - 30)
-        elif self.time < 65:
-            self.x_rot -= 0.005 * (self.time - 35)
-        elif self.time < 70:
-            self.x_rot += 0.005 * (self.time - 45)
-
-        # Turn in z
-        elif self.time < 75:
-            self.z_rot += 0.001 * (self.time - 30)
-        elif self.time < 85:
-            self.z_rot -= 0.001 * (self.time - 35)
-        elif self.time < 90:
-            self.z_rot += 0.001 * (self.time - 45)
-        
-        # Move back and forward
-        elif self.time < 90:
-            remaining = 90 - self.time
-            offset = 5 - remaining
-            scaled_offset = offset * 1. / 3000
-            self.center += np.array([scaled_offset, 0, 0])
-        elif self.time < 100:
-            remaining = 100 - self.time
-            offset = 5 - remaining
-            scaled_offset = offset * 1. / 3000
-            self.center -= np.array([scaled_offset, 0, 0])
-        """
         self.pos = self.center
-
-        # angle_delta = fast_time * 0.9
-        # self.y_rot = angle_delta * (180 / np.pi)
-        # self.x_rot = angle_delta * (180 / np.pi)
-        # self.z_rot = angle_delta * (180 / np.pi)
-
-
-        # vel_adjust = self.heading * self.vel
-
-        # self.center += vel_adjust
-
-
-        # angle_delta = self.wiggle * math.sin(48 * self.time)
-        # self.y_rot = (self.angle + angle_delta) * (180 / np.pi)
-
-
-
-        # We'll move it in a circle to begin with
-
-        # If not walking, no need to do anything
-        # if not self.pedestrian_active:
-        #     self.pedestrian_wait_time -= delta_time
-        #     if self.pedestrian_wait_time <= 0:
-        #         self.pedestrian_active = True
-        #     return
-
-        # # Update centers and bounding box
-        # vel_adjust = self.heading * self.vel
-        # self.center += vel_adjust
-        # self.obj_corners += vel_adjust[[0, -1]]
-
-        # distance = np.linalg.norm(self.center - self.start)
-
-        # if distance > self.walk_distance:
-        #     self.finish_walk()
-
-        # self.pos = self.center
-        # angle_delta = self.wiggle * math.sin(48 * self.time)
-        # self.y_rot = (self.angle + angle_delta) * (180 / np.pi)
-        # self.obj_norm = generate_norm(self.obj_corners)
-        # print("now at pos", self.pos)
 
     def finish_walk(self):
         """
