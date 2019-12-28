@@ -433,6 +433,7 @@ class CheckerboardObj(WorldObj):
         # # Movement parameters
         self.heading = heading_vec(self.angle)
         self.start = np.copy(self.pos)
+        self.reset_start = np.copy(self.pos)
         self.center = self.pos
         self.pedestrian_active = False
 
@@ -442,7 +443,7 @@ class CheckerboardObj(WorldObj):
 
         self.time = 0
         #increase this paramter to delay the intrinsic calibration
-        self.steps = -30
+        self.steps = -20
     def check_collision(self, agent_corners, agent_norm):
         """
         See if the agent collided with this object
@@ -471,10 +472,10 @@ class CheckerboardObj(WorldObj):
         """
 
         self.time += delta_time
-        max_steps = 1000
-        step = self.steps%max_steps if self.steps>=0 else self.steps
+        step = self.steps#%max_steps if self.steps>=0 else self.steps
         offset = 20
         scaled_offset = offset * 1. / 3000
+        move = True
         # move the checkerboard back and foreward
         if step<0:
             pass
@@ -510,10 +511,16 @@ class CheckerboardObj(WorldObj):
             self.center += np.array([0, scaled_offset, 0])
         
         # move backward
-        elif step<410:
+        elif step<420:
             self.center += np.array([scaled_offset, 0, 0])
-
-        self.steps+=2
+        
+        # reset to initial position
+        else:
+            self.center = np.copy(self.reset_start)
+            self.steps = -20
+            move = False
+        if move:
+            self.steps+=2
         self.pos = self.center
 
     def finish_walk(self):
