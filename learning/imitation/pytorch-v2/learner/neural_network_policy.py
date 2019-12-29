@@ -129,7 +129,7 @@ class NeuralNetworkPolicy:
         return prediction
 
     def save(self):
-        torch.save(self.model.state_dict(), self.storage_location + 'model.pt')
+        torch.save(self.model.state_dict(), os.path.join(self.storage_location , 'model.pt'))
 
     def _transform(self, observations, expert_actions):
         # Resize images

@@ -13,8 +13,8 @@ class DAgger(InteractiveImitationLearning):
         used to return a policy teacher / expert based on random choice and safety checks
     """
 
-    def __init__(self, env, teacher, learner, horizon, episodes, alpha=0.5):
-        InteractiveImitationLearning.__init__(self, env, teacher, learner, horizon, episodes)
+    def __init__(self, env, teacher, learner, horizon, episodes, alpha=0.5, test=False):
+        InteractiveImitationLearning.__init__(self, env, teacher, learner, horizon, episodes, test)
         # expert decay
         self.p = alpha
         self.alpha = self.p
