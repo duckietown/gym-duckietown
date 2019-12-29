@@ -9,7 +9,7 @@ class InteractiveImitationLearning:
     train(samples, debug)
         start training imitation learning
     """
-    def __init__(self, env, teacher, learner, horizon, episodes):
+    def __init__(self, env, teacher, learner, horizon, episodes, test=False):
         """
         Parameters
         ----------
@@ -28,6 +28,7 @@ class InteractiveImitationLearning:
         self.environment = env
         self.teacher = teacher
         self.learner = learner
+        self.test = test
 
         # from IIL
         self._horizon = horizon
@@ -99,6 +100,8 @@ class InteractiveImitationLearning:
         self._query_expert(control_policy, control_action,observation)
 
         self.active_policy = control_policy == self.teacher
+        if self.test:
+            return self.learner_action
 
         return control_action
 
@@ -125,13 +128,16 @@ class InteractiveImitationLearning:
         raise NotImplementedError()
 
     def _aggregate(self, observation, action):
-        self._observations.append(observation)
-        self._expert_actions.append(action)
+        if not(self.test):
+            self._observations.append(observation)
+            self._expert_actions.append(action)
 
     def _optimize(self):
-        self.learner.optimize(
-            self._observations, self._expert_actions, self._episode)
-        self.learner.save()
+        if not(self.test):
+            self.learner.optimize(
+                self._observations, self._expert_actions, self._episode)
+            print('saving model')
+            self.learner.save()
 
     # TRAINING EVENTS
 
