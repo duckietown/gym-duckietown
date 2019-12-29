@@ -120,7 +120,7 @@ class Squeezenet(nn.Module):
         else:
             v_tensor = output[:,0].unsqueeze(1)
             omega = output[:,1].unsqueeze(1) * self.max_steering
-        output = torch.cat((v_tensor, omega), 1)
+        output = torch.cat((v_tensor, omega), 1).squeeze().detach()
         return output
 
 if __name__ == '__main__':
