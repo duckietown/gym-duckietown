@@ -20,7 +20,7 @@ This technique of random mixing would help the model learn a more general trajec
 
 4) Start training:
 
-    $ python -m learning.imitation.pytorch-v2.train
+    $ python -m learning.imitation.iil-dagger.train
 
 5) Test the trained agent specifying the saved model:
 
