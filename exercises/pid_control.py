@@ -39,18 +39,19 @@ while True:
     angle_from_straight_in_rads = lane_pose.angle_rad
 
     ###### Start changing the code here.
-    # TODO: Decide how to calculate the speed and direction.
 
-    k_p = 10
-    k_d = 1
+
+    # TODO: Decide how to calculate the speed and direction.
     
     # The speed is a value between [0, 1] (which corresponds to a real speed between 0m/s and 1.2m/s)
     
-    speed = 0.2 # TODO: You should overwrite this value
-    
-    # angle of the steering wheel, which corresponds to the angular velocity in rad/s
-    steering = k_p*distance_to_road_center + k_d*angle_from_straight_in_rads # TODO: You should overwrite this value
+    speed = 0.1 # TODO: You should overwrite this value
+    steering = 0.2 # TODO: You should overwrite this value
 
+
+
+
+    
     ###### No need to edit code below.
     
     obs, reward, done, info = env.step([speed, steering])

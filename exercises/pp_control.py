@@ -44,9 +44,7 @@ while True:
 
         iterations = 0
         
-        lookup_distance = 0.25
-        multiplier = 0.5
-        curve_point = None
+        lookup_distance = 0.1 # TODO: might want to change this
         
         while iterations < 10:            
             ########
@@ -54,29 +52,18 @@ while True:
             #TODO 1: Modify follow_point so that it is a function of closest_point, closest_tangent, and lookup_distance
             #
             ########
-            follow_point = closest_point + closest_tangent * lookup_distance
+            follow_point = closest_point
+
+            # Now test if the follow point is more than the lookup_distance
             
-            curve_point, _ = closest_curve_point(follow_point, angle)
-            
-            # If we have a valid point on the curve, stop
-            if curve_point is not None:
-                break
-            iterations += 1
-            lookup_distance *= multiplier
         ########
         #
-        #TODO 2: Modify omega
+        #TODO 2: Modify omega using the equation
         #
         ########
-        L = curve_point - pos
-        cos = np.cos(angle)
-        sin = np.sin(angle)
-        rot = np.array([[cos, -sin], [sin, cos]])
-        L_r = np.dot([L[2], L[0]], rot)
-        direction = np.arctan2(L_r[0] / np.linalg.norm(L_r), L_r[1] / np.linalg.norm(L_r))
         
         speed = 0.5
-        steering = -2 * speed * np.sin(direction) / np.linalg.norm(L)
+        steering = 0.5
 
         obs, reward, done, info = env.step([speed, steering])
 
