@@ -1,12 +1,16 @@
+# NOTE: This script should be run from the blender interface, otherwise the bpy module will not be available
+# Moreover, blender should be opened from the same place as this script is located
+
 import bpy
 import pathlib
 import os
 
 from mathutils import Vector
 
-debug = True
+debug = False
 standard_size = 1
 
+# List collected from existing maps
 scale_list = {
     "duckiebot": 0.12,
     "duckie": 0.06,
@@ -22,7 +26,7 @@ scale_list = {
 }
 
 # Use cycles renderer
-#bpy.context.scene.render.engine = 'CYCLES' # TODO uncomment
+bpy.context.scene.render.engine = 'CYCLES'
 
 # We should run this in the meshes directory (i.e. start blender from here in the command line)
 obj_root = pathlib.Path('./meshes/')
@@ -40,22 +44,10 @@ bpy.context.scene.render.image_settings.color_mode ='RGBA'
 bpy.ops.object.select_all(action='DESELECT')
 render = bpy.context.scene.render
 
-i=0
-
 for obj_fname in sorted(obj_root.glob('*.obj')):
-#obj_fname = 'duckiebot.obj'
-
-    
-    i += 1
-    if ( i != 3):
-        print(f"Skipped {i}")
-        continue
-    
-    # TODO ramorg
     
     # import obj
     bpy.ops.import_scene.obj(filepath=str(obj_fname))
-    print(f"did not skip {i}")
     
     # Create parent hierarchy to resize
     o = bpy.data.objects.new( obj_fname.stem, None )
@@ -98,10 +90,7 @@ for obj_fname in sorted(obj_root.glob('*.obj')):
     newscale = standard_size / gdim
     
     # set oter dimensions scale to that
-    #bpy.context.active_object.scale = (newscale,newscale,newscale)
     bpy.ops.transform.resize(value=(newscale, newscale, newscale))
-    
-    
     
     render.filepath = '//pngs/obj-%s' % obj_fname.stem
     bpy.ops.render.render(write_still=True)
@@ -170,3 +159,5 @@ print("Done !")
     
     # set oter dimensions scale to that
     #bpy.context.active_object.scale = (newscale,newscale,newscale)
+    
+    
