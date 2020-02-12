@@ -26,3 +26,15 @@ This technique of random mixing would help the model learn a more general trajec
 
     $ python -m learning.imitation.pytorch-v2.test --model-path ![path]
 
+
+## Acknowledgement
+- We started from previous work done by Manfred Díaz as a boilerplate and we would like to thank him for his full support with code and answering our questions 
+
+## Authors
+- [Mostafa ElAraby ](https://www.mostafaelaraby.com/) 
+	- [Linkedin](https://linkedin.com/in/mostafaelaraby) 
+-  Ramon Emiliani
+	- [Linkedin](https://www.linkedin.com/in/ramonemiliani) 
+## References
+- Implementation idea and code skeleton based on Diaz Cabrera, Manfred Ramon (2018)Interactive and Uncertainty-aware Imitation Learning: Theory and Applications. Masters thesis, Concordia University.
+
