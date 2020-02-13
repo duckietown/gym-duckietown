@@ -130,6 +130,9 @@ class DuckiebotObj(WorldObj):
         self.robot_width = robot_width
         self.robot_length = robot_length
 
+        # Robot Safety  circle radius
+        self.agent_safety_rad = (max(robot_length, robot_width) / 2) * safety_radius_mult  
+
     # FIXME: this does not follow the same signature as WorldOb
     def step(self, delta_time, closest_curve_point, objects):
         """
@@ -137,8 +140,7 @@ class DuckiebotObj(WorldObj):
         """
 
         # Find the curve point closest to the agent, and the tangent at that point
-        closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
-
+        closest_point, closest_tangent = closest_curve_point(self.pos, self.angle) 
         iterations = 0
         
         lookup_distance = self.follow_dist
@@ -162,6 +164,16 @@ class DuckiebotObj(WorldObj):
 
         dot = np.dot(self.get_right_vec(self.angle), point_vec)
         steering = self.gain * -dot
+
+        # checking for other moving duckiebots to slow down if another bot is moving in front 
+        for obj in objects:
+            if not obj.static and obj.kind == "duckiebot":  
+                if abs(obj.pos[0] - self.pos[0]) <0.12: # to check if this object is on my same lane
+                    collision_penalty =  abs(obj.proximity(self.pos, self.agent_safety_rad))
+                    if collision_penalty > 0 :
+                        # this means we are approaching and we need to slow down
+                        self.velocity *= collision_penalty
+                        break 
 
         self._update_pos([self.velocity, steering], delta_time)
 
