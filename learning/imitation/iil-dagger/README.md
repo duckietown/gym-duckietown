@@ -30,9 +30,9 @@ $ python -m learning.imitation.pytorch-v2.test --model-path ![path]
 
 ## Authors
 - [Mostafa ElAraby ](https://www.mostafaelaraby.com/)
-- [Linkedin](https://linkedin.com/in/mostafaelaraby)
+  - [Linkedin](https://linkedin.com/in/mostafaelaraby)
 - Ramon Emiliani
-- [Linkedin](https://www.linkedin.com/in/ramonemiliani)
+  - [Linkedin](https://www.linkedin.com/in/ramonemiliani)
 
 ## References
 ```
@@ -42,8 +42,7 @@ $ python -m learning.imitation.pytorch-v2.test --model-path ![path]
   year={2018},
   school={Concordia University}
 }
-```
-```
+
 @inproceedings{ross2011reduction,
   title={A reduction of imitation learning and structured prediction to no-regret online learning},
   author={Ross, St{\'e}phane and Gordon, Geoffrey and Bagnell, Drew},
@@ -51,8 +50,7 @@ $ python -m learning.imitation.pytorch-v2.test --model-path ![path]
   pages={627--635},
   year={2011}
 }
-```
-```
+
 @article{iandola2016squeezenet,
   title={SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and< 0.5 MB model size},
   author={Iandola, Forrest N and Han, Song and Moskewicz, Matthew W and Ashraf, Khalid and Dally, William J and Keutzer, Kurt},
