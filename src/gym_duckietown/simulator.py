@@ -376,7 +376,7 @@ class Simulator(gym.Env):
             map_name = np.random.choice(self.map_names)
             self._load_map(map_name)
 
-        self.randomization_settings = self.randomizer.randomize()
+        self.randomization_settings = self.randomizer.randomize(rng=self.np_random)
 
         # Horizon color
         # Note: we explicitly sample white and grey/black because

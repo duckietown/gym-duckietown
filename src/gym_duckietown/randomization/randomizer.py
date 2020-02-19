@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import json
 import numpy as np
 
@@ -17,13 +18,15 @@ class Randomizer:
         with open(get_file_path('randomization/config', default_config_fp, 'json'), mode='r') as f:
             self.default_config = json.load(f)
 
-        self.keys = set(list(self.randomization_config.keys()) + list(self.default_config.keys()))
+        # Sorted list to generate parameters in the same order
+        self.keys = sorted(set(list(self.randomization_config.keys()) + list(self.default_config.keys())))
         
-    def randomize(self):
+    def randomize(self, rng=None):
         """Returns a dictionary of randomized parameters, with key: parameter name and value: randomized
         value
         """
-        randomization_settings = dict()
+        # Use and ordered dict to be sure that the same sequence is always used
+        randomization_settings = OrderedDict()
         
         for k in self.keys:
             setting = None
@@ -38,7 +41,7 @@ class Randomizer:
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
-                    setting = np.random.randint(low=low, high=high, size=size)
+                    setting = rng.randint(low=low, high=high, size=size)
 
                 elif randomization_definition['type'] == 'uniform':
                     try:
@@ -48,7 +51,7 @@ class Randomizer:
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
-                    setting = np.random.uniform(low=low, high=high, size=size)
+                    setting = rng.uniform(low=low, high=high, size=size)
 
                 elif randomization_definition['type'] == 'normal':
                     try:
@@ -58,7 +61,7 @@ class Randomizer:
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
-                    setting = np.random.normal(loc=loc, scale=scale, size=size)
+                    setting = rng.normal(loc=loc, scale=scale, size=size)
 
                 else:
                     raise NotImplementedError("You've specified an unsupported distribution type")
