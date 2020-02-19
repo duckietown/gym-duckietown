@@ -20,7 +20,7 @@ version = get_version(filename='src/gym_duckietown/__init__.py')
 line = 'daffy'
 
 setup(
-        name=f'duckietown-gym-{line}',
+        name=f'gb-duckietown-gym-{line}',
         package_dir={'': 'src'},
         packages=find_packages('src'),
         zip_safe=False,
