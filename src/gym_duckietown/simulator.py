@@ -373,7 +373,7 @@ class Simulator(gym.Env):
         self.speed = 0
 
         if self.randomize_maps_on_reset:
-            map_name = np.random.choice(self.map_names)
+            map_name = self.np_random.choice(self.map_names)
             self._load_map(map_name)
 
         self.randomization_settings = self.randomizer.randomize(rng=self.np_random)
@@ -1478,7 +1478,7 @@ class Simulator(gym.Env):
             gl.glRotatef(self.cam_angle[0], 1, 0, 0)
             gl.glRotatef(self.cam_angle[1], 0, 1, 0)
             gl.glRotatef(self.cam_angle[2], 0, 0, 1)
-            gl.glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+            gl.glTranslatef(0, 0, CAMERA_FORWARD_DIST)  # This fucks up everything
 
         if top_down:
             gl.gluLookAt(

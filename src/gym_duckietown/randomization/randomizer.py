@@ -1,6 +1,4 @@
-from collections import OrderedDict
 import json
-import numpy as np
 
 from ..utils import *
 from .. import logger
@@ -25,8 +23,7 @@ class Randomizer:
         """Returns a dictionary of randomized parameters, with key: parameter name and value: randomized
         value
         """
-        # Use and ordered dict to be sure that the same sequence is always used
-        randomization_settings = OrderedDict()
+        randomization_settings = {}
         
         for k in self.keys:
             setting = None
@@ -52,7 +49,6 @@ class Randomizer:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
                     setting = rng.uniform(low=low, high=high, size=size)
-
                 elif randomization_definition['type'] == 'normal':
                     try:
                         loc = randomization_definition['loc']
@@ -60,7 +56,6 @@ class Randomizer:
                         size = randomization_definition.get('size', 1)
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
-
                     setting = rng.normal(loc=loc, scale=scale, size=size)
 
                 else:
