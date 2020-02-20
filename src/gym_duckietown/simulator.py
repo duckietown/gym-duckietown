@@ -1478,7 +1478,7 @@ class Simulator(gym.Env):
             gl.glRotatef(self.cam_angle[0], 1, 0, 0)
             gl.glRotatef(self.cam_angle[1], 0, 1, 0)
             gl.glRotatef(self.cam_angle[2], 0, 0, 1)
-            gl.glTranslatef(0, 0, CAMERA_FORWARD_DIST)  # This fucks up everything
+            gl.glTranslatef(0, 0, CAMERA_FORWARD_DIST)
 
         if top_down:
             gl.gluLookAt(
