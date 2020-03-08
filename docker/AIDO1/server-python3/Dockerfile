@@ -8,7 +8,7 @@ RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 WORKDIR /gym-duckietown
 
 COPY requirements.resolved .
-COPY requirements.txt .
+COPY requirements.* ./
 RUN pip install -r /gym-duckietown/requirements.txt
 RUN pipdeptree
 
