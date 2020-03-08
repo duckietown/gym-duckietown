@@ -32,16 +32,18 @@ push:
 
 
 build-docker-python3:
+	pur -r requirements.txt -f -m '*' -o requirements.resolved
 	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
 
 build-docker-python3-no-cache:
+	pur -r requirements.txt -f -m '*' -o requirements.resolved
 	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
 
 
 push-docker-python3:
 	docker push $(img3)
 
- 
+
 
 other_deps:
 	apt install x11-apps
