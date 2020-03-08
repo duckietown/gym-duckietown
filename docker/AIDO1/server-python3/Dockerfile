@@ -7,14 +7,20 @@ RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 
 WORKDIR /gym-duckietown
 
+
+COPY requirements.txt .
+RUN pip install -r /gym-duckietown/requirements.txt
+RUN pipdeptree
+
 COPY . .
- 
+
 RUN TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX" \
     TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
     pip install -v -e .
 
 RUN pip list
+RUN pipdeptree
 
 #FROM nvidia/cuda:9.1-runtime-ubuntu16.04
 #
