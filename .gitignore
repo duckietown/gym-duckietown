@@ -8,3 +8,4 @@ bin
 
 trained_models
 dist
+requirements.resolved
