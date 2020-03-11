@@ -1,15 +1,20 @@
 FROM pytorch/pytorch
 
-RUN apt-get update -y && apt-get install -y --no-install-recommends \
-    xvfb freeglut3-dev libglib2.0-dev && rm -rf /var/lib/apt/lists/*
+# we need git for certain dependencies
+RUN apt-get update -y &&\
+    apt-get install -y software-properties-common &&\
+    add-apt-repository ppa:git-core/ppa &&\
+    apt-get update -y &&\
+    apt-get install -y --no-install-recommends \
+        xvfb freeglut3-dev libglib2.0-dev libgtk2.0-dev git &&\
+    rm -rf /var/lib/apt/lists/*
 
 RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 
 WORKDIR /gym-duckietown
 
-COPY requirements.resolved .
-COPY requirements.* ./
-RUN pip install -r /gym-duckietown/requirements.txt
+COPY requirements* ./
+RUN pip install -r requirements.txt
 RUN pipdeptree
 
 COPY . .
@@ -19,7 +24,6 @@ RUN TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
     pip install -v -e .
 
-RUN pip list
 RUN pipdeptree
 
 #FROM nvidia/cuda:9.1-runtime-ubuntu16.04

@@ -28,9 +28,6 @@ push:
 	$(MAKE) push-docker-python3
 
 
-
-
-
 build-docker-python3:
 	pur -r requirements.txt -f -m '*' -o requirements.resolved
 	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
@@ -53,6 +50,6 @@ bump-upload:
 	git push --tags
 	git push --all
 	rm -f dist/*
-	rm -rf lib/*.egg-info
+	rm -rf src/*.egg-info
 	python setup.py sdist
 	twine upload dist/*
