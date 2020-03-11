@@ -147,9 +147,11 @@ class DuckiebotObj(WorldObj):
 
         # Find the curve point closest to the agent, and the tangent at that point
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
+        if closest_point is None or closest_tangent is None:
+            msg = f'Cannot find closest point/tangent from {self.pos}, {self.angle} '
+            raise Exception(msg)
 
         iterations = 0
-
         lookup_distance = self.follow_dist
         curve_point = None
         while iterations < self.max_iterations:
@@ -169,20 +171,11 @@ class DuckiebotObj(WorldObj):
         point_vec = curve_point - self.pos
         point_vec /= np.linalg.norm(point_vec)
 
-        dot = np.dot(self.get_right_vec(self.angle), point_vec)
+        dot = np.dot(get_right_vec(self.angle), point_vec)
         steering = self.gain * -dot
 
         self._update_pos([self.velocity, steering], delta_time)
 
-    def get_dir_vec(self, angle):
-        x = math.cos(angle)
-        z = -math.sin(angle)
-        return np.array([x, 0, z])
-
-    def get_right_vec(self, angle):
-        x = math.sin(angle)
-        z = math.cos(angle)
-        return np.array([x, 0, z])
 
     def check_collision(self, agent_corners, agent_norm):
         """
@@ -230,7 +223,7 @@ class DuckiebotObj(WorldObj):
 
         # If the wheel velocities are the same, then there is no rotation
         if u_l_limited == u_r_limited:
-            self.pos = self.pos + deltaTime * u_l_limited * self.get_dir_vec(self.angle)
+            self.pos = self.pos + deltaTime * u_l_limited * get_dir_vec(self.angle)
             return
 
         # Compute the angular rotation velocity about the ICC (center of curvature)
@@ -243,7 +236,7 @@ class DuckiebotObj(WorldObj):
         rotAngle = w * deltaTime
 
         # Rotate the robot's position around the center of rotation
-        r_vec = self.get_right_vec(self.angle)
+        r_vec = get_right_vec(self.angle)
         px, py, pz = self.pos
         cx = px + r * r_vec[0]
         cz = pz + r * r_vec[2]
@@ -261,8 +254,8 @@ class DuckiebotObj(WorldObj):
             self.pos,
             self.robot_width,
             self.robot_length,
-            self.get_dir_vec(self.angle),
-            self.get_right_vec(self.angle)
+            get_dir_vec(self.angle),
+            get_right_vec(self.angle)
         )
 
 
@@ -485,7 +478,7 @@ class CheckerboardObj(WorldObj):
             self.center -= np.array([scaled_offset, 0, 0])
         elif step<170:
             self.center += np.array([scaled_offset, 0, 0])
-        
+
         # Move left and right
         elif step<200:
             self.center += np.array([0, 0, scaled_offset])
@@ -493,27 +486,27 @@ class CheckerboardObj(WorldObj):
             self.center -= np.array([0, 0, scaled_offset])
         elif step<290:
             self.center += np.array([0, 0, scaled_offset])
-        
+
         # Move up and down
         elif step<310:
             self.center += np.array([0, scaled_offset, 0])
         elif step<330:
             self.center -= np.array([0, scaled_offset, 0])
-        
+
         # move forward
         elif step<355:
             self.center -= np.array([scaled_offset, 0, 0])
-        
+
         # repeat move up and down
         elif step<370:
             self.center -= np.array([0, scaled_offset, 0])
         elif step<385:
             self.center += np.array([0, scaled_offset, 0])
-        
+
         # move backward
         elif step<420:
             self.center += np.array([scaled_offset, 0, 0])
-        
+
         # reset to initial position
         else:
             self.center = np.copy(self.reset_start)
@@ -541,3 +534,15 @@ class CheckerboardObj(WorldObj):
             # Just give it the negative of its current velocity
             self.vel *= -1
             self.pedestrian_wait_time = 8
+
+
+
+def get_dir_vec(angle: float) -> np.ndarray:
+    x = math.cos(angle)
+    z = -math.sin(angle)
+    return np.array([x, 0, z])
+
+def get_right_vec(angle: float) -> np.ndarray:
+    x = math.sin(angle)
+    z = math.cos(angle)
+    return np.array([x, 0, z])

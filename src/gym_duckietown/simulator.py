@@ -4,7 +4,7 @@ from __future__ import division
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 import geometry
 
 from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
@@ -777,12 +777,12 @@ class Simulator(gym.Env):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
 
-    def _set_tile(self, i, j, tile):
+    def _set_tile(self, i: int, j: int, tile: dict) -> None:
         assert i >= 0 and i < self.grid_width
         assert j >= 0 and j < self.grid_height
         self.grid[j * self.grid_width + i] = tile
 
-    def _get_tile(self, i, j):
+    def _get_tile(self, i: int, j: int) -> Optional[dict]:
         """
             Returns None if the duckiebot is not in a tile.
         """
@@ -861,7 +861,7 @@ class Simulator(gym.Env):
         # Only add it if one of the vertices is on a drivable tile
         return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
 
-    def get_grid_coords(self, abs_pos):
+    def get_grid_coords(self, abs_pos: np.array) -> Tuple[int, int]:
         """
         Compute the tile indices (i,j) for a given (x,_,z) world position
 
@@ -1039,29 +1039,29 @@ class Simulator(gym.Env):
 
         return pts
 
-    def get_dir_vec(self, angle=None):
+    def get_dir_vec(self, angle: float=None) -> np.array:
         """
         Vector pointing in the direction the agent is looking
         """
-        if angle == None:
+        if angle is None:
             angle = self.cur_angle
 
         x = math.cos(angle)
         z = -math.sin(angle)
         return np.array([x, 0, z])
 
-    def get_right_vec(self, angle=None):
+    def get_right_vec(self, angle: float=None) -> np.array:
         """
         Vector pointing to the right of the agent
         """
-        if angle == None:
+        if angle is None:
             angle = self.cur_angle
 
         x = math.sin(angle)
         z = math.cos(angle)
         return np.array([x, 0, z])
 
-    def closest_curve_point(self, pos, angle=None):
+    def closest_curve_point(self, pos, angle=None) -> Tuple[Optional[object], Optional[object]]:
         """
             Get the closest point on the curve to a given point
             Also returns the tangent at that point.
@@ -1103,7 +1103,7 @@ class Simulator(gym.Env):
         # Get the closest point along the right lane's Bezier curve,
         # and the tangent at that point
         point, tangent = self.closest_curve_point(pos, angle)
-        if point is None:
+        if point is None or tangent is None:
             msg = 'Point not in lane: %s' % pos
             raise NotInLane(msg)
 
@@ -1134,7 +1134,7 @@ class Simulator(gym.Env):
         return LanePosition(dist=signedDist, dot_dir=dotDir, angle_deg=angle_deg,
                             angle_rad=angle_rad)
 
-    def _drivable_pos(self, pos):
+    def _drivable_pos(self, pos) -> bool:
         """
         Check that the given (x,y,z) position is on a drivable tile
         """
@@ -1267,7 +1267,7 @@ class Simulator(gym.Env):
 
         return res
 
-    def update_physics(self, action, delta_time=None):
+    def update_physics(self, action, delta_time: float =None):
         #print("updating physics")
         if delta_time is None:
             delta_time = self.delta_time
