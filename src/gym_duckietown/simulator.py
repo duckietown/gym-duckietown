@@ -29,7 +29,7 @@ from gym.utils import seeding
 
 from .collision import *
 # Objects utility code
-from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj
+from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj, CheckerboardObj
 # Graphics utility code
 from .objmesh import *
 # Randomization code
@@ -707,6 +707,8 @@ class Simulator(gym.Env):
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
             static = desc.get('static', True)
+            #static = desc.get('static', False)
+            print('static is now', static)
 
             obj_desc = {
                 'kind': kind,
@@ -730,6 +732,8 @@ class Simulator(gym.Env):
                                        ROBOT_WIDTH, ROBOT_LENGTH)
                 elif kind == "duckie":
                     obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
+                elif kind == "checkerboard":
+                    obj = CheckerboardObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
                 else:
                     msg = 'I do not know what object this is: %s' % kind
                     raise Exception(msg)
@@ -1264,6 +1268,7 @@ class Simulator(gym.Env):
         return res
 
     def update_physics(self, action, delta_time=None):
+        #print("updating physics")
         if delta_time is None:
             delta_time = self.delta_time
         self.wheelVels = action * self.robot_speed * 1
@@ -1292,6 +1297,7 @@ class Simulator(gym.Env):
 
                 obj.step(delta_time, self.closest_curve_point, same_tile_obj)
             else:
+                #print("stepping all objects")
                 obj.step(delta_time)
 
     def get_agent_info(self):
