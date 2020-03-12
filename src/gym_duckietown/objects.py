@@ -1,13 +1,26 @@
 # coding=utf-8
-from .collision import *
-from .graphics import load_texture
+import math
+from typing import Tuple
+
+from pyglet import gl
+
+import numpy as np
+
+from .collision import (agent_boundbox, calculate_safety_radius, generate_corners, generate_norm, heading_vec,
+                        intersects_single_obj)
+from .graphics import load_texture, rotate_point
 from .utils import get_file_path
 
 
-
-
 class WorldObj:
-    def __init__(self, obj, domain_rand, safety_radius_mult):
+    visible: bool
+    color: Tuple[float, float, float]
+    safety_radius_mult: float
+
+    obj_corners: np.array
+    obj_norm: np.array
+
+    def __init__(self, obj, domain_rand: bool, safety_radius_mult: float):
         """
         Initializes the object and its properties
         """
@@ -18,22 +31,20 @@ class WorldObj:
         self.color = (0, 0, 0)
         # maybe have an abstract method is_visible, get_color()
 
-
         self.process_obj_dict(obj, safety_radius_mult)
 
         self.domain_rand = domain_rand
         self.angle = self.y_rot * (math.pi / 180)
 
-        self.generate_geometry()
-
-        self.x_rot = 0 # Niki-added
-        self.z_rot = 0 # Niki-added
-
-    def generate_geometry(self):
-        # Find corners and normal vectors assoc w. object
+        #  Find corners and normal vectors assoc w. object
         self.obj_corners = generate_corners(self.pos,
-            self.min_coords, self.max_coords, self.angle, self.scale)
+                                            self.min_coords, self.max_coords, self.angle, self.scale)
         self.obj_norm = generate_norm(self.obj_corners)
+
+        self.x_rot = 0  # Niki-added
+        self.z_rot = 0  # Niki-added
+
+
 
     def process_obj_dict(self, obj, safety_radius_mult):
         self.kind = obj['kind']
@@ -45,9 +56,8 @@ class WorldObj:
         self.min_coords = obj['mesh'].min_coords
         self.max_coords = obj['mesh'].max_coords
         self.static = obj['static']
-        self.safety_radius = safety_radius_mult *\
-            calculate_safety_radius(self.mesh, self.scale)
-
+        self.safety_radius = safety_radius_mult * \
+                             calculate_safety_radius(self.mesh, self.scale)
 
     def render(self, draw_bbox):
         """
@@ -55,8 +65,6 @@ class WorldObj:
         """
         if not self.visible:
             return
-
-        from pyglet import gl
 
         # Draw the bounding box
         if draw_bbox:
@@ -71,9 +79,9 @@ class WorldObj:
         gl.glPushMatrix()
         gl.glTranslatef(*self.pos)
         gl.glScalef(self.scale, self.scale, self.scale)
-        gl.glRotatef(self.x_rot, 1, 0, 0) # Niki-added
+        gl.glRotatef(self.x_rot, 1, 0, 0)  # Niki-added
         gl.glRotatef(self.y_rot, 0, 1, 0)
-        gl.glRotatef(self.z_rot, 0, 0, 1) # Niki-added
+        gl.glRotatef(self.z_rot, 0, 0, 1)  # Niki-added
         gl.glColor3f(*self.color)
         self.mesh.render()
         gl.glPopMatrix()
@@ -175,7 +183,6 @@ class DuckiebotObj(WorldObj):
         steering = self.gain * -dot
 
         self._update_pos([self.velocity, steering], delta_time)
-
 
     def check_collision(self, agent_corners, agent_norm):
         """
@@ -337,7 +344,7 @@ class DuckieObj(WorldObj):
         angle_delta = self.wiggle * math.sin(48 * self.time)
         self.y_rot = (self.angle + angle_delta) * (180 / np.pi)
         self.obj_norm = generate_norm(self.obj_corners)
-        print("now at pos", self.pos)
+        # print("now at pos", self.pos)
 
     def finish_walk(self):
         """
@@ -380,7 +387,7 @@ class TrafficLightObj(WorldObj):
         # Use the selected pattern
         self.mesh.textures[0] = self.texs[self.pattern]
 
-    def step(self, delta_time):
+    def step(self, delta_time: float) -> None:
         """
         Changes the light color periodically
         """
@@ -435,8 +442,9 @@ class CheckerboardObj(WorldObj):
         self.wiggle = np.pi / self.wiggle
 
         self.time = 0
-        #increase this paramter to delay the intrinsic calibration
+        # increase this paramter to delay the intrinsic calibration
         self.steps = -20
+
     def check_collision(self, agent_corners, agent_norm):
         """
         See if the agent collided with this object
@@ -465,46 +473,46 @@ class CheckerboardObj(WorldObj):
         """
 
         self.time += delta_time
-        step = self.steps#%max_steps if self.steps>=0 else self.steps
+        step = self.steps  # %max_steps if self.steps>=0 else self.steps
         offset = 20
         scaled_offset = offset * 1. / 3000
         move = True
         # move the checkerboard back and foreward
-        if step<0:
+        if step < 0:
             pass
-        elif step<40:
+        elif step < 40:
             self.center += np.array([scaled_offset, 0, 0])
-        elif step<135:
+        elif step < 135:
             self.center -= np.array([scaled_offset, 0, 0])
-        elif step<170:
+        elif step < 170:
             self.center += np.array([scaled_offset, 0, 0])
 
         # Move left and right
-        elif step<200:
+        elif step < 200:
             self.center += np.array([0, 0, scaled_offset])
-        elif step<260:
+        elif step < 260:
             self.center -= np.array([0, 0, scaled_offset])
-        elif step<290:
+        elif step < 290:
             self.center += np.array([0, 0, scaled_offset])
 
         # Move up and down
-        elif step<310:
+        elif step < 310:
             self.center += np.array([0, scaled_offset, 0])
-        elif step<330:
+        elif step < 330:
             self.center -= np.array([0, scaled_offset, 0])
 
         # move forward
-        elif step<355:
+        elif step < 355:
             self.center -= np.array([scaled_offset, 0, 0])
 
         # repeat move up and down
-        elif step<370:
+        elif step < 370:
             self.center -= np.array([0, scaled_offset, 0])
-        elif step<385:
+        elif step < 385:
             self.center += np.array([0, scaled_offset, 0])
 
         # move backward
-        elif step<420:
+        elif step < 420:
             self.center += np.array([scaled_offset, 0, 0])
 
         # reset to initial position
@@ -513,7 +521,7 @@ class CheckerboardObj(WorldObj):
             self.steps = -20
             move = False
         if move:
-            self.steps+=2
+            self.steps += 2
         self.pos = self.center
 
     def finish_walk(self):
@@ -536,11 +544,11 @@ class CheckerboardObj(WorldObj):
             self.pedestrian_wait_time = 8
 
 
-
 def get_dir_vec(angle: float) -> np.ndarray:
     x = math.cos(angle)
     z = -math.sin(angle)
     return np.array([x, 0, z])
+
 
 def get_right_vec(angle: float) -> np.ndarray:
     x = math.sin(angle)

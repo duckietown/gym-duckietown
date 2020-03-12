@@ -2,6 +2,8 @@ import numpy as np
 
 
 # parameters for the pure pursuit controller
+from gym_duckietown.simulator import get_right_vec
+
 POSITION_THRESHOLD = 0.04
 REF_VELOCITY = 0.8
 GAIN = 10
@@ -40,7 +42,7 @@ class PurePursuitExpert:
         point_vec = curve_point - self.env.cur_pos
         point_vec /= np.linalg.norm(point_vec)
 
-        dot = np.dot(self.env.get_right_vec(), point_vec)
+        dot = np.dot(get_right_vec(self.env.cur_angle), point_vec)
         steering = GAIN * -dot
 
         return self.ref_velocity, steering

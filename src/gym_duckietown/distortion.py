@@ -6,7 +6,7 @@ import numpy as np
 import carnivalmirror as cm
 
 
-class Distortion(object):
+class Distortion:
     def __init__(self, camera_rand=False):
         # Image size
         self.H = 480
