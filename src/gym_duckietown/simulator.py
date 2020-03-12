@@ -2,6 +2,7 @@
 from __future__ import division
 
 import math
+import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
@@ -9,17 +10,19 @@ from typing import cast, List, NewType, Optional, Tuple
 
 import gym
 import numpy as np
+import pyglet
 import yaml
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
-from pyglet import gl
+from pyglet import gl, image, window
 
 import geometry
 from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from . import logger
 from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, intersects, safety_circle_intersection,
                         safety_circle_overlap, tile_corners)
+from .distortion import Distortion
 from .graphics import (bezier_closest, bezier_draw, bezier_point, bezier_tangent, create_frame_buffers, gen_rot_matrix,
                        Texture)
 from .objects import (CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj)
@@ -58,8 +61,10 @@ BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
 # Color meant to approximate interior walls
 WALL_COLOR = np.array([0.64, 0.71, 0.28])
 
+# np.array([0.15, 0.15, 0.15])
+GREEN = (1.0, 0, 0)
 # Ground/floor color
-GROUND_COLOR = np.array([0.15, 0.15, 0.15])
+GROUND_COLOR = GREEN
 
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 19.15
@@ -271,7 +276,6 @@ class Simulator(gym.Env):
         # Window for displaying the environment to humans
         self.window = None
 
-        import pyglet
         # Invisible window to render into (shadow OpenGL context)
         self.shadow_window = pyglet.window.Window(width=1,
                                                   height=1,
@@ -319,7 +323,7 @@ class Simulator(gym.Env):
         if not draw_bbox and distortion:
             if distortion:
                 self.camera_rand = camera_rand
-                from .distortion import Distortion
+
                 self.camera_model = Distortion(camera_rand=self.camera_rand)
 
         # Used by the UndistortWrapper, always initialized to False
@@ -334,7 +338,6 @@ class Simulator(gym.Env):
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
         if self.randomize_maps_on_reset:
-            import os
             self.map_names = os.listdir('maps')
             self.map_names = [mapfile.replace('.yaml', '') for mapfile in self.map_names]
 
@@ -345,7 +348,7 @@ class Simulator(gym.Env):
         self.wheelVels = np.array([0, 0])
 
     def _init_vlists(self):
-        import pyglet
+
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
         # rotate the tiles about their center
@@ -463,7 +466,7 @@ class Simulator(gym.Env):
             c = self._perturb([c, c, c], 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
-        import pyglet
+
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors))
 
         # Randomize tile parameters
@@ -1420,8 +1423,8 @@ class Simulator(gym.Env):
             done_code = 'in-progress'
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
-    def _render_img(self, width, height, multi_fbo,
-                    final_fbo, img_array, top_down=True):
+    def _render_img(self, width: int, height: int, multi_fbo,
+                    final_fbo, img_array, top_down=True) -> np.array:
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1435,7 +1438,6 @@ class Simulator(gym.Env):
         # pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
-        from pyglet import gl
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
@@ -1652,6 +1654,7 @@ class Simulator(gym.Env):
         """
         Render the environment for human viewing
         """
+        assert mode in ['human', 'top_down', 'free_cam', 'rgb_array']
 
         if close:
             if self.window:
@@ -1675,8 +1678,6 @@ class Simulator(gym.Env):
 
         if mode == 'rgb_array':
             return img
-
-        from pyglet import gl, window, image
 
         if self.window is None:
             config = gl.Config(double_buffer=False)
