@@ -140,7 +140,7 @@ class DuckiebotObj(WorldObj):
         self.limit = limit
 
     # FIXME: this does not follow the same signature as WorldOb
-    def step(self, delta_time, closest_curve_point, objects):
+    def step_duckiebot(self, delta_time, closest_curve_point, objects):
         """
         Take a step, implemented as a PID controller
         """

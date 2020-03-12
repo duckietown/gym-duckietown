@@ -1288,14 +1288,15 @@ class Simulator(gym.Env):
 
         # Update world objects
         for obj in self.objects:
-            if not obj.static and obj.kind == "duckiebot":
-                obj_i, obj_j = self.get_grid_coords(obj.pos)
-                same_tile_obj = [
-                    o for o in self.objects if
-                    tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
-                ]
+            if obj.kind == "duckiebot":
+                if not obj.static:
+                    obj_i, obj_j = self.get_grid_coords(obj.pos)
+                    same_tile_obj = [
+                        o for o in self.objects if
+                        tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
+                    ]
 
-                obj.step(delta_time, self.closest_curve_point, same_tile_obj)
+                    obj.step_duckiebot(delta_time, self.closest_curve_point, same_tile_obj)
             else:
                 #print("stepping all objects")
                 obj.step(delta_time)
