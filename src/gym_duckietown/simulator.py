@@ -4,9 +4,9 @@ from __future__ import division
 import math
 import os
 from collections import namedtuple
-from ctypes import POINTER
+from ctypes import POINTER, byref
 from dataclasses import dataclass
-from typing import cast, List, NewType, Optional, Tuple
+from typing import cast, List, NewType, Optional, Sequence, Tuple
 
 import gym
 import numpy as np
@@ -24,7 +24,7 @@ from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, int
                         safety_circle_overlap, tile_corners)
 from .distortion import Distortion
 from .graphics import (bezier_closest, bezier_draw, bezier_point, bezier_tangent, create_frame_buffers, gen_rot_matrix,
-                       Texture)
+                       Texture, load_texture)
 from .objects import (CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj)
 from .objmesh import ObjMesh
 from .randomization import Randomizer
@@ -62,9 +62,9 @@ BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
 WALL_COLOR = np.array([0.64, 0.71, 0.28])
 
 # np.array([0.15, 0.15, 0.15])
-GREEN = (1.0, 0, 0)
+GREEN = (0.0, 1.0, 0.0)
 # Ground/floor color
-GROUND_COLOR = GREEN
+
 
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 19.15
@@ -187,6 +187,8 @@ class Simulator(gym.Env):
         dynamics_rand=False,
         camera_rand=False,
         randomize_maps_on_reset=False,
+        num_tris_distractors: int = 12,
+        color_ground: Sequence[int] = (0.15, 0.15, 0.15)
     ):
         """
 
@@ -212,6 +214,8 @@ class Simulator(gym.Env):
         # first initialize the RNG
         self.seed_value = seed
         self.seed(seed=self.seed_value)
+        self.num_tris_distractors = num_tris_distractors
+        self.color_ground = color_ground
 
         # If true, then we publish all transparency information
         self.full_transparency = full_transparency
@@ -430,7 +434,7 @@ class Simulator(gym.Env):
         gl.glEnable(gl.GL_COLOR_MATERIAL)
 
         # Ground color
-        self.ground_color = self._perturb(GROUND_COLOR, 0.3)
+        self.ground_color = self._perturb(np.array(self.color_ground), 0.3)
 
         # Distance between the robot's wheels
         self.wheel_dist = self._perturb(WHEEL_DIST)
@@ -457,7 +461,7 @@ class Simulator(gym.Env):
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
-        numTris = 12
+        numTris = self.num_tris_distractors
         verts = []
         colors = []
         for _ in range(0, 3 * numTris):
@@ -1510,6 +1514,7 @@ class Simulator(gym.Env):
                 0, 1.0, 0.0
             )
 
+        self.render_skybox()
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glColor3f(*self.ground_color)
@@ -1735,6 +1740,9 @@ class Simulator(gym.Env):
         # Force execution of queued commands
         gl.glFlush()
 
+
+    def render_skybox(self):
+        pass
 
 def get_dir_vec(cur_angle):
     """
