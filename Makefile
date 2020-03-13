@@ -27,13 +27,14 @@ build:
 push:
 	$(MAKE) push-docker-python3
 
-
-build-docker-python3:
+update-reqs:
 	pur -r requirements.txt -f -m '*' -o requirements.resolved
+	aido-update-reqs requirements.resolved
+
+build-docker-python3: update-reqs
 	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
 
-build-docker-python3-no-cache:
-	pur -r requirements.txt -f -m '*' -o requirements.resolved
+build-docker-python3-no-cache: update-reqs
 	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
 
 
