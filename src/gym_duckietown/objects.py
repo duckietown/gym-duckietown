@@ -78,13 +78,13 @@ class WorldObj:
             else:
                 colors = {
                     'center': (0, 0, 1),
-                    'front_left': (0, 0, 1),  # yellow
-                    'front_right': (0, 0, 1),  # white
-                    'back_left': (0, 0, 1),  # yellow
-                    'back_right': (0, 0, 1),  # red
+                    'front_left': (0, 0, 1),
+                    'front_right': (0, 0, 1),
+                    'back_left': (0, 0, 1),
+                    'back_right': (0, 0, 1),
                 }
-            for color_name, (px, py, pz) in positions.items():
-                color = colors[color_name]
+            for light_name, (px, py, pz) in positions.items():
+                color = colors[light_name]
                 gl.glPushMatrix()
 
                 gl.glTranslatef(px, pz, py)
@@ -190,10 +190,10 @@ class DuckiebotObj(WorldObj):
         self.max_iterations = 1000
         self.leds_color = {
             'center': (0, 0, 0),
-            'front_left': (1, 1, 1),
-            'front_right': (1, 1, 1),
-            'back_left': (1, 0, 0),
-            'back_right': (1, 0, 0),
+            'front_left': (0, 0, 0),
+            'front_right': (0, 0, 0),
+            'back_left': (0, 0, 0),
+            'back_right': (0, 0, 0),
         }
         # TODO: Make these DR as well
         self.k = k
