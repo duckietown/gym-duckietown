@@ -2,9 +2,10 @@
 import math
 from typing import Tuple
 
-from pyglet import gl
-
 import numpy as np
+import pyglet
+from pyglet import gl
+from pyglet.gl import gluNewQuadric, gluSphere
 
 from .collision import (agent_boundbox, calculate_safety_radius, generate_corners, generate_norm, heading_vec,
                         intersects_single_obj)
@@ -44,8 +45,6 @@ class WorldObj:
         self.x_rot = 0  # Niki-added
         self.z_rot = 0  # Niki-added
 
-
-
     def process_obj_dict(self, obj, safety_radius_mult):
         self.kind = obj['kind']
         self.mesh = obj['mesh']
@@ -58,6 +57,47 @@ class WorldObj:
         self.static = obj['static']
         self.safety_radius = safety_radius_mult * \
                              calculate_safety_radius(self.mesh, self.scale)
+
+    def render_mesh(self):
+        if self.kind == 'duckiebot':
+            # other = ObjMesh.get('duckie')
+            self.mesh.render()
+            # other.render()
+
+            positions = [
+                [0.1, -0.05],
+                [0.1, +0.05],
+                [0.1, +0],
+                [-0.1, -0.05],
+                [-0.1, +0.05],
+            ]
+            colors = [
+                (2,0,0),
+                (0, 2, 0),
+                (2, 2, 2),
+                (2, 2, 0),
+                (0, 2, 2),
+            ]
+            for (px, py), color in zip(positions, colors):
+                gl.glPushMatrix()
+
+                height = 0.04
+                gl.glTranslatef(px, height, py)
+                gl.glColor3f(*color)
+                # ? z y
+                s = 0.01
+                # gl.glScalef(s,s,s)
+                # vertices = ('v3f', [-1, 0, -1, -1, 0, 1, 1, 0, 1, 1, 0, -1, -1, 0, -1])
+                #
+                # vlist = pyglet.graphics.vertex_list(5, vertices)
+                # vlist.draw(gl.GL_TRIANGLES)
+
+                sphere = gluNewQuadric()
+                gluSphere(sphere, s, 10, 10)
+
+                gl.glPopMatrix()
+        else:
+            self.mesh.render()
 
     def render(self, draw_bbox):
         """
@@ -83,7 +123,8 @@ class WorldObj:
         gl.glRotatef(self.y_rot, 0, 1, 0)
         gl.glRotatef(self.z_rot, 0, 0, 1)  # Niki-added
         gl.glColor3f(*self.color)
-        self.mesh.render()
+
+        self.render_mesh()
         gl.glPopMatrix()
 
     # Below are the functions that need to
@@ -121,7 +162,6 @@ class DuckiebotObj(WorldObj):
                  robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318,
                  k=27.0, limit=1.0):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
-
         if self.domain_rand:
             self.follow_dist = np.random.uniform(0.3, 0.4)
             self.velocity = np.random.uniform(0.05, 0.15)
@@ -364,6 +404,20 @@ class DuckieObj(WorldObj):
             # Just give it the negative of its current velocity
             self.vel *= -1
             self.pedestrian_wait_time = 8
+
+    def render_mesh(self):
+        # super().render_mesh()
+        # self.mesh.render()
+        print('here')
+        logger.info('here')
+        gl.glPushMatrix()
+        gl.glTranslatef(0.1, 0, 0)
+        gl.glColor3f(0, 1, 0)
+        # self.mesh.render()
+        gl.glPopMatrix()
+
+
+from . import logger
 
 
 class TrafficLightObj(WorldObj):
