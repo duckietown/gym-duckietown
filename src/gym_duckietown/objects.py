@@ -58,8 +58,9 @@ class WorldObj:
                              calculate_safety_radius(self.mesh, self.scale)
 
     def render_mesh(self):
-        if self.kind == 'duckiebot': 
-            self.mesh.render()
+        self.mesh.render()
+        if self.kind in  ['duckiebot', 'duckiebot-player']:
+
 
             s_main = 0.01  # 1 cm sphere
             LIGHT_MULT_MAIN = 10
@@ -100,9 +101,7 @@ class WorldObj:
 
                 gluSphere(sphere, s_halo, 10, 10)
 
-                gl.glPopMatrix()
-        else:
-            self.mesh.render()
+                gl.glPopMatrix() 
 
     def render(self, draw_bbox):
         """
