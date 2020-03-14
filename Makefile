@@ -21,7 +21,7 @@ all:
 	@echo Inside, remember to start  launch-xvfb
 
 
-build:
+build: update-reqs
 	$(MAKE) build-docker-python3
 
 push:
