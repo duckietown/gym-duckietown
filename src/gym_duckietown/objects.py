@@ -75,7 +75,7 @@ class WorldObj:
                 'back_right': [-0.1, +0.05, height],
             }
             if isinstance(self, DuckiebotObj):
-                colors = self.wheels_color
+                colors = self.leds_color
             else:
                 colors = {
                     'center': (0, 0, 1),
@@ -165,7 +165,7 @@ class WorldObj:
 
 
 class DuckiebotObj(WorldObj):
-    wheels_color: Dict[str, Tuple[float, float, float]]
+    leds_color: Dict[str, Tuple[float, float, float]]
 
     def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist,
                  robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318,
@@ -191,7 +191,7 @@ class DuckiebotObj(WorldObj):
             self.robot_length = robot_length
 
         self.max_iterations = 1000
-        self.wheels_color = {
+        self.leds_color = {
             'center': (0, 0, 1),
             'front_left': (1, 1, 0),  # yellow
             'front_right': (1, 1, 1),  # white
