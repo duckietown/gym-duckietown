@@ -67,7 +67,6 @@ class WorldObj:
             s_halo = 0.03
             height = 0.04
             positions = {
-
                 'front_left': [0.1, -0.05, height],
                 'front_right': [0.1, +0.05, height],
                 'center': [0.1, +0, height],
@@ -79,10 +78,10 @@ class WorldObj:
             else:
                 colors = {
                     'center': (0, 0, 1),
-                    'front_left': (1, 1, 0),  # yellow
-                    'front_right': (1, 1, 1),  # white
-                    'back_left': (1, 1, 0),  # yellow
-                    'back_right': (1, 0, 0),  # red
+                    'front_left': (0, 0, 1),  # yellow
+                    'front_right': (0, 0, 1),  # white
+                    'back_left': (0, 0, 1),  # yellow
+                    'back_right': (0, 0, 1),  # red
                 }
             for color_name, (px, py, pz) in positions.items():
                 color = colors[color_name]
@@ -192,11 +191,11 @@ class DuckiebotObj(WorldObj):
 
         self.max_iterations = 1000
         self.leds_color = {
-            'center': (0, 0, 1),
-            'front_left': (1, 1, 0),  # yellow
-            'front_right': (1, 1, 1),  # white
-            'back_left': (1, 1, 0),  # yellow
-            'back_right': (1, 0, 0),  # red
+            'center': (0, 0, 0),
+            'front_left': (1, 1, 1),
+            'front_right': (1, 1, 1),
+            'back_left': (1, 0, 0),
+            'back_right': (1, 0, 0),
         }
         # TODO: Make these DR as well
         self.k = k
