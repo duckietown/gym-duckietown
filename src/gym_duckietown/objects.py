@@ -101,7 +101,7 @@ class WorldObj:
 
                 gluSphere(sphere, s_halo, 10, 10)
 
-                gl.glPopMatrix() 
+                gl.glPopMatrix()
 
     def render(self, draw_bbox):
         """
