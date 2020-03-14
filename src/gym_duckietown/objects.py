@@ -1,9 +1,8 @@
 # coding=utf-8
 import math
-from typing import Tuple
+from typing import Tuple, Dict
 
 import numpy as np
-import pyglet
 from pyglet import gl
 from pyglet.gl import gluNewQuadric, gluSphere
 
@@ -62,38 +61,46 @@ class WorldObj:
         if self.kind == 'duckiebot':
             # other = ObjMesh.get('duckie')
             self.mesh.render()
-            # other.render()
 
-            positions = [
-                [0.1, -0.05],
-                [0.1, +0.05],
-                [0.1, +0],
-                [-0.1, -0.05],
-                [-0.1, +0.05],
-            ]
-            colors = [
-                (2,0,0),
-                (0, 2, 0),
-                (2, 2, 2),
-                (2, 2, 0),
-                (0, 2, 2),
-            ]
-            for (px, py), color in zip(positions, colors):
+            s_main = 0.01  # 1 cm sphere
+            LIGHT_MULT_MAIN = 10
+            s_halo = 0.03
+            height = 0.04
+            positions = {
+
+                'front_left': [0.1, -0.05, height],
+                'front_right': [0.1, +0.05, height],
+                'center': [0.1, +0, height],
+                'back_left': [-0.1, -0.05, height],
+                'back_right': [-0.1, +0.05, height],
+            }
+            if isinstance(self, DuckiebotObj):
+                colors = self.wheels_color
+            else:
+                colors = {
+                    'center': (0, 0, 1),
+                    'front_left': (1, 1, 0),  # yellow
+                    'front_right': (1, 1, 1),  # white
+                    'back_left': (1, 1, 0),  # yellow
+                    'back_right': (1, 0, 0),  # red
+                }
+            for color_name, (px, py, pz) in positions.items():
+                color = colors[color_name]
                 gl.glPushMatrix()
 
-                height = 0.04
-                gl.glTranslatef(px, height, py)
+                gl.glTranslatef(px, pz, py)
+                color = np.array(color) * LIGHT_MULT_MAIN
                 gl.glColor3f(*color)
-                # ? z y
-                s = 0.01
-                # gl.glScalef(s,s,s)
-                # vertices = ('v3f', [-1, 0, -1, -1, 0, 1, 1, 0, 1, 1, 0, -1, -1, 0, -1])
-                #
-                # vlist = pyglet.graphics.vertex_list(5, vertices)
-                # vlist.draw(gl.GL_TRIANGLES)
 
                 sphere = gluNewQuadric()
-                gluSphere(sphere, s, 10, 10)
+                gluSphere(sphere, s_main, 10, 10)
+
+                gl.glEnable(gl.GL_BLEND)
+                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+                color2 = color[0], color[1], color[2], 0.2
+                gl.glColor4f(*color2)
+
+                gluSphere(sphere, s_halo, 10, 10)
 
                 gl.glPopMatrix()
         else:
@@ -158,6 +165,8 @@ class WorldObj:
 
 
 class DuckiebotObj(WorldObj):
+    wheels_color: Dict[str, Tuple[float, float, float]]
+
     def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist,
                  robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318,
                  k=27.0, limit=1.0):
@@ -182,7 +191,13 @@ class DuckiebotObj(WorldObj):
             self.robot_length = robot_length
 
         self.max_iterations = 1000
-
+        self.wheels_color = {
+            'center': (0, 0, 1),
+            'front_left': (1, 1, 0),  # yellow
+            'front_right': (1, 1, 1),  # white
+            'back_left': (1, 1, 0),  # yellow
+            'back_right': (1, 0, 0),  # red
+        }
         # TODO: Make these DR as well
         self.k = k
         self.limit = limit
@@ -404,20 +419,6 @@ class DuckieObj(WorldObj):
             # Just give it the negative of its current velocity
             self.vel *= -1
             self.pedestrian_wait_time = 8
-
-    def render_mesh(self):
-        # super().render_mesh()
-        # self.mesh.render()
-        print('here')
-        logger.info('here')
-        gl.glPushMatrix()
-        gl.glTranslatef(0.1, 0, 0)
-        gl.glColor3f(0, 1, 0)
-        # self.mesh.render()
-        gl.glPopMatrix()
-
-
-from . import logger
 
 
 class TrafficLightObj(WorldObj):

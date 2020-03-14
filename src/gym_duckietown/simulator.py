@@ -4,7 +4,7 @@ from __future__ import division
 import math
 import os
 from collections import namedtuple
-from ctypes import POINTER, byref
+from ctypes import POINTER
 from dataclasses import dataclass
 from typing import cast, List, NewType, Optional, Sequence, Tuple
 
@@ -24,12 +24,12 @@ from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, int
                         safety_circle_overlap, tile_corners)
 from .distortion import Distortion
 from .graphics import (bezier_closest, bezier_draw, bezier_point, bezier_tangent, create_frame_buffers, gen_rot_matrix,
-                       Texture, load_texture)
+                       Texture)
 from .objects import (CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj)
 from .objmesh import ObjMesh
 from .randomization import Randomizer
 from .utils import get_file_path
-
+DIM = 0.5
 TileDict = NewType('TileDict', dict)
 
 
@@ -422,13 +422,14 @@ class Simulator(gym.Env):
         else:
             light_pos = [-40, 200, 100]
 
-        ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
-        # XXX: diffuse is not used?
-        diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
+        ambient = np.array([0.50, 0.50, 0.50]) * DIM
+        ambient = self._perturb(ambient, 0.3)
+        diffuse = np.array([0.70, 0.70, 0.70]) * DIM
+        diffuse = self._perturb(diffuse, 0.99)
 
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, (gl.GLfloat * 4)(*light_pos))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
-        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1.0))
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(*diffuse))
         gl.glEnable(gl.GL_LIGHT0)
         gl.glEnable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_COLOR_MATERIAL)
@@ -818,15 +819,13 @@ class Simulator(gym.Env):
             return None
         return self.grid[j * self.grid_width + i]
 
-    def _perturb(self, val, scale=0.1):
+    def _perturb(self, val: np.array, scale=0.1):
         """
         Add noise to a value. This is used for domain randomization.
         """
-        assert scale >= 0
-        assert scale < 1
+        assert 0 <= scale < 1
 
-        if isinstance(val, list):
-            val = np.array(val)
+        val = np.array(val)
 
         if not self.domain_rand:
             return val
@@ -1450,7 +1449,7 @@ class Simulator(gym.Env):
         # Clear the color and depth buffers
 
         c0, c1, c2 = self.horizon_color
-        gl.glClearColor(c0, c1, c2, 1.0)
+        gl.glClearColor(c0*DIM, c1*DIM, c2*DIM, 1.0)
         gl.glClearDepth(1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
@@ -1514,7 +1513,9 @@ class Simulator(gym.Env):
                 0, 1.0, 0.0
             )
 
-        self.render_skybox()
+
+
+
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glColor3f(*self.ground_color)
@@ -1741,8 +1742,6 @@ class Simulator(gym.Env):
         gl.glFlush()
 
 
-    def render_skybox(self):
-        pass
 
 def get_dir_vec(cur_angle):
     """
