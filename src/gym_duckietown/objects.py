@@ -58,8 +58,7 @@ class WorldObj:
                              calculate_safety_radius(self.mesh, self.scale)
 
     def render_mesh(self):
-        if self.kind == 'duckiebot':
-            # other = ObjMesh.get('duckie')
+        if self.kind == 'duckiebot': 
             self.mesh.render()
 
             s_main = 0.01  # 1 cm sphere
