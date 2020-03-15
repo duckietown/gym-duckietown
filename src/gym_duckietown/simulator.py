@@ -1514,8 +1514,6 @@ class Simulator(gym.Env):
             )
 
 
-
-
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glColor3f(*self.ground_color)

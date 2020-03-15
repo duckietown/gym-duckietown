@@ -190,10 +190,10 @@ class DuckiebotObj(WorldObj):
         self.max_iterations = 1000
         self.leds_color = {
             'center': (0, 0, 0),
-            'front_left': (0, 0, 0),
-            'front_right': (0, 0, 0),
-            'back_left': (0, 0, 0),
-            'back_right': (0, 0, 0),
+            'front_left': (0.5, 0.5, 0.5),
+            'front_right': (0.5, 0.5, 0.5),
+            'back_left': (0.5, 0, 0),
+            'back_right': (0.5, 0, 0),
         }
         # TODO: Make these DR as well
         self.k = k
