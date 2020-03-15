@@ -1,7 +1,7 @@
-
+AIDO_REGISTRY ?= docker.io
 branch=$(shell git rev-parse --abbrev-ref HEAD)
 
-img3=duckietown/gym-duckietown-server-python3:$(branch)
+img3=$(AIDO_REGISTRY)/duckietown/gym-duckietown-server-python3:$(branch)
 
 all:
 	@echo ## Containerized Python 2 support
