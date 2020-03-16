@@ -13,8 +13,8 @@ import gym
 from pyglet import app, clock
 from pyglet.window import key
 
-from src.gym_duckietown.envs import DuckietownEnv
-from src.gym_duckietown.simulator import Simulator
+from gym_duckietown.envs import DuckietownEnv
+from gym_duckietown.simulator import Simulator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--env-name', default=None)
