@@ -1,4 +1,6 @@
 AIDO_REGISTRY ?= docker.io
+PIP_INDEX_URL ?= https://pypi.org/simple
+
 branch=$(shell git rev-parse --abbrev-ref HEAD)
 
 img3=$(AIDO_REGISTRY)/duckietown/gym-duckietown-server-python3:$(branch)
@@ -28,7 +30,7 @@ push:
 	$(MAKE) push-docker-python3
 
 update-reqs:
-	pur -r requirements.txt -f -m '*' -o requirements.resolved
+	pur --index-url $(PIP_INDEX_URL) -r requirements.txt -f -m '*' -o requirements.resolved
 	aido-update-reqs requirements.resolved
 
 build-docker-python3: update-reqs
@@ -47,10 +49,16 @@ other_deps:
 	apt install x11-apps
 
 bump-upload:
+	$(MAKE) bump
+	$(MAKE) upload
+
+bump:
 	bumpversion patch
 	git push --tags
 	git push --all
+
+upload:
 	rm -f dist/*
 	rm -rf src/*.egg-info
 	python setup.py sdist
-	twine upload dist/*
+	twine upload --verbose dist/*
