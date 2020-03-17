@@ -83,6 +83,17 @@ def on_key_press(symbol, modifiers):
         cam_offset[1] += .1
     elif symbol == key.P:
         cam_offset[1] -= .1
+    elif symbol == key.T:
+        cam_offset[0] = -0.8
+        cam_offset[1] = 2.7
+        cam_offset[2] = -1.2
+        cam_angle[0] = 90
+        cam_angle[1] = -40
+        cam_angle[2] = 0 
+    elif symbol == key.H:
+        print(f"offset: {cam_offset}")
+        print(f"angle: {cam_angle}")
+
 
     # Take a screenshot
     # UNCOMMENT IF NEEDED - Skimage depencency
