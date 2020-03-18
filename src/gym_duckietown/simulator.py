@@ -20,6 +20,7 @@ from pyglet import gl, image, window
 import geometry
 from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from . import logger
+from .check_hw import get_graphics_information
 from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, intersects, safety_circle_intersection,
                         safety_circle_overlap, tile_corners)
 from .distortion import Distortion
@@ -211,6 +212,10 @@ class Simulator(gym.Env):
         :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
+
+        information = get_graphics_information()
+        logger.info(f'Information about the graphics card: \n {information}' )
+
         # first initialize the RNG
         self.seed_value = seed
         self.seed(seed=self.seed_value)
