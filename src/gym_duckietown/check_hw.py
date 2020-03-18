@@ -20,3 +20,7 @@ def get_graphics_information() -> Dict:
         res = asstr(cast(a, c_char_p).value)
         results[o] = res
     return results
+
+
+if __name__ == '__main__':
+    print(str(get_graphics_information()))
