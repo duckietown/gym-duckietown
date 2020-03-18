@@ -802,8 +802,8 @@ class Simulator(gym.Env):
         return [seed]
 
     def _set_tile(self, i: int, j: int, tile: TileDict) -> None:
-        assert i >= 0 and i < self.grid_width
-        assert j >= 0 and j < self.grid_height
+        assert 0 <= i < self.grid_width
+        assert 0 <= j < self.grid_height
         index: int = j * self.grid_width + i
         self.grid[index] = tile
 
