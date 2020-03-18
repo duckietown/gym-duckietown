@@ -2,8 +2,13 @@ from ctypes import c_char_p, cast
 from typing import Dict
 
 from pyglet import gl
-from pyglet.util import asstr
 
+def asstr(s):
+    if s is None:
+        return ''
+    if isinstance(s, str):
+        return s
+    return s.decode("utf-8")
 __all__ = ['get_graphics_information']
 
 def get_graphics_information() -> Dict:
