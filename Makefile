@@ -2,6 +2,7 @@ AIDO_REGISTRY ?= docker.io
 PIP_INDEX_URL ?= https://pypi.org/simple
 
 branch=$(shell git rev-parse --abbrev-ref HEAD)
+branch=daffy-aido4
 
 img3=$(AIDO_REGISTRY)/duckietown/gym-duckietown-server-python3:$(branch)
 
