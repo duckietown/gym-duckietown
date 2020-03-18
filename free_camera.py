@@ -4,6 +4,7 @@
 This script allows you to manually control the simulator or Duckiebot
 using the keyboard arrows.
 """
+import numpy as np
 
 import argparse
 import sys
@@ -56,6 +57,7 @@ def on_key_press(symbol, modifiers):
         sys.exit(0)
 
     # Camera movement
+    env.unwrapped.cam_offset = env.unwrapped.cam_offset.astype('float64')
     cam_offset, cam_angle = env.unwrapped.cam_offset, env.unwrapped.cam_angle
     if symbol == key.W:
         cam_angle[0] -= 5
@@ -70,19 +72,28 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.E:
         cam_angle[2] += 5
     elif symbol == key.UP:
-        if modifiers:  # Mod+Up for height
-            cam_offset[1] += .1
-        else:
-            cam_offset[0] += .1
+        cam_offset[0] = cam_offset[0]+0.1
     elif symbol == key.DOWN:
-        if modifiers:  # Mod+Down for height
-            cam_offset[1] -= .1
-        else:
-            cam_offset[0] -= .1
+        cam_offset[0]  = cam_offset[0] - .1
     elif symbol == key.LEFT:
-        cam_offset[2] -= .1
+        cam_offset[2] -= 0.1
     elif symbol == key.RIGHT:
         cam_offset[2] += .1
+    elif symbol == key.O:
+        cam_offset[1] += .1
+    elif symbol == key.P:
+        cam_offset[1] -= .1
+    elif symbol == key.T:
+        cam_offset[0] = -0.8
+        cam_offset[1] = 2.7
+        cam_offset[2] = -1.2
+        cam_angle[0] = 90
+        cam_angle[1] = -40
+        cam_angle[2] = 0 
+    elif symbol == key.H:
+        print(f"offset: {cam_offset}")
+        print(f"angle: {cam_angle}")
+
 
     # Take a screenshot
     # UNCOMMENT IF NEEDED - Skimage depencency
