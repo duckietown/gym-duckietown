@@ -3,13 +3,8 @@ from typing import Dict
 
 from pyglet import gl
 
-def asstr(s):
-    if s is None:
-        return ''
-    if isinstance(s, str):
-        return s
-    return s.decode("utf-8")
 __all__ = ['get_graphics_information']
+
 
 def get_graphics_information() -> Dict:
     options = {
@@ -25,6 +20,14 @@ def get_graphics_information() -> Dict:
         res = asstr(cast(a, c_char_p).value)
         results[o] = res
     return results
+
+
+def asstr(s):
+    if s is None:
+        return ''
+    if isinstance(s, str):
+        return s
+    return s.decode("utf-8")
 
 
 if __name__ == '__main__':

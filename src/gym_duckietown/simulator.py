@@ -30,6 +30,7 @@ from .objects import (CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj,
 from .objmesh import ObjMesh
 from .randomization import Randomizer
 from .utils import get_file_path
+
 DIM = 0.5
 TileDict = NewType('TileDict', dict)
 
@@ -181,13 +182,13 @@ class Simulator(gym.Env):
         camera_height=DEFAULT_CAMERA_HEIGHT,
         robot_speed=DEFAULT_ROBOT_SPEED,
         accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
-        full_transparency=False,
+        full_transparency: bool = False,
         user_tile_start=None,
         seed=None,
-        distortion=False,
-        dynamics_rand=False,
-        camera_rand=False,
-        randomize_maps_on_reset=False,
+        distortion: bool = False,
+        dynamics_rand: bool = False,
+        camera_rand: bool = False,
+        randomize_maps_on_reset: bool = False,
         num_tris_distractors: int = 12,
         color_ground: Sequence[int] = (0.15, 0.15, 0.15)
     ):
@@ -214,7 +215,7 @@ class Simulator(gym.Env):
         """
 
         information = get_graphics_information()
-        logger.info(f'Information about the graphics card: \n {information}' )
+        logger.info(f'Information about the graphics card: \n {information}')
 
         # first initialize the RNG
         self.seed_value = seed
@@ -1432,7 +1433,7 @@ class Simulator(gym.Env):
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
     def _render_img(self, width: int, height: int, multi_fbo,
-                    final_fbo, img_array, top_down=True) -> np.array:
+                    final_fbo, img_array, top_down: bool = True) -> np.array:
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1454,7 +1455,7 @@ class Simulator(gym.Env):
         # Clear the color and depth buffers
 
         c0, c1, c2 = self.horizon_color
-        gl.glClearColor(c0*DIM, c1*DIM, c2*DIM, 1.0)
+        gl.glClearColor(c0 * DIM, c1 * DIM, c2 * DIM, 1.0)
         gl.glClearDepth(1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
@@ -1517,7 +1518,6 @@ class Simulator(gym.Env):
                 # Up vector
                 0, 1.0, 0.0
             )
-
 
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
@@ -1743,7 +1743,6 @@ class Simulator(gym.Env):
 
         # Force execution of queued commands
         gl.glFlush()
-
 
 
 def get_dir_vec(cur_angle):
