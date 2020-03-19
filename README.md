@@ -1,7 +1,7 @@
 ## Installation
 ```bash
 git clone https://github.com/mphamhung/gym-duckietown
-cd GAIL
+cd gym-duckietown
 conda env create -f environment.yaml
 conda activate gail-env
 ```
