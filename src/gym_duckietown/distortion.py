@@ -98,11 +98,11 @@ class Distortion:
 
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
-            write_to_file(self.rmapx, 'rmapx.jpg')
-            write_to_file(self.rmapy, 'rmapy.jpg')
-
-            write_to_file(self.mapx, 'mapx.jpg')
-            write_to_file(self.mapy, 'mapy.jpg')
+            # write_to_file(self.rmapx, 'rmapx.jpg')
+            # write_to_file(self.rmapy, 'rmapy.jpg')
+            #
+            # write_to_file(self.mapx, 'mapx.jpg')
+            # write_to_file(self.mapy, 'mapy.jpg')
 
         res = cv2.remap(observation, self.rmapx, self.rmapy, interpolation=cv2.INTER_NEAREST)
         return res
