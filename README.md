@@ -13,3 +13,7 @@ python -m ipykernel install --user --name=gail-env
 ```bash
 jupyter notebook
 ```
+
+## Gym-DuckieTOWN
+
+Read [this](https://github.com/mphamhung/gym-duckietown/blob/master/README_old.md) for duckietown readme
