@@ -1,8 +1,7 @@
 ## Installation
 ```bash
-git clone https://github.com/mphamhung/GAIL
+git clone https://github.com/mphamhung/gym-duckietown
 cd GAIL
-git submodule update --recursive --init
 conda env create -f environment.yaml
 conda activate gail-env
 ```
