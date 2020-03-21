@@ -1639,7 +1639,7 @@ class Simulator(gym.Env):
 
         return img_array
 
-    def render_obs(self):
+    def render_obs(self) -> np.ndarray:
         """
         Render an observation from the point of view of the agent
         """
