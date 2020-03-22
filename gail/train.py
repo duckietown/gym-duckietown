@@ -29,7 +29,6 @@ def gen_expert_data(args):
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
     env = ImgWrapper(env)
-    # env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
 
@@ -58,7 +57,7 @@ def gen_expert_data(args):
         observations = np.array(observations)
         torch.save(actions, '{}/data_a_{}.pt'.format(args.data_directory,episode))
         torch.save(observations, '{}/data_o_{}.pt'.format(args.data_directory,episode))    
-        
+        env.reset()
     env.close()
 
     actions = np.array(actions)
@@ -66,102 +65,16 @@ def gen_expert_data(args):
     torch.save(actions, 'data_a.pt')
     torch.save(observations, 'data_o.pt')
 
-
 def _train(args):
-    
-    writer = SummaryWriter(comment="generator_only")
-    
-        
-    # writer.add_histogram("expert angles", actions[:,1])
-    # writer.add_histogram("expert velocities", actions[:,0])
-
-    data = ExpertTrajDataset(args)
-    dataloader = DataLoader(data, batch_size=args.batch_size, shuffle=True, num_workers=4)
-
-    model = Generator(action_dim=2)
-    model.train().to(device)
-
-    # weight_decay is L2 regularization, helps avoid overfitting
-    optimizer = optim.SGD(
-        model.parameters(),
-        lr=0.0004,
-        weight_decay=1e-3
-    )
-
-    avg_loss = 0
-    
-    model_actions = []
-
-    for i_batch, sample_batched in enumerate(dataloader):
-        epoch = i_batch
-        optimizer.zero_grad()
-        obs_batch = sample_batched['observation'].float().to(device).reshape((args.batch_size*100, 3, 160,120))
-        act_batch= sample_batched['action'].float().to(device).reshape((args.batch_size*100, 2))
-        
-        model_actions = model(obs_batch)
-        # writer.add_histogram("model velocities", model_actions[:,0])
-        # writer.add_histogram("model angles", model_actions[:,1])
-        loss = (model_actions - act_batch).norm(2).mean()
-        loss.backward()
-        optimizer.step()
-        
-        loss = loss.data.item()
-        avg_loss = avg_loss * 0.995 + loss * 0.005        
-        writer.add_scalar('Loss/train', avg_loss, epoch)
-        
-        
-        if epoch % 200 == 0:
-            torch.save(model.state_dict(), 'test.pt')
-            print('epoch %d, loss=%.3f' % (epoch, avg_loss))
-            break
-#             writer.add_graph(Generator, obs_batch)
-        # if avg_loss <= 0.1 and epoch > 200:
-        #     torch.save(model.state_dict(), 'test.pt')
-        #     print('epoch %d, loss=%.3f' % (epoch, avg_loss))
-        #     break
-
-
-    writer.close()
-
-#     for epoch in range(args.epochs):
-        
-#         optimizer.zero_grad()
-
-#         batch_indices = np.random.randint(0, observations.shape[0], (args.batch_size))
-#         obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
-#         act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
-
-#         print(obs_batch.size())
-#         model_actions = model(obs_batch)
-#         writer.add_histogram("model velocities", model_actions[:,0])
-#         writer.add_histogram("model angles", model_actions[:,1])
-#         loss = (model_actions - act_batch).norm(2).mean()
-#         loss.backward()
-#         optimizer.step()
-        
-#         loss = loss.data.item()
-#         avg_loss = avg_loss * 0.995 + loss * 0.005        
-#         writer.add_scalar('Loss/train', avg_loss, epoch)
-        
-        
-#         if epoch % 200 == 0:
-#             torch.save(model.state_dict(), 'test.pt')
-#             print('epoch %d, loss=%.3f' % (epoch, avg_loss))
-# #             writer.add_graph(Generator, obs_batch)
-    
-#     writer.close()
-
-def _trainGAIL(args):
-    
-    writer = SummaryWriter(comment="gail")
-    
     env = launch_env()
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
     env = ImgWrapper(env)
-    env = ActionWrapper(env)
+    # env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
+
+    writer = SummaryWriter(comment="gail")
 
     observation_shape = (None, ) + env.observation_space.shape
     action_shape = (None, ) + env.action_space.shape
@@ -171,10 +84,9 @@ def _trainGAIL(args):
 
     observations = []
     actions = []
-    
-    if args.get_samples:
 
     # let's collect our samples
+    if args.get_samples:
         for episode in range(0, args.episodes):
             print("Starting episode", episode)
             for steps in range(0, args.steps):
@@ -185,76 +97,77 @@ def _trainGAIL(args):
                 actions.append(action)
             env.reset()
         env.close()
-        
+
         actions = np.array(actions)
         observations = np.array(observations)
-        torch.save(actions, 'data_a.pt')
-        torch.save(observations, 'data_o.pt')
+        torch.save(actions, '{}/data_a_.pt'.format(args.data_directory))
+        torch.save(observations, '{}/data_o_.pt'.format(args.data_directory))    
 
     else:
-        actions = torch.load('data_a.pt')
-        observations = torch.load('data_o.pt')
+        actions = torch.load('{}/data_a_.pt'.format(args.data_directory))
+        observations = torch.load('{}/data_a_.pt'.format(args.data_directory))
 
 
-    
-    G = Generator(action_dim=2)
-    G.train().to(device)
+    G = Generator(action_dim=2).to(device)
+    D = Discriminator(action_dim=2).to(device)
 
-    D = Discriminator(action_dim=2)
-    D.train().to(device)
-    # weight_decay is L2 regularization, helps avoid overfitting
-    G_optimizer = optim.Adam(
-        G.parameters(),
-        lr=0.004,
+    G_optimizer = optim.SGD(
+        G.parameters(), 
+        lr = 0.0004,
         weight_decay=1e-3
-    )
-
-    D_optimizer = optim.Adam(
+        )
+    D_optimizer = optim.SGD(
         D.parameters(),
-        lr=0.004,
-        weight_decay=1e-3
+        lr = 0.0004,
     )
 
-    avg_g_loss = 0
-    avg_d_loss = 0
-    for epoch in range(args.epochs):
-        D_optimizer.zero_grad()
-        G_optimizer.zero_grad()
 
-        ## Sample trajectories
+    avg_loss = 0
+    avg_g_loss = 0
+    loss_fn = nn.BCELoss()
+
+    for epoch in range(args.epochs):
         batch_indices = np.random.randint(0, observations.shape[0], (args.batch_size))
         obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
         act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
-        print(obs_batch.size())
 
-        G_act_batch = G(obs_batch)
-        
-        D_loss = torch.log(D(obs_batch,act_batch)) + torch.log(1-D(obs_batch,G_act_batch))
-        D_loss = D_loss.mean()
-       
-        avg_d_loss = avg_d_loss * 0.995 + D_loss * 0.005
+        model_actions = G(obs_batch)
 
-        writer.add_scalar('Discriminator/loss', avg_d_loss, epoch)
+        ## Update D
 
-        D_loss.backward(retain_graph=True)
+        exp_label = torch.full((args.batch_size,1), 1, device=device)
+        policy_label = torch.full((args.batch_size,1), 0, device=device)
+
+        D_optimizer.zero_grad()
+
+        prob_expert = D(obs_batch,act_batch)
+        loss = loss_fn(prob_expert, exp_label)
+
+        prob_Generator = D(obs_batch,model_actions)
+        loss += loss_fn(prob_Generator, policy_label)
+
+        loss.backward(retain_graph=True)
         D_optimizer.step()
-        
 
-        G_loss = torch.log(1-D(obs_batch,G_act_batch)).mean()
-#         G_loss = -torch.log(D(obs_batch,G_act_batch)).mean() #TF generator loss
-        G_loss.backward()
-        G_optimizer.step
-        
-        avg_g_loss = avg_g_loss * 0.995 + G_loss * 0.005
+        ## Update G
 
-        
-        writer.add_scalar('Generator/loss', avg_g_loss, epoch)
+        G_optimizer.zero_grad()
+
+        loss_g = -D(obs_batch,model_actions)
+        loss_g = loss_g.mean()
+        loss_g.backward()
+        G_optimizer.step()
+
+        avg_loss = avg_loss * 0.995 + loss.item() * 0.005
+        avg_g_loss = avg_g_loss * 0.995 + loss_g.item() * 0.005
+
+        writer.add_scalar("D/loss", avg_loss, epoch) #should go towards 0.5
+        writer.add_scalar("G/loss", avg_g_loss, epoch) #should go towards -inf?
+        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
 
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(G.state_dict(), 'G_model.pt')
-            torch.save(D.state_dict(), 'D_model.pt')
+            torch.save(D.state_dict(), '{}/D.pt'.format(args.model_directory))
+            torch.save(G.state_dict(), '{}/G.pt'.format(args.model_directory))
 
-            print('epoch %d, loss=%.3f' % (epoch, avg_g_loss))
-        
         torch.cuda.empty_cache()

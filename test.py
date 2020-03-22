@@ -1,24 +1,26 @@
-# from gail.train import _train, _trainGAIL, gen_expert_data
+from gail.train import _train, gen_expert_data
 from gail.dataloader import *
-from gail.eval import *
+
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-from learning.imitation.basic.train_imitation import _train
+# from learning.imitation.basic.train_imitation import _train
 from learning.imitation.basic.enjoy_imitation import _enjoy
+
 class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
-args={'episodes':9, 
+args={'episodes':3, 
       'seed':1234, 
-      'steps':1000, 
+      'steps':50, 
       'batch_size':50,
-      'epochs':200000,
+      'epochs':60000,
       'model_directory':'models/',
       'data_directory':'D:/Michael/Learning/duckietown_data2/',
-      'get_samples':False}
+      'get_samples':True}
 args = Struct(**args)
 
 # print(args.episodes)
