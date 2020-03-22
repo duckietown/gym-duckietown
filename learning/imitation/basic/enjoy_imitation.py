@@ -14,23 +14,25 @@ import torch
 
 import numpy as np
 import gym
-
-from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
+from gail.models import *
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
-from utils.teacher import PurePursuitExpert
+from learning.utils.teacher import PurePursuitExpert
 
-from imitation.pytorch.model import Model
+from learning.imitation.basic.model import Model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _enjoy():
     model = Model(action_dim=2, max_action=1.)
+    # model = Generator(action_dim=2)
 
     try:
-        state_dict = torch.load('trained_models/imitate.pt', map_location=device)
+        state_dict = torch.load('models/imitate.pt', map_location=device)
         model.load_state_dict(state_dict)
     except:
+        print("Unexpected error:", sys.exc_info()[0])
         print('failed to load model')
         exit()
 
@@ -40,7 +42,7 @@ def _enjoy():
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
     env = ImgWrapper(env)
-    env = ActionWrapper(env)
+    # env = ActionWrapper(env)
     env = DtRewardWrapper(env)
 
     obs = env.reset()

@@ -16,12 +16,14 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
-from utils.teacher import PurePursuitExpert
+from gail.models import *
 
-from imitation.pytorch.model import Model
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+    DtRewardWrapper, ActionWrapper, ResizeWrapper
+from learning.utils.teacher import PurePursuitExpert
+
+from learning.imitation.basic.model import Model
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -31,7 +33,7 @@ def _train(args):
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
     env = ImgWrapper(env)
-    env = ActionWrapper(env)
+    # env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
 
@@ -60,6 +62,9 @@ def _train(args):
     observations = np.array(observations)
 
     model = Model(action_dim=2, max_action=1.)
+    # model = Generator(action_dim=2)
+    # state_dict = torch.load('models/imitate.pt', map_location=device)
+    # model.load_state_dict(state_dict)
     model.train().to(device)
 
     # weight_decay is L2 regularization, helps avoid overfitting
@@ -83,14 +88,14 @@ def _train(args):
         loss.backward()
         optimizer.step()
 
-        loss = loss.data[0]
+        loss = loss.data.item()
         avg_loss = avg_loss * 0.995 + loss * 0.005
 
         print('epoch %d, loss=%.3f' % (epoch, avg_loss))
 
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(model.state_dict(), 'imitation/pytorch/models/imitate.pt')
+            torch.save(model.state_dict(), '{}/imitate.pt'.format(args.model_directory))
 
 
 if __name__ == '__main__':
