@@ -70,7 +70,7 @@ def _train(args):
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
     env = ImgWrapper(env)
-    # env = ActionWrapper(env)
+    env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
 
@@ -113,12 +113,12 @@ def _train(args):
 
     G_optimizer = optim.SGD(
         G.parameters(), 
-        lr = 0.0004,
+        lr = 0.04,
         weight_decay=1e-3
         )
-    D_optimizer = optim.SGD(
+    D_optimizer = optim.Adam(
         D.parameters(),
-        lr = 0.0004,
+        lr = 0.004,
     )
 
 

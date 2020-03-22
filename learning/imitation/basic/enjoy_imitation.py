@@ -44,7 +44,7 @@ def _enjoy():
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env) 
     env = ImgWrapper(env)
-    # env = ActionWrapper(env)
+    env = ActionWrapper(env)
     env = DtRewardWrapper(env)
 
     obs = env.reset()

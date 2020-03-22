@@ -16,8 +16,8 @@ class Struct:
 args={'episodes':3, 
       'seed':1234, 
       'steps':50, 
-      'batch_size':50,
-      'epochs':60000,
+      'batch_size':32,
+      'epochs':1000,
       'model_directory':'models/',
       'data_directory':'D:/Michael/Learning/duckietown_data2/',
       'get_samples':True}

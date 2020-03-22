@@ -9,6 +9,13 @@ conda activate gail-env
 ```bash
 python -m ipykernel install --user --name=gail-env
 ```
+
+## start tensorboard
+```bash
+cd gym-duckietown
+tensorboard --logdir=runs
+```
+
 ## start jupyter 
 ```bash
 jupyter notebook
