@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+    DtRewardWrapper, ActionWrapper, ResizeWrapper
+from learning.utils.teacher import PurePursuitExpert
+
 
 class ExpertTrajDataset(Dataset):
     
@@ -31,5 +36,32 @@ class ExpertTrajDataset(Dataset):
         
         return sample
     
+def generate_expert_trajectorys(args):
+
+    env = launch_env()
+    env = ResizeWrapper(env)
+    env = NormalizeWrapper(env) 
+    env = ImgWrapper(env)
+    env = ActionWrapper(env)
+    env = DtRewardWrapper(env)
+    print("Initialized Wrappers")
+
+    expert = PurePursuitExpert(env=env)
+
+    for episode in range(0, args.episodes):
+        print("Starting episode", episode)
+        observations = []
+        actions = []
+        for steps in range(0, args.steps):
+            # use our 'expert' to predict the next action.
+            action = expert.predict(None)
+            observation, reward, done, info = env.step(action)
+            observations.append(observation)
+            actions.append(action)
+        env.reset()
+        torch.save(actions, '{}/data_a_{}.pt'.format(args.data_directory,episode))
+        torch.save(observations, '{}/data_o_{}.pt'.format(args.data_directory,episode))    
+    
+    env.close()
 
     

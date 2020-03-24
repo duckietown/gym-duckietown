@@ -30,7 +30,7 @@ def _enjoy():
 
     try:
         # state_dict = torch.load('models/imitate.pt', map_location=device)
-        state_dict = torch.load('models/G.pt', map_location=device)
+        state_dict = torch.load('models/G2.pt', map_location=device)
 
         model.load_state_dict(state_dict)
     except:

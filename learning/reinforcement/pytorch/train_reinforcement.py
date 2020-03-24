@@ -6,10 +6,10 @@ import os
 import numpy as np
 
 # Duckietown Specific
-from reinforcement.pytorch.ddpg import DDPG
-from reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
-from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
+from learning.reinforcement.pytorch.ddpg import DDPG
+from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
     DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ def _train(args):
 
         # Perform action
         new_obs, reward, done, _ = env.step(action)
-
+        env.render()
         if episode_timesteps >= args.env_timesteps:
             done = True
 
