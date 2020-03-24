@@ -24,7 +24,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train(args):
 
-    writer = SummaryWriter('gail')
+    writer = SummaryWriter(comment='gail')
 
     if args.get_samples:
         generate_expert_trajectorys(args)
