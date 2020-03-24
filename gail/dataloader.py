@@ -58,10 +58,10 @@ def generate_expert_trajectorys(args):
             observation, reward, done, info = env.step(action)
             observations.append(observation)
             actions.append(action)
+            # env.render()
         env.reset()
         torch.save(actions, '{}/data_a_{}.pt'.format(args.data_directory,episode))
         torch.save(observations, '{}/data_o_{}.pt'.format(args.data_directory,episode))    
     
     env.close()
 
-    

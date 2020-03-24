@@ -54,7 +54,7 @@ class Generator(nn.Module):
         x = self.lr(self.lin1(x))
         x = self.lr(self.lin2(x))
         x1 = self.sig(self.lin3(x))*2
-        x2 = self.lr(self.lin4(x))
+        x2 = self.lin4(x)
 
         return torch.cat((x1,x2),1)
 

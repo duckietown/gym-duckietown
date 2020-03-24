@@ -1,31 +1,30 @@
+import argparse
+
 from gail.train import _train
-from gail.dataloader import *
-import matplotlib.pyplot as plt
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# from learning.imitation.basic.train_imitation import _train
 from learning.imitation.basic.enjoy_imitation import _enjoy
 
-from torchvision.models import resnet50
-class Struct:
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
-
-args={'episodes':9, 
-      'seed':1234, 
-      'steps':50, 
-      'batch_size':15,
-      'epochs':10,
-      'model_directory':'models/',
-      'data_directory':'D:/Michael/Learning/duckietown_data/',
-      'get_samples':True,
-      'train':True,
-      'lrG': 0.0004,
-      'lrD':0.0004}
-args = Struct(**args)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train", default=1, type=int, help="Train new model")
+    parser.add_argument("--seed", default=1234, type=int, help="Sets Gym, TF, and Numpy seeds")
+    parser.add_argument("--episodes", default=80, type=int, help="Number of epsiodes for experts")
+    parser.add_argument("--steps", default=9, type=int, help="Number of steps per episode")
+    parser.add_argument("--batch-size", default=32, type=int, help="Training batch size")
+    parser.add_argument("--epochs", default=24000, type=int, help="Number of training epochs")
+    parser.add_argument("--model-directory", default="models/", type=str, help="Where to save models")
+    parser.add_argument("--data-directory", default="D:/Michael/Learning/duckietown_data/", type=str, help="Where to save generated expert data")
+    parser.add_argument("--lrG", default=0.004, type=float, help="Generator learning rate")
+    parser.add_argument("--lrD", default=0.004, type=float, help="Discriminator learning rate")
+    parser.add_argument("--get-samples", default=1, type=int, help="Generate expert data")
+    parser.add_argument("--use-checkpoint", default=0, type=int, help="Use checkpoint for training")
+    parser.add_argument("--checkpoint", default="best", type=str, help="file name for checkpoint for training")
+
+
+    args = parser.parse_args()
+
     if args.train:
+        print("let's train!")
         _train(args)
-    _enjoy()
+    else:
+        _enjoy()

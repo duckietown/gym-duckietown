@@ -10,11 +10,6 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from learning.utils.env import launch_env
-from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
-from learning.utils.teacher import PurePursuitExpert
-
 from gail.models import *
 from gail.dataloader import *
 
@@ -23,6 +18,10 @@ from torch.utils.tensorboard import SummaryWriter
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train(args):
+    from learning.utils.env import launch_env
+    from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+        DtRewardWrapper, ActionWrapper, ResizeWrapper
+    from learning.utils.teacher import PurePursuitExpert
 
     writer = SummaryWriter(comment='gail')
 
@@ -33,6 +32,12 @@ def _train(args):
 
     G = Generator(action_dim=2).to(device)
     D = Discriminator(action_dim=2).to(device)
+
+    if args.use_checkpoint:
+        state_dict = torch.load('models/G_{}.pt'.format(args.checkpoint), map_location=device)
+        G.load_state_dict(state_dict)
+        state_dict = torch.load('models/D_{}.pt'.format(args.checkpoint), map_location=device)
+        D.load_state_dict(state_dict)
 
     D_optimizer = optim.SGD(
         D.parameters(), 
@@ -49,14 +54,26 @@ def _train(args):
     avg_g_loss = 0
     loss_fn = nn.BCEWithLogitsLoss()
 
-    
+    if args.batch_size> args.steps:
+        observations = []
+        actions = []
+        for i in np.random.randint(0,int(args.episodes*0.7),(int(args.episodes*0.7))):
+            observations.append(data[i]['observation'])
+            actions.append(data[i]['action'])
+        
+        
+
+        observations = torch.FloatTensor(observations).to(device)
+        observations = observations.view(observations.size()[0]*observations.size()[1],observations.size()[2],observations.size()[3],observations.size()[4])
+        actions = torch.FloatTensor(actions).to(device)
+        actions = actions.view(actions.size()[0]*actions.size()[1], actions.size()[2])
 
     for epoch in range(args.epochs):
-
-        if epoch % args.epochs/7 == 0: #if divisible by 7 sample new trajectory?
-            rand_int = np.random.randint(0,7)
+        if epoch % int(args.epochs/(args.episodes*0.7)) == 0 and args.batch_size < args.steps: #if divisible by 7 sample new trajectory?
+            rand_int = np.random.randint(0,(args.episodes*0.7))
             observations = torch.FloatTensor(data[rand_int]['observation']).to(device)
             actions =  torch.FloatTensor(data[rand_int]['action']).to(device)
+
         
         batch_indices = np.random.randint(0, observations.shape[0], (args.batch_size))
 
@@ -90,8 +107,9 @@ def _train(args):
 
         loss = expert_loss + policy_loss
 
-        loss.backward(retain_graph=True)
-        D_optimizer.step()
+        if epoch % 10:
+            loss.backward(retain_graph=True)
+            D_optimizer.step()
 
         ## Update G
 
@@ -112,7 +130,9 @@ def _train(args):
         if epoch % 200 == 0:
             torch.save(D.state_dict(), '{}/D2.pt'.format(args.model_directory))
             torch.save(G.state_dict(), '{}/G2.pt'.format(args.model_directory))
-
+        if epoch % 1000 == 0:
+            torch.save(D.state_dict(), '{}/D_epoch{}.pt'.format(args.model_directory,epoch))
+            torch.save(G.state_dict(), '{}/G_epohc{}.pt'.format(args.model_directory,epoch))
         torch.cuda.empty_cache()
     torch.save(D.state_dict(), '{}/D2.pt'.format(args.model_directory))
     torch.save(G.state_dict(), '{}/G2.pt'.format(args.model_directory))
