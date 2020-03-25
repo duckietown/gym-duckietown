@@ -15,6 +15,7 @@ class Generator(nn.Module):
         self.lr = nn.LeakyReLU()
         self.tanh = nn.Tanh()
         self.sig = nn.Sigmoid()
+        self.softmax = nn.Softmax()
 
 
         self.conv1 = nn.Conv2d(3, 32, 7, stride=4, padding=3)
@@ -71,7 +72,7 @@ class Discriminator(nn.Module):
         self.conv3 = nn.Conv2d(64,128,3, stride=4, padding=2)
 
         self.flatten = Flatten()
-        
+        self.softmax = nn.Softmax()
         # self.resnet = models.resnet50(pretrained=True)
         # for param in self.resnet.parameters():
         #     param.requires_grad = False
@@ -92,8 +93,9 @@ class Discriminator(nn.Module):
         
         x = self.lr(self.lin1(x))
         x = self.lr(self.lin2(x))
-        # x = self.sig(self.lin3(x))
-        x = self.lr(self.lin3(x))
+        x = self.sig(self.lin3(x))
+        # x = self.lr(self.lin3(x))
+        # x = self.lin3(x)
 
         return x
     

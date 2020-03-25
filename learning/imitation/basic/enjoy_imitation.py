@@ -15,22 +15,22 @@ import torch
 import numpy as np
 import gym
 from gail.models import *
-from learning.utils.env import launch_env
-from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
-from learning.utils.teacher import PurePursuitExpert
 
-from learning.imitation.basic.model import Model
-
+# from learning.imitation.basic.model import Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def _enjoy():
+def _enjoy(args):
+
+    from learning.utils.env import launch_env
+    from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+        DtRewardWrapper, ActionWrapper, ResizeWrapper
+    from learning.utils.teacher import PurePursuitExpert
     # model = Model(action_dim=2, max_action=1.)
     model = Generator(action_dim=2)
 
     try:
         # state_dict = torch.load('models/imitate.pt', map_location=device)
-        state_dict = torch.load('models/G2.pt', map_location=device)
+        state_dict = torch.load('models/G{}.pt'.format(args.enjoy_tag), map_location=device)
 
         model.load_state_dict(state_dict)
     except:
@@ -49,22 +49,30 @@ def _enjoy():
 
     obs = env.reset()
 
+    # max_count = 0
     while True:
         obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
 
         action = model(obs)
         action = action.squeeze().data.cpu().numpy()
-        
+        print("\nAction taken::", action, "\n")
         obs, reward, done, info = env.step(action)
         env.render()
+        
+
+        # if max_count > 50:
+        #     max_count = 0
+        #     obs = env.reset()
 
         if done:
             if reward < 0:
                 print('*** FAILED ***')
                 time.sleep(0.7)
-                
+            # max_count += 1
             obs = env.reset()
             env.render()
+            # if max_count > 10:
+            #     break
 
 if __name__ == '__main__':
     _enjoy()

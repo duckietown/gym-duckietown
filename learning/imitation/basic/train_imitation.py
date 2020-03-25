@@ -24,7 +24,7 @@ from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
 from learning.utils.teacher import PurePursuitExpert
 
 from learning.imitation.basic.model import Model
-
+from gail.models import Generator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -61,10 +61,10 @@ def _train(args):
     actions = np.array(actions)
     observations = np.array(observations)
 
-    model = Model(action_dim=2, max_action=1.)
-    # model = Generator(action_dim=2)
-    # state_dict = torch.load('models/imitate.pt', map_location=device)
-    # model.load_state_dict(state_dict)
+    # model = Model(action_dim=2, max_action=1.)
+    model = Generator(action_dim=2)
+    state_dict = torch.load('models/G_imitate_2.pt', map_location=device)
+    model.load_state_dict(state_dict)
     model.train().to(device)
 
     # weight_decay is L2 regularization, helps avoid overfitting
@@ -95,7 +95,7 @@ def _train(args):
 
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(model.state_dict(), '{}/imitate.pt'.format(args.model_directory))
+            torch.save(model.state_dict(), '{}/G_imitate.pt'.format(args.model_directory))
 
 
 if __name__ == '__main__':
