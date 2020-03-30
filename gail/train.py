@@ -18,25 +18,38 @@ from torch.utils.tensorboard import SummaryWriter
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train(args):
-    # from learning.utils.env import launch_env
-    # from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    #     DtRewardWrapper, ActionWrapper, ResizeWrapper
-    # from learning.utils.teacher import PurePursuitExpert
+    from learning.utils.env import launch_env
+    from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+        DtRewardWrapper, ActionWrapper, ResizeWrapper
+    from learning.utils.teacher import PurePursuitExpert
+
+    env = launch_env()
+    env = ResizeWrapper(env)
+    env = NormalizeWrapper(env) 
+    env = ImgWrapper(env)
+    env = ActionWrapper(env)
+    env = DtRewardWrapper(env)
+
+    observations = []    
+    actions = []
 
     if args.get_samples:
         generate_expert_trajectorys(args)
-    
+    # else:
     data = ExpertTrajDataset(args)
+    for i in range(args.episodes):
+        observations.append(data[i]['observation'][0])
+        actions.append(data[i]['action'][0])
 
     G = Generator(action_dim=2).to(device)
     D = Discriminator(action_dim=2).to(device)
-    state_dict = torch.load('models/G_imitate_2.pt'.format(args.checkpoint), map_location=device)
-    G.load_state_dict(state_dict)
-    # if args.use_checkpoint:
-    #     state_dict = torch.load('models/G_{}.pt'.format(args.checkpoint), map_location=device)
-    #     G.load_state_dict(state_dict)
-    #     state_dict = torch.load('models/D_{}.pt'.format(args.checkpoint), map_location=device)
-    #     D.load_state_dict(state_dict)
+    # state_dict = torch.load('models/G_imitate_2.pt'.format(args.checkpoint), map_location=device)
+    # G.load_state_dict(state_dict)
+    if args.checkpoint:
+        state_dict = torch.load('models/G_{}.pt'.format(args.checkpoint), map_location=device)
+        G.load_state_dict(state_dict)
+        # state_dict = torch.load('models/D_{}.pt'.format(args.checkpoint), map_location=device)
+        # D.load_state_dict(state_dict)
 
     D_optimizer = optim.SGD(
         D.parameters(), 
@@ -55,19 +68,12 @@ def _train(args):
     loss_fn = nn.BCEWithLogitsLoss()
     # loss_fn = nn.BCELoss()
 
-    validation = args.epochs-1
-    writer = SummaryWriter(comment='gail')
+    writer = SummaryWriter(comment='gail/{}'.format(args.training_name))
+
     for epoch in range(args.epochs):
-        if epoch % int(args.epochs/(args.episodes*0.7)) == 0 and args.batch_size < args.steps: #if divisible by 7 sample new trajectory?
-            rand_int = np.random.randint(0,(args.episodes*0.7))
-            observations = torch.FloatTensor(data[rand_int]['observation']).to(device)
-            actions =  torch.FloatTensor(data[rand_int]['action']).to(device)
-
-        
         batch_indices = np.random.randint(0, observations.shape[0], (args.batch_size))
-
-        obs_batch = observations[batch_indices]
-        act_batch = actions[batch_indices]
+        obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
+        act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
 
         model_actions = G(obs_batch)
 
@@ -83,7 +89,7 @@ def _train(args):
         # policy_label = torch.randn((args.batch_size,1), device=device).float()*0.1 + 1
         # policy_label = policy_label.clamp(0,0.3)
         ##
-        for _ in range(20):
+        for _ in range(args.D_train_eps):
 
             D_optimizer.zero_grad()
 
@@ -110,10 +116,15 @@ def _train(args):
                 p.data.clamp_(-0.01,0.01)
 
         ## Update G
+        if args.rollout:
+            obs, acts = generate_trajectories(G, env, args.steps)
+        else:
+            obs = obs_batch
+            acts = model_actions
 
         G_optimizer.zero_grad()
 
-        loss_g = -(torch.mean(D(obs_batch,model_actions)))
+        loss_g = -(torch.mean(torch.log(D(obs,acts))))
         # loss_g = loss_g.mean()
         loss_g.backward()
         G_optimizer.step()
@@ -126,14 +137,32 @@ def _train(args):
 
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(D.state_dict(), '{}/D2.pt'.format(args.model_directory))
-            torch.save(G.state_dict(), '{}/G2.pt'.format(args.model_directory))
+            torch.save(D.state_dict(), '{}/D_{}.pt'.format(args.model_directory,args.training_name))
+            torch.save(G.state_dict(), '{}/G_{}.pt'.format(args.model_directory,args.training_name))
         if epoch % 1000 == 0:
-            torch.save(D.state_dict(), '{}/D_epoch{}.pt'.format(args.model_directory,epoch))
-            torch.save(G.state_dict(), '{}/G_epoch{}.pt'.format(args.model_directory,epoch))
+            torch.save(D.state_dict(), '{}/D_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))
+            torch.save(G.state_dict(), '{}/G_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))
         torch.cuda.empty_cache()
-    torch.save(D.state_dict(), '{}/D2.pt'.format(args.model_directory))
-    torch.save(G.state_dict(), '{}/G2.pt'.format(args.model_directory))
+    torch.save(D.state_dict(), '{}/D_{}.pt'.format(args.model_directory,args.training_name))
+    torch.save(G.state_dict(), '{}/G_{}.pt'.format(args.model_directory,args.training_name))
     # writer.add_graph("generator", G)
     # writer.add_graph("discriminator",D)
 
+def generate_trajectories(policy, env, steps, episodes=2):
+    observations = []
+    actions = []
+    
+    for episode in range(0, episodes):
+        obs = env.reset()
+        for steps in range(0, steps):
+            # use our 'expert' to predict the next action.
+            obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
+
+            action = policy(obs)
+            action = action.squeeze().data.cpu().numpy()
+            obs, reward, done, info = env.step(action)
+            observations.append(obs)
+            actions.append(action)
+            # env.render()
+
+    return torch.FloatTensor(observations).to(device), torch.FloatTensor(actions).to(device)

@@ -17,6 +17,7 @@ import torch
 import torch.optim as optim
 
 from gail.models import *
+from gail.dataloader import *
 
 from learning.utils.env import launch_env
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
@@ -47,34 +48,42 @@ def _train(args):
     actions = []
 
     # let's collect our samples
-    for episode in range(0, args.episodes):
-        print("Starting episode", episode)
-        for steps in range(0, args.steps):
-            # use our 'expert' to predict the next action.
-            action = expert.predict(None)
-            observation, reward, done, info = env.step(action)
-            observations.append(observation)
-            actions.append(action)
-        env.reset()
-    env.close()
+    if args.get_samples:
+        for episode in range(0, args.episodes):
+            print("Starting episode", episode)
+            for steps in range(0, args.steps):
+                # use our 'expert' to predict the next action.
+                action = expert.predict(None)
+                observation, reward, done, info = env.step(action)
+                observations.append(observation)
+                actions.append(action)
+            env.reset()
+        env.close()
+    else:
+        data = ExpertTrajDataset(args)
+        for i in range(args.episodes):
+            observations.append(data[i]['observation'][0])
+            actions.append(data[i]['action'][0])
+
 
     actions = np.array(actions)
     observations = np.array(observations)
 
     # model = Model(action_dim=2, max_action=1.)
     model = Generator(action_dim=2)
-    state_dict = torch.load('models/G_imitate_2.pt', map_location=device)
-    model.load_state_dict(state_dict)
+    # state_dict = torch.load('models/G_imitate_2.pt', map_location=device)
+    # model.load_state_dict(state_dict)
     model.train().to(device)
 
     # weight_decay is L2 regularization, helps avoid overfitting
     optimizer = optim.SGD(
         model.parameters(),
-        lr=0.0004,
+        lr=args.lrG,
         weight_decay=1e-3
     )
 
     avg_loss = 0
+    last_loss = 0
     for epoch in range(args.epochs):
         optimizer.zero_grad()
 
@@ -92,11 +101,15 @@ def _train(args):
         avg_loss = avg_loss * 0.995 + loss * 0.005
 
         print('epoch %d, loss=%.3f' % (epoch, avg_loss))
-
+        
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(model.state_dict(), '{}/G_imitate.pt'.format(args.model_directory))
-
+            torch.save(model.state_dict(), '{}/G_{}.pt'.format(args.model_directory, args.training_name))
+        
+        if abs(last_loss - loss) < args.eps:
+            torch.save(model.state_dict(), '{}/G_{}.pt'.format(args.model_directory, args.training_name))
+            break
+        last_loss = loss
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

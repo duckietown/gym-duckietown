@@ -1,8 +1,8 @@
 import argparse
 
 from gail.train import _train
+from gail.eval import _eval
 from learning.imitation.basic.enjoy_imitation import _enjoy
-from learning.imitation.basic.train_imitation import _train as t2
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -18,16 +18,23 @@ if __name__ == '__main__':
     parser.add_argument("--lrD", default=0.004, type=float, help="Discriminator learning rate")
     parser.add_argument("--get-samples", default=0, type=int, help="Generate expert data")
     parser.add_argument("--use-checkpoint", default=0, type=int, help="Use checkpoint for training")
-    parser.add_argument("--checkpoint", default="best", type=str, help="file name for checkpoint for training")
-    parser.add_argument("--enjoy_tag", default="_best", type=str, help="file tag for checkpoint for enjoying")
-
+    parser.add_argument("--checkpoint", default="", type=str, help="file name for checkpoint for training")
+    parser.add_argument("--training-name", default="last", type=str, help="file tag training type")
+    parser.add_argument("--rollout", default=1, type=int, help="file tag training type")
+    parser.add_argument("--D-train-eps", default=10, type=int, help="number of times to train D vs G")
+    parser.add_argument("--pretrain", default=0, type=int, help="flag to run imitation learning instead")
+    parser.add_argument("--eval", default=1, type=int, help="flag to run eval script")
+    parser.add_argument("--eps", default=0.000001, type=float, help="epsilon for imitation learning")
 
 
     args = parser.parse_args()
 
     if args.train:
         print("let's train!")
+        if args.pretrain:
+            from learning.imitation.basic.train_imitation import _train 
         _train(args)
-        # t2(args)
+    if args.eval:
+        _eval(args)
     else:
         _enjoy(args)

@@ -30,7 +30,7 @@ def _enjoy(args):
 
     try:
         # state_dict = torch.load('models/imitate.pt', map_location=device)
-        state_dict = torch.load('models/G{}.pt'.format(args.enjoy_tag), map_location=device)
+        state_dict = torch.load('models/G_{}.pt'.format(args.training_name), map_location=device)
 
         model.load_state_dict(state_dict)
     except:
@@ -55,7 +55,7 @@ def _enjoy(args):
 
         action = model(obs)
         action = action.squeeze().data.cpu().numpy()
-        print("\nAction taken::", action, "\n")
+        # print("\nAction taken::", action, "\n")
         obs, reward, done, info = env.step(action)
         env.render()
         
