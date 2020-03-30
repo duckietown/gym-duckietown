@@ -59,11 +59,18 @@ def _train(args):
                 actions.append(action)
             env.reset()
         env.close()
+        torch.save(actions, '{}/data_a_t.pt'.format(args.data_directory))
+        torch.save(observations, '{}/data_o_t.pt'.format(args.data_directory))    
+
     else:
-        data = ExpertTrajDataset(args)
-        for i in range(args.episodes):
-            observations.append(data[i]['observation'][0])
-            actions.append(data[i]['action'][0])
+        observations = torch.load('{}/data_o_t.pt'.format(args.data_directory))
+        actions = torch.load('{}/data_a_t.pt'.format(args.data_directory))
+        
+
+        # data = ExpertTrajDataset(args)
+        # for i in range(args.episodes):
+        #     observations.append(data[i]['observation'][0])
+        #     actions.append(data[i]['action'][0])
 
 
     actions = np.array(actions)

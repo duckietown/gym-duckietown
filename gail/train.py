@@ -33,16 +33,32 @@ def _train(args):
     observations = []    
     actions = []
 
+
+    # let's collect our samples
     if args.get_samples:
-        generate_expert_trajectorys(args)
-    # else:
-    data = ExpertTrajDataset(args)
-    for i in range(args.episodes):
-        observations.append(data[i]['observation'][0])
-        actions.append(data[i]['action'][0])
+        for episode in range(0, args.episodes):
+            print("Starting episode", episode)
+            for steps in range(0, args.steps):
+                # use our 'expert' to predict the next action.
+                action = expert.predict(None)
+                observation, reward, done, info = env.step(action)
+                observations.append(observation)
+                actions.append(action)
+            env.reset()
+        env.close()
+        torch.save(actions, '{}/data_a_t.pt'.format(args.data_directory))
+        torch.save(observations, '{}/data_o_t.pt'.format(args.data_directory))    
+
+    else:
+        observations = torch.load('{}/data_o_t.pt'.format(args.data_directory))
+        actions = torch.load('{}/data_a_t.pt'.format(args.data_directory))
+
 
     G = Generator(action_dim=2).to(device)
     D = Discriminator(action_dim=2).to(device)
+    G.train().to(device)
+    D.train().to(device)
+
     # state_dict = torch.load('models/G_imitate_2.pt'.format(args.checkpoint), map_location=device)
     # G.load_state_dict(state_dict)
     if args.checkpoint:

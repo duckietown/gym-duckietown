@@ -5,5 +5,6 @@
 
 xvfb.log
 bin
+models/
 
 trained_models
