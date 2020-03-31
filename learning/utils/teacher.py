@@ -10,13 +10,13 @@ FOLLOWING_DISTANCE = 0.3
 
 class PurePursuitExpert:
     def __init__(self, env, ref_velocity=REF_VELOCITY, position_threshold=POSITION_THRESHOLD,
-                 following_distance=FOLLOWING_DISTANCE, max_iterations=1000):
+                 following_distance=FOLLOWING_DISTANCE, gain=GAIN, max_iterations=1000):
         self.env = env.unwrapped
         self.following_distance = following_distance
         self.max_iterations = max_iterations
         self.ref_velocity = ref_velocity
         self.position_threshold = position_threshold
-
+        self.gain = gain
     def predict(self, observation):  # we don't really care about the observation for this implementation
         closest_point, closest_tangent = self.env.closest_curve_point(self.env.cur_pos, self.env.cur_angle)
 
@@ -41,6 +41,6 @@ class PurePursuitExpert:
         point_vec /= np.linalg.norm(point_vec)
 
         dot = np.dot(self.env.get_right_vec(), point_vec)
-        steering = GAIN * -dot
+        steering = self.gain * -dot
 
         return self.ref_velocity, steering

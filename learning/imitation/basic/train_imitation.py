@@ -26,6 +26,7 @@ from learning.utils.teacher import PurePursuitExpert
 
 from learning.imitation.basic.model import Model
 from gail.models import Generator
+from torch.utils.tensorboard import SummaryWriter
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -46,6 +47,9 @@ def _train(args):
 
     observations = []
     actions = []
+
+    writer = SummaryWriter(comment='imitate/{}'.format(args.training_name))
+
 
     # let's collect our samples
     if args.get_samples:
@@ -83,14 +87,15 @@ def _train(args):
     model.train().to(device)
 
     # weight_decay is L2 regularization, helps avoid overfitting
-    optimizer = optim.SGD(
+    optimizer = optim.Adam(
         model.parameters(),
         lr=args.lrG,
-        weight_decay=1e-3
+        # weight_decay=1e-3
     )
 
     avg_loss = 0
     last_loss = 0
+    writer.add_graph(model,input_to_model=torch.from_numpy(observations).float().to(device), verbose=False)
     for epoch in range(args.epochs):
         optimizer.zero_grad()
 
@@ -98,25 +103,30 @@ def _train(args):
         obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
         act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
 
-        model_actions = model(obs_batch)
+        model_actions = model.select_action(obs_batch)
 
         loss = (model_actions - act_batch).norm(2).mean()
+        
         loss.backward()
         optimizer.step()
 
         loss = loss.data.item()
         avg_loss = avg_loss * 0.995 + loss * 0.005
+        
+        writer.add_scalar("G/loss", loss, epoch) #should go towards -inf?
 
-        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
+        print('epoch %d, loss=%.3f' % (epoch, loss))
         
         # Periodically save the trained model
-        if epoch % 200 == 0:
-            torch.save(model.state_dict(), '{}/G_{}.pt'.format(args.model_directory, args.training_name))
-        
+        if epoch - 200 == 0 or epoch % 1000 == 0:
+            torch.save(model.state_dict(), '{}/G_{}_epoch_{}.pt'.format(args.model_directory, args.training_name, epoch))
+        # if epoch % 1000 == 0:
+        #     torch.save(model.state_dict(), '{}/G_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))
+        #     # torch.save(G.state_dict(), '{}/G_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))
         if abs(last_loss - loss) < args.eps:
-            torch.save(model.state_dict(), '{}/G_{}.pt'.format(args.model_directory, args.training_name))
             break
         last_loss = loss
+        torch.save(model.state_dict(), '{}/G_{}.pt'.format(args.model_directory, args.training_name))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

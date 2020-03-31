@@ -30,15 +30,15 @@ Read [this](https://github.com/mphamhung/gym-duckietown/blob/master/README_old.m
 
 # Imitation Learning
 ```bash
-python test.py --episodes 1 --steps 100 --batch-size 100 --pretrain 1 --training-name "pretrained1"
-python test.py --episodes 3 --steps 100 --batch-size 100 --pretrain 1 --training-name "pretrained3"
-python test.py --episodes 7 --steps 100 --batch-size 100 --pretrain 1 --training-name "pretrained7"
 python test.py --episodes 9 --pretrain 1 --training-name "pretrained9"
+python test.py --episodes 1 --pretrain 1 --training-name "pretrained1"
+python test.py --episodes 3 --pretrain 1 --training-name "pretrained3"
+python test.py --episodes 7 --pretrain 1 --training-name "pretrained7"
 ```
 # Gail Lite
 ```bash
-python test.py --episodes 1 --steps 50 --pretrain 0 --training-name "gaillite1" --checkpoint "pretrained1"
-python test.py --episodes 3 --steps 50 --pretrain 0 --training-name --checkpoint "pretrained3"
-python test.py --episodes 7 --steps 50 --pretrain 0 --training-name --checkpoint "pretrained7"
-python test.py --episodes 9 --steps 50 --pretrain 0 --training-name --checkpoint "pretrained9"
+python test.py --episodes 1 --pretrain 0 --training-name "gaillite1" --checkpoint "pretrained1_epoch_200"
+python test.py --episodes 3 --pretrain 0 --training-name "gaillite3" --checkpoint "pretrained3_epoch_200"
+python test.py --episodes 7 --pretrain 0 --training-name "gaillite7" --checkpoint "pretrained7_epoch_200"
+python test.py --episodes 9 --pretrain 0 --training-name "gaillite9" --checkpoint "pretrained9_epoch_200"
 ```

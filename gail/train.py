@@ -33,7 +33,7 @@ def _train(args):
     observations = []    
     actions = []
 
-
+    expert = PurePursuitExpert(env=env)
     # let's collect our samples
     if args.get_samples:
         for episode in range(0, args.episodes):
@@ -53,11 +53,12 @@ def _train(args):
         observations = torch.load('{}/data_o_t.pt'.format(args.data_directory))
         actions = torch.load('{}/data_a_t.pt'.format(args.data_directory))
 
-
-    G = Generator(action_dim=2).to(device)
-    D = Discriminator(action_dim=2).to(device)
-    G.train().to(device)
-    D.train().to(device)
+    actions = np.array(actions)
+    observations = np.array(observations)
+    
+    G = Generator(action_dim=2).train().to(device)
+    D = Discriminator(action_dim=2).train().to(device)
+    V = Value(action_dim=2).train().to(device)
 
     # state_dict = torch.load('models/G_imitate_2.pt'.format(args.checkpoint), map_location=device)
     # G.load_state_dict(state_dict)
@@ -79,6 +80,12 @@ def _train(args):
         weight_decay=1e-3,
     )
 
+    V_optimizaer = optim.SGD(
+        V.parameters(),
+        lr = args.lrG,
+        weight_decay=1e-3,
+    )
+
     avg_loss = 0
     avg_g_loss = 0
     loss_fn = nn.BCEWithLogitsLoss()
@@ -95,53 +102,19 @@ def _train(args):
 
         ## Update D
 
-        exp_label = torch.full((args.batch_size,1), 1, device=device).float()
-        policy_label = torch.full((args.batch_size,1), 0, device=device).float()
+        if args.D_train_eps < 0 and epoch % args.D_train_eps == 0:
+            D_train_eps = 1
+            prob_expert, prob_policy, loss = update_discriminator(args, D_optimizer, D_train_eps, loss_fn, D, obs_batch, act_batch, model_actions, writer, epoch)
+        elif args.D_train_eps>0:
+            D_train_eps = args.D_train_eps
+            prob_expert, prob_policy, loss = update_discriminator(args, D_optimizer, D_train_eps, loss_fn, D, obs_batch, act_batch, model_actions, writer, epoch)
 
-        ##Making labels soft
-        # exp_label = torch.randn((args.batch_size,1), device=device).float()*0.1 + 1.1
-        # exp_label = exp_label.clamp(0.7,1.2)
 
-        # policy_label = torch.randn((args.batch_size,1), device=device).float()*0.1 + 1
-        # policy_label = policy_label.clamp(0,0.3)
-        ##
-        for _ in range(args.D_train_eps):
-
-            D_optimizer.zero_grad()
-
-            prob_expert = D(obs_batch,act_batch)
-            expert_loss = loss_fn(prob_expert, exp_label)
-            # writer.add_scalar("expert D loss", expert_loss, epoch)
-            writer.add_scalar("expert D loss", torch.mean(prob_expert), epoch)
-
-            prob_policy = D(obs_batch,model_actions)
-            policy_loss = loss_fn(prob_policy, policy_label)
-            # writer.add_scalar("policy D loss", policy_loss, epoch)
-            writer.add_scalar("policy D loss", torch.mean(prob_policy), epoch)
-
-            # loss = (expert_loss + policy_loss)
-
-            loss = -(torch.mean(prob_expert) - torch.mean(prob_policy))
-
-            writer.add_scalar("D/loss", loss, epoch)
-            # if epoch % 10:
-            loss.backward(retain_graph=True)
-            D_optimizer.step()
-
-            for p in D.parameters():
-                p.data.clamp_(-0.01,0.01)
-
-        ## Update G
-        if args.rollout:
-            obs, acts = generate_trajectories(G, env, args.steps)
-        else:
-            obs = obs_batch
-            acts = model_actions
-
-        G_optimizer.zero_grad()
-
-        loss_g = -(torch.mean(torch.log(D(obs,acts))))
-        # loss_g = loss_g.mean()
+        # Update G
+        if True: 
+            loss_g = do_policy_gradient(args, G, D, env, obs_batch, model_actions)
+        if None:
+            loss_g = do_ppo_step(args)
         loss_g.backward()
         G_optimizer.step()
 
@@ -153,16 +126,15 @@ def _train(args):
 
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(D.state_dict(), '{}/D_{}.pt'.format(args.model_directory,args.training_name))
-            torch.save(G.state_dict(), '{}/G_{}.pt'.format(args.model_directory,args.training_name))
-        if epoch % 1000 == 0:
-            torch.save(D.state_dict(), '{}/D_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))
-            torch.save(G.state_dict(), '{}/G_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))
+            torch.save(D.state_dict(), '{}/D_{}_epoch_{}.pt'.format(args.model_directory,args.training_name,epoch))
+            torch.save(G.state_dict(), '{}/G_{}_epoch_{}.pt'.format(args.model_directory,args.training_name,epoch))
+        torch.save(D.state_dict(), '{}/D_{}.pt'.format(args.model_directory,args.training_name))
+        torch.save(G.state_dict(), '{}/G_{}.pt'.format(args.model_directory,args.training_name))
         torch.cuda.empty_cache()
-    torch.save(D.state_dict(), '{}/D_{}.pt'.format(args.model_directory,args.training_name))
-    torch.save(G.state_dict(), '{}/G_{}.pt'.format(args.model_directory,args.training_name))
+
     # writer.add_graph("generator", G)
     # writer.add_graph("discriminator",D)
+
 
 def generate_trajectories(policy, env, steps, episodes=2):
     observations = []
@@ -182,3 +154,66 @@ def generate_trajectories(policy, env, steps, episodes=2):
             # env.render()
 
     return torch.FloatTensor(observations).to(device), torch.FloatTensor(actions).to(device)
+
+def do_policy_gradient(args, G, D, env, obs_batch, model_actions):
+    if args.rollout:
+        obs, acts = generate_trajectories(G, env, args.steps)
+    else:
+        obs = obs_batch
+        acts = model_actions
+
+    loss_g = D(obs,acts).log().mean()
+    return loss_g
+
+def update_discriminator(args, D_optimizer, D_train_eps, loss_fn, D, obs_batch, act_batch, model_actions, writer, epoch):
+    D_optimizer.zero_grad()
+
+    exp_label = torch.full((args.batch_size,1), 0, device=device).float()
+    policy_label = torch.full((args.batch_size,1), 1, device=device).float()
+
+    ##Making labels soft
+    # exp_label = torch.randn((args.batch_size,1), device=device).float()*0.1 + 1.1
+    # exp_label = exp_label.clamp(0.7,1.2)
+
+    # policy_label = torch.randn((args.batch_size,1), device=device).float()*0.1 + 1
+    # policy_label = policy_label.clamp(0,0.3)
+    ##
+    for _ in range(D_train_eps):
+        prob_expert = D(obs_batch,act_batch)
+        expert_loss = loss_fn(prob_expert, exp_label)
+        # writer.add_scalar("expert D loss", expert_loss, epoch)
+
+        prob_policy = D(obs_batch,model_actions)
+        policy_loss = loss_fn(prob_policy, policy_label)
+        # writer.add_scalar("policy D loss", policy_loss, epoch)
+
+        loss = (expert_loss + policy_loss)
+
+        # loss = -(prob_expert.mean() - prob_policy.mean())
+
+        # if epoch % 10:
+        loss.backward(retain_graph=True)
+        D_optimizer.step()
+
+        for p in D.parameters():
+            p.data.clamp_(-0.01,0.01)
+    writer.add_scalar("expert D probability", torch.mean(prob_expert), epoch)
+    writer.add_scalar("policy D probability", torch.mean(prob_policy), epoch)
+    writer.add_scalar("D/loss", loss, epoch)
+
+    return prob_expert.data, prob_policy.data, loss.data
+
+
+def generalized_advantage_estimator(rewards, values):
+    pass
+def do_ppo_step(args, G, D, V, env, obs_batch, model_actions):
+    
+    
+    if args.rollout:
+        obs, acts = generate_trajectories(G, env, args.steps)
+    else:
+        obs = obs_batch
+        acts = model_actions
+
+
+    

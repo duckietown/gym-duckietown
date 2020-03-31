@@ -53,7 +53,8 @@ def _enjoy(args):
     while True:
         obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
 
-        action = model(obs)
+        action = model.select_action(obs)
+
         action = action.squeeze().data.cpu().numpy()
         # print("\nAction taken::", action, "\n")
         obs, reward, done, info = env.step(action)
