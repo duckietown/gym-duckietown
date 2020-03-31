@@ -4,22 +4,20 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import torchvision.models as models
 
-from torch.distributions import LogNormal, Normal
+from torch.distributions import LogNormal, Normal, MultivariateNormal, Independent
 
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
 
 class Generator(nn.Module):
-    def __init__(self, action_dim, deterministic=True):
+    def __init__(self, action_dim):
         super(Generator,self).__init__()
         
         self.lr = nn.LeakyReLU()
         self.tanh = nn.Tanh()
         self.sig = nn.Sigmoid()
         self.softmax = nn.Softmax()
-
-        self.is_deterministic=True
 
         self.conv1 = nn.Sequential( nn.Conv2d(3, 32, 7, stride=4, padding=3),
                                     self.lr,
@@ -85,19 +83,24 @@ class Generator(nn.Module):
 
 
     def select_action(self, observation):
-        mu_v, sig_v, mu_s, sig_s = self.forward(observation)
+        v_dist, s_dist = self.get_distributions(observation)
 
-        if self.is_deterministic:
-            model_actions = torch.cat((mu_v,mu_s),1)
-        else:
-            velocity_dist = Normal(mu_v, sig_v)
-            steer_dist = Normal(mu_s, sig_s)
-            velocities = Variable(velocity_dist.sample(), requires_grad=True)
-            steering_angles = Variable(steer_dist.sample(), requires_grad=True)
+        velocities = v_dist.rsample()
+        steering_angles = s_dist.rsample()
+        # # velocities = torch.randn(mu_v.shape).to(device)*sig_v+mu_v
+        # # steering_angles = torch.randn(mu_s.shape).to(device)*sig_s+mu_s
 
-            model_actions = torch.cat((velocities,steering_angles),1)
+        model_actions = torch.cat((velocities,steering_angles),1)
 
         return model_actions
+
+    def get_distributions(self, observation):
+        mu_v, sig_v, mu_s, sig_s = self.forward(observation)
+
+        v_dist = Normal(*[mu_v, sig_v])
+        s_dist = Normal(*[mu_s, sig_s])
+
+        return v_dist, s_dist
 
 class Discriminator(nn.Module):
     def __init__(self, action_dim):
@@ -113,29 +116,33 @@ class Discriminator(nn.Module):
 
         self.flatten = Flatten()
         self.softmax = nn.Softmax()
-        # self.resnet = models.resnet50(pretrained=True)
-        # for param in self.resnet.parameters():
-        #     param.requires_grad = False
-        # self.resnet.fc = nn.Linear(2048,1000)
+        self.resnet = models.resnet50(pretrained=True)
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+        self.resnet.fc = nn.Linear(2048,1000)
         
-        self.lin1 = nn.Linear(128*4*3+action_dim, 256)
+        self.lin1 = nn.Linear(1000+action_dim,256)
+        # self.lin1 = nn.Linear(128*4*3+action_dim, 256)
         self.lin2 = nn.Linear(256, 128)
         self.lin3 = nn.Linear(128, 1)
         
     def forward(self,observations, actions):
-        x = self.lr(self.conv1(observations))
-        x = self.lr(self.conv2(x))
-        x = self.lr(self.conv3(x))
+        # x = self.lr(self.conv1(observations))
+        # x = self.lr(self.conv2(x))
+        # x = self.lr(self.conv3(x))
 
-        x = self.flatten(x)
-        
+        # x = self.flatten(x)
+        x = self.resnet(observations)
+
         x = torch.cat((x,actions),1)
         
         x = self.lr(self.lin1(x))
         x = self.lr(self.lin2(x))
         x = self.sig(self.lin3(x))
-        # x = self.lr(self.lin3(x))
+        # # x = self.lr(self.lin3(x))
         # x = self.lin3(x)
+
+
 
         return x
     

@@ -103,7 +103,7 @@ def _train(args):
         obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
         act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
 
-        model_actions = model.select_action(obs_batch)
+        model_actions = model.select_action(obs_batch,device)
 
         loss = (model_actions - act_batch).norm(2).mean()
         
@@ -118,7 +118,7 @@ def _train(args):
         print('epoch %d, loss=%.3f' % (epoch, loss))
         
         # Periodically save the trained model
-        if epoch - 200 == 0 or epoch % 1000 == 0:
+        if epoch % 200 == 0:
             torch.save(model.state_dict(), '{}/G_{}_epoch_{}.pt'.format(args.model_directory, args.training_name, epoch))
         # if epoch % 1000 == 0:
         #     torch.save(model.state_dict(), '{}/G_{}_epoch{}.pt'.format(args.model_directory,args.training_name,epoch))

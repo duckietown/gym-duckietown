@@ -28,15 +28,15 @@ def _enjoy(args):
     # model = Model(action_dim=2, max_action=1.)
     model = Generator(action_dim=2)
 
-    try:
+    # try:
         # state_dict = torch.load('models/imitate.pt', map_location=device)
-        state_dict = torch.load('models/G_{}.pt'.format(args.training_name), map_location=device)
+    state_dict = torch.load('models/G_{}.pt'.format(args.training_name), map_location=device)
 
-        model.load_state_dict(state_dict)
-    except:
-        print("Unexpected error:", sys.exc_info()[0])
-        print('failed to load model')
-        exit()
+    model.load_state_dict(state_dict)
+    # except:
+    #     print("Unexpected error:", sys.exc_info()[0])
+    #     print('failed to load model')
+    #     exit()
 
     model.eval().to(device)
 
@@ -53,7 +53,7 @@ def _enjoy(args):
     while True:
         obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
 
-        action = model.select_action(obs)
+        action = model.select_action(obs, device)
 
         action = action.squeeze().data.cpu().numpy()
         # print("\nAction taken::", action, "\n")

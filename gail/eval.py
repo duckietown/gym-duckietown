@@ -78,8 +78,8 @@ def _eval(args):
         observations = torch.FloatTensor(observations).to(device)
         
         expert_actions = torch.FloatTensor(actions).to(device)
-        model_actions = G.select_action(observations).to(device)
-        random_actions = G_random.select_action(observations).to(device)
+        model_actions = G.select_action(observations, device=device).to(device)
+        random_actions = G_random.select_action(observations,device=device).to(device)
         
         random_scores = (expert_actions-random_actions).abs()
         model_scores = (expert_actions-model_actions).abs()
