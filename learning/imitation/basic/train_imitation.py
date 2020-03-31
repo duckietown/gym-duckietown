@@ -11,6 +11,7 @@ import math
 import json
 from functools import reduce
 import operator
+import sys
 
 import numpy as np
 import torch
@@ -51,34 +52,26 @@ def _train(args):
     writer = SummaryWriter(comment='imitate/{}'.format(args.training_name))
 
 
-    # let's collect our samples
     if args.get_samples:
-        for episode in range(0, args.episodes):
-            print("Starting episode", episode)
-            for steps in range(0, args.steps):
-                # use our 'expert' to predict the next action.
-                action = expert.predict(None)
-                observation, reward, done, info = env.step(action)
-                observations.append(observation)
-                actions.append(action)
-            env.reset()
-        env.close()
+        # for episode in range(0, args.episodes):
+        #     print("Starting episode", episode)
+        #     for steps in range(0, args.steps):
+        #         # use our 'expert' to predict the next action.
+        #         action = expert.predict(None)
+        #         observation, reward, done, info = env.step(action)
+        #         actions.append(action)
+        #     env.reset()
+        # env.close()
+        observations, actions, _, _, _, _, _ = generate_trajectories(env, steps=args.steps, episodes=args.episodes, expert=expert)
         torch.save(actions, '{}/data_a_t.pt'.format(args.data_directory))
         torch.save(observations, '{}/data_o_t.pt'.format(args.data_directory))    
 
     else:
         observations = torch.load('{}/data_o_t.pt'.format(args.data_directory))
         actions = torch.load('{}/data_a_t.pt'.format(args.data_directory))
-        
 
-        # data = ExpertTrajDataset(args)
-        # for i in range(args.episodes):
-        #     observations.append(data[i]['observation'][0])
-        #     actions.append(data[i]['action'][0])
-
-
-    actions = np.array(actions)
-    observations = np.array(observations)
+    expert_actions = torch.FloatTensor(actions)
+    expert_observations = torch.stack(observations)
 
     # model = Model(action_dim=2, max_action=1.)
     model = Generator(action_dim=2)
@@ -95,15 +88,16 @@ def _train(args):
 
     avg_loss = 0
     last_loss = 0
-    writer.add_graph(model,input_to_model=torch.from_numpy(observations).float().to(device), verbose=False)
+    # writer.add_graph(model,input_to_model=torch.from_numpy(observations).float().to(device), verbose=False)
     for epoch in range(args.epochs):
         optimizer.zero_grad()
 
-        batch_indices = np.random.randint(0, observations.shape[0], (args.batch_size))
-        obs_batch = torch.from_numpy(observations[batch_indices]).float().to(device)
-        act_batch = torch.from_numpy(actions[batch_indices]).float().to(device)
+        batch_indices = np.random.randint(0, expert_actions.shape[0], (args.batch_size))
+        
+        obs_batch = expert_observations[batch_indices].float().to(device).data
+        act_batch = expert_actions[batch_indices].float().to(device).data
 
-        model_actions = model.select_action(obs_batch,device)
+        model_actions = model.select_action(obs_batch)
 
         loss = (model_actions - act_batch).norm(2).mean()
         
@@ -128,6 +122,72 @@ def _train(args):
         last_loss = loss
         torch.save(model.state_dict(), '{}/G_{}.pt'.format(args.model_directory, args.training_name))
 
+
+def generate_trajectories(env, steps=10, policy=None, d=None,  episodes=1, expert=None):
+    observations = []
+    actions = []
+    log_probs = []
+    rewards = []
+    masks = []
+    values = []
+    next_value = 0
+
+    for episode in range(0, episodes): 
+        while True:
+            try:
+                o = []
+                a = []
+                l = []
+                r = []
+                m = []
+                v = []
+                obs = env.reset()
+                for step in range(0, steps):
+                    # use our 'expert' to predict the next action.
+                    o.append(torch.FloatTensor(obs).to(device))
+                    
+                    if expert:
+                        action = expert.predict(None)
+                        a.append(action)
+                    else:
+                        obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
+
+                        action = policy.select_action(obs)
+                        a.append(action)
+                        r.append(d(obs,action).unsqueeze(1).to(device)) 
+
+                        action = action.squeeze().data.cpu().numpy()
+                    
+                        # a.append(torch.FloatTensor(action)).to(device)
+                        v_dist, s_dist, value = policy(obs)
+                        l.append(torch.FloatTensor([v_dist.log_prob(action[0]), s_dist.log_prob(action[1])]))
+
+
+                        v.append(value)
+
+                    obs, reward, done, info = env.step(action)
+
+                    mask = 0 if done or step == steps-1 else 1
+                    m.append(torch.FloatTensor([mask]).unsqueeze(1).to(device))
+
+                observations += o
+                actions += a
+                log_probs += l
+                rewards += r
+                masks += m
+                values += v
+                break
+            except ValueError: 
+                print(o,a,l,r,m,v)
+                break
+            except:
+                print("Unexpected error:", sys.exc_info()[0])
+                pass
+
+    if not expert:
+        obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
+        _ , _ , next_value = policy(obs)
+    return observations, actions, log_probs, rewards, masks, values, next_value
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=1234, type=int, help="Sets Gym, TF, and Numpy seeds")
@@ -140,3 +200,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     _train(args)
+
+

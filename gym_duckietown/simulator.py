@@ -448,13 +448,13 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting tile
         if self.user_tile_start:
-            # logger.info('using user tile start: %s' % self.user_tile_start)
+            logger.info('using user tile start: %s' % self.user_tile_start)
             i, j = self.user_tile_start
             tile = self._get_tile(i, j)
             if tile is None:
                 msg = 'The tile specified does not exist.'
                 raise Exception(msg)
-            # logger.debug('tile: %s' % tile)
+            logger.debug('tile: %s' % tile)
         else:
             if self.start_tile is not None:
                 tile = self.start_tile
@@ -513,7 +513,7 @@ class Simulator(gym.Env):
         self.cur_pos = propose_pos
         self.cur_angle = propose_angle
 
-        # logger.info('Starting at %s %s' % (self.cur_pos, self.cur_angle))
+        logger.info('Starting at %s %s' % (self.cur_pos, self.cur_angle))
 
         # Generate the first camera image
         obs = self.render_obs()
@@ -532,7 +532,7 @@ class Simulator(gym.Env):
         # Get the full map file path
         self.map_file_path = get_file_path('maps', map_name, 'yaml')
 
-        # logger.debug('loading map file "%s"' % self.map_file_path)
+        logger.debug('loading map file "%s"' % self.map_file_path)
 
         with open(self.map_file_path, 'r') as f:
             self.map_data = yaml.load(f, Loader=yaml.Loader)
@@ -1084,12 +1084,12 @@ class Simulator(gym.Env):
         tile = self._get_tile(*coords)
         if tile is None:
             msg = f'No tile found at {pos} {coords}'
-            # logger.debug(msg)
+            logger.debug(msg)
             return False
 
         if not tile['drivable']:
             msg = f'{pos} corresponds to tile at {coords} which is not drivable: {tile}'
-            # logger.debug(msg)
+            logger.debug(msg)
             return False
 
         return True
@@ -1198,13 +1198,13 @@ class Simulator(gym.Env):
 
         res = (no_collision and all_drivable)
 
-        # if not res:
-        #     logger.debug(f'Invalid pose. Collision free: {no_collision} On drivable area: {all_drivable}')
-        #     logger.debug(f'safety_factor: {safety_factor}')
-        #     logger.debug(f'pos: {pos}')
-        #     logger.debug(f'l_pos: {l_pos}')
-        #     logger.debug(f'r_pos: {r_pos}')
-        #     logger.debug(f'f_pos: {f_pos}')
+        if not res:
+            logger.debug(f'Invalid pose. Collision free: {no_collision} On drivable area: {all_drivable}')
+            logger.debug(f'safety_factor: {safety_factor}')
+            logger.debug(f'pos: {pos}')
+            logger.debug(f'l_pos: {l_pos}')
+            logger.debug(f'r_pos: {r_pos}')
+            logger.debug(f'f_pos: {f_pos}')
 
         return res
 
@@ -1355,14 +1355,14 @@ class Simulator(gym.Env):
         # If the agent is not in a valid pose (on drivable tiles)
         if not self._valid_pose(self.cur_pos, self.cur_angle):
             msg = 'Stopping the simulator because we are at an invalid pose.'
-            # logger.info(msg)
+            logger.info(msg)
             reward = REWARD_INVALID_POSE
             done_code = 'invalid-pose'
             done = True
         # If the maximum time step count is reached
         elif self.step_count >= self.max_steps:
             msg = 'Stopping the simulator because we reached max_steps = %s' % self.max_steps
-            # logger.info(msg)
+            logger.info(msg)
             done = True
             reward = 0
             done_code = 'max-steps-reached'
@@ -1414,7 +1414,7 @@ class Simulator(gym.Env):
         # Note: we add a bit of noise to the camera position for data augmentation
         pos = self.cur_pos
         angle = self.cur_angle
-        # logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
+        logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
         if self.domain_rand:
             pos = pos + self.randomization_settings['camera_noise']
             

@@ -49,6 +49,11 @@ class Generator(nn.Module):
         self.mu_s_head = nn.Linear(128,1)
         self.sig_v_head = nn.Linear(128,1)
         self.sig_s_head = nn.Linear(128,1)
+
+        self.value_head = nn.Sequential( nn.Linear(256,128),
+                                    self.lr,
+                                    nn.Linear(128,1)
+                                    )
         
         for p in self.mu_s_head.parameters():
             p.data.clamp_(-0.01,0.01)
@@ -71,19 +76,27 @@ class Generator(nn.Module):
         x = self.dropout(self.flatten(x))
 
         x = self.lr(self.lin1(x))
+
+        value = self.lr(self.value_head(x))
+
         x = self.lr(self.lin2(x))
         
-        mu_v = self.mu_v_head(x)
-        sig_v = self.sig_v_head(x)
+        mu_v = self.sig(self.mu_v_head(x))*2
+        sig_v = self.tanh(self.sig_v_head(x))*0.3
 
-        mu_s = self.mu_s_head(x)
-        sig_s = self.sig_s_head(x)
+        mu_s = self.tanh(self.mu_s_head(x))*2
+        sig_s = self.tanh(self.sig_s_head(x))*0.3
 
-        return mu_v, sig_v, mu_s, sig_s
+        v_dist = Normal(*[mu_v, sig_v])
+        s_dist = Normal(*[mu_s, sig_s])
+
+        
+
+        return v_dist, s_dist, value
 
 
     def select_action(self, observation):
-        v_dist, s_dist = self.get_distributions(observation)
+        v_dist, s_dist, _ = self.forward(observation)
 
         velocities = v_dist.rsample()
         steering_angles = s_dist.rsample()
@@ -94,13 +107,6 @@ class Generator(nn.Module):
 
         return model_actions
 
-    def get_distributions(self, observation):
-        mu_v, sig_v, mu_s, sig_s = self.forward(observation)
-
-        v_dist = Normal(*[mu_v, sig_v])
-        s_dist = Normal(*[mu_s, sig_s])
-
-        return v_dist, s_dist
 
 class Discriminator(nn.Module):
     def __init__(self, action_dim):
@@ -145,59 +151,7 @@ class Discriminator(nn.Module):
 
 
         return x
-    
-class Value(nn.Module):
-    def __init__(self, action_dim):
-        super(Value,self).__init__()
-        
-        self.lr = nn.LeakyReLU()
-        self.tanh = nn.Tanh()
-        self.sig = nn.Sigmoid()
-        self.softmax = nn.Softmax()
-
-
-        self.conv1 = nn.Conv2d(3, 32, 7, stride=4, padding=3)
-        self.conv2 = nn.Conv2d(32,32, 5, stride=4, padding=2)
-        self.conv3 = nn.Conv2d(32,32, 3, stride=2, padding=1)
-
-        self.conv4 = nn.Conv2d(3,32, 20, stride=30)   
-
-        self.conv5 = nn.Conv2d(2112, 32, 3, stride=1, padding=1)   
-
-        self.flatten = Flatten()
-        self.dropout = nn.Dropout(.5)
-        resnet = models.resnet50(pretrained=True)
-        self.resnet = nn.Sequential(*list(resnet.children())[:-2])
-
-        for param in self.resnet.parameters():
-            param.requires_grad = False
-          
-        self.lin1 = nn.Linear(32*5*4, 256)
-        self.lin2 = nn.Linear(256, 128)
-        self.lin3 = nn.Linear(128,1)
-        # self.lin4 = nn.Linear(128,1)
-
-    def forward(self,x):
-        r = self.lr(self.resnet(x))
-
-        c = self.lr(self.conv1(x))
-        c = self.lr(self.conv2(c))
-        c = self.lr(self.conv3(c))
-
-        f = self.lr(self.conv4(x))
-
-        x = torch.cat((r,c,f),1)
-
-        x = self.lr(self.conv5(x))
-        x = self.dropout(self.flatten(x))
-
-        x = self.lr(self.lin1(x))
-        x = self.lr(self.lin2(x))
-        x = self.lr(self.lin3(x))
-
-        return x
-
-
+  
 if __name__ == "__main__":
 
     pass
