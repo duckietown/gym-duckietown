@@ -14,7 +14,7 @@ parser.add_argument("--batch-size", default=32, type=int, help="Training batch s
 parser.add_argument("--epochs", default=201, type=int, help="Number of training epochs")
 parser.add_argument("--model-directory", default="models/", type=str, help="Where to save models")
 parser.add_argument("--data-directory", default="D:/Michael/Learning/duckietown_data/", type=str, help="Where to save generated expert data")
-parser.add_argument("--lrG", default=0.0004, type=float, help="Generator learning rate")
+parser.add_argument("--lrG", default=0.000004, type=float, help="Generator learning rate")
 parser.add_argument("--lrD", default=0.0004, type=float, help="Discriminator learning rate")
 parser.add_argument("--get-samples", default=1, type=int, help="Generate expert data")
 parser.add_argument("--use-checkpoint", default=0, type=int, help="Use checkpoint for training")
@@ -36,17 +36,16 @@ parser.add_argument("--lam", default=0.97, type=float)
 parser.add_argument("--clip-param", default=0.2, type=float)
 parser.add_argument("--entropy-beta", default=0.001, type=float)
 parser.add_argument("--ppo-epsilon", default=0.02, type=float)
-parser.add_argument("--ppo-epochs", default=5, type=int)
-parser.add_argument("--ppo-steps", default=256, type=int)
+parser.add_argument("--ppo-epochs", default=1, type=int)
+parser.add_argument("--ppo-steps", default=50, type=int)
 parser.add_argument("--critic-discount", default=0.5, type=float)
-parser.add_argument("--do-ppo", default=0, type=int)
 
 
 
 def main(args):
     ## Set cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    # device = "cpu"
     ## Setup environment
 
     # Duckietown environment
@@ -83,7 +82,7 @@ def main(args):
         weight_decay=1e-3
         )
 
-    G_optimizer = optim.Adam(
+    G_optimizer = optim.SGD(
         G.parameters(),
         lr = args.lrG,
         weight_decay=1e-3,

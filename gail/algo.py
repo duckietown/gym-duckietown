@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = "cpu"
 
 class GAIL_Agent():
 
@@ -163,7 +164,7 @@ class GAIL_Agent():
             #Update Generator
             loss_g = self.update_generator(obs_batch, act_batch, policy_action, epoch)
 
-            print('epoch %d, D loss=%.5f, G loss=%.5f' % (epoch, loss_d, loss_g))
+            print('epcoh %d, D loss=%.5f, G loss=%.5f' % (epoch, loss_d, loss_g))
             #Save Checkpoint
             if epoch % 100 == 0:
                 torch.save(self.generator.state_dict(), '{}/{}-{}'.format(self.args.env_name, self.args.training_name,epoch))
@@ -210,12 +211,11 @@ class GAIL_Agent():
                                                                                 trajectories['values'],\
                                                                                 trajectories['next_value']
 
-        print(values.shape)
         returns = compute_gae(next_value, rewards, masks, values, self.args)
 
         returns   = torch.cat(returns).detach().view(len(returns),1).to(device)
-        log_probs = log_probs.detach().to(device)
-        values    = values.detach().to(device)
+        log_probs = log_probs.detach().to(device).detach()
+        values    = values.detach().to(device).detach()
 
         states    = observations.to(device)
         actions   = actions.to(device)
@@ -264,32 +264,28 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
     for e in range(args.ppo_epochs):
         for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
             dist, value = G(state)
-            print("mean", dist.loc, "std", dist.scale)
-            print("action", action)
-            entropy = ((2*math.pi*math.e*(dist.scale).pow(2)).log()/2).mean()
-            # print(entropy)
+            entropy = dist.entropy().mean()
             new_log_probs = dist.log_prob(action.squeeze(1)).unsqueeze(1)
-            ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
 
-            print(new_log_probs, old_log_probs)
+            ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
             surr1 = ratio * advantage
-            # print("surr1", surr1)
             surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * advantage
 
-            # print("advantage",advantage)
-            # print("surr2", surr2)
+            # print("logprobs", new_log_probs)
             actor_loss  = - torch.min(surr1, surr2).mean()
             critic_loss = (return_ - value).pow(2).mean()
-
+            # print("actorloss", actor_loss.data, "criticloss",critic_loss.data, "entropy",entropy)
 
             # print(args.critic_discount, critic_loss, actor_loss, args.entropy_beta, entropy)
             loss = args.critic_discount* critic_loss + actor_loss - args.entropy_beta * entropy
-            print(actor_loss, critic_loss)
-            print("_________")
-            break
+            # print(loss)
             G_optimizer.zero_grad()
             loss.backward(retain_graph=True)
+            G.float()
             G_optimizer.step()
+
+            for p in G.parameters():
+                p = torch.clamp(p, -0.01,0.01)
                         
             sum_returns += return_.mean()
             sum_advantage += advantage.mean()
