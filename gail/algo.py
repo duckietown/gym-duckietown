@@ -264,14 +264,14 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
     for e in range(args.ppo_epochs):
         for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
             dist, value = G(state)
-            print("mean", dist.loc, "std", dist.scale)
-            print("action", action)
+            print("std", dist.scale)
             entropy = ((2*math.pi*math.e*(dist.scale).pow(2)).log()/2).mean()
+
             # print(entropy)
             new_log_probs = dist.log_prob(action.squeeze(1)).unsqueeze(1)
             ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
 
-            print(new_log_probs, old_log_probs)
+            #print(new_log_probs, old_log_probs)
             surr1 = ratio * advantage
             # print("surr1", surr1)
             surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * advantage
@@ -284,9 +284,8 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
 
             # print(args.critic_discount, critic_loss, actor_loss, args.entropy_beta, entropy)
             loss = args.critic_discount* critic_loss + actor_loss - args.entropy_beta * entropy
-            print(actor_loss, critic_loss)
-            print("_________")
-            break
+ 
+            print("====== G update ====")
             G_optimizer.zero_grad()
             loss.backward(retain_graph=True)
             G_optimizer.step()
@@ -299,6 +298,8 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
             sum_entropy += entropy
             
             count_steps += 1
+            print("_________")
+        print("__outer loop__")
 
     return (sum_loss_total / count_steps).data
 
