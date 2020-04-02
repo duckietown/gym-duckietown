@@ -11,7 +11,7 @@ class Flatten(nn.Module):
         return input.view(input.size(0), -1)
 
 class Generator(nn.Module):
-    def __init__(self, action_dim):
+    def __init__(self,observation_dim, action_dim):
         super(Generator,self).__init__()
         
         self.lr = nn.LeakyReLU()
@@ -45,28 +45,21 @@ class Generator(nn.Module):
         self.lin1 = nn.Linear(32*5*4, 256)
         self.lin2 = nn.Linear(256, 128)
 
-        self.mu_v_head = nn.Linear(128,1)
-        self.mu_s_head = nn.Linear(128,1)
-        self.sig_v_head = nn.Linear(128,1)
-        self.sig_s_head = nn.Linear(128,1)
+        self.mu_head = nn.Linear(128, action_dim)
+        self.sig_head = nn.Linear(128, action_dim)
+
 
         self.value_head = nn.Sequential( nn.Linear(256,128),
                                     self.lr,
                                     nn.Linear(128,1)
                                     )
-        
-        for p in self.mu_s_head.parameters():
-            p.data.clamp_(-0.01,0.01)
+    
 
-        for p in self.sig_s_head.parameters():
-            p.data.clamp_(-0.01,0.01)
 
     def forward(self,x):
         r = self.lr(self.resnet(x))
 
         c = self.lr(self.conv1(x))
-        # c = self.lr(self.conv2(c))
-        # c = self.lr(self.conv3(c))
 
         f = self.lr(self.conv4(x))
 
@@ -74,42 +67,34 @@ class Generator(nn.Module):
 
         x = self.lr(self.conv5(x))
         x = self.dropout(self.flatten(x))
-
         x = self.lr(self.lin1(x))
 
         value = self.lr(self.value_head(x))
 
         x = self.lr(self.lin2(x))
-        
-        mu_v = self.sig(self.mu_v_head(x))*2
-        sig_v = self.tanh(self.sig_v_head(x))*0.3
 
-        mu_s = self.tanh(self.mu_s_head(x))*2
-        sig_s = self.tanh(self.sig_s_head(x))*0.3
+        mu = self.mu_head(x)
+        sig = self.sig_head(x)
 
-        v_dist = Normal(*[mu_v, sig_v])
-        s_dist = Normal(*[mu_s, sig_s])
+        dist = Normal(*[mu, sig])
 
-        
+        return dist, value
 
-        return v_dist, s_dist, value
+    def sample_action(self, observation):
+        dist, _ = self.forward(observation)
 
+        actions = dist.rsample()
 
-    def select_action(self, observation):
-        v_dist, s_dist, _ = self.forward(observation)
+        return actions
+    
+    def get_means(self, observation):
+        dist, value = self.forward(observation)
 
-        velocities = v_dist.rsample()
-        steering_angles = s_dist.rsample()
-        # # velocities = torch.randn(mu_v.shape).to(device)*sig_v+mu_v
-        # # steering_angles = torch.randn(mu_s.shape).to(device)*sig_s+mu_s
-
-        model_actions = torch.cat((velocities,steering_angles),1)
-
-        return model_actions
+        return dist.mean
 
 
 class Discriminator(nn.Module):
-    def __init__(self, action_dim):
+    def __init__(self, observation_dim, action_dim):
         super(Discriminator,self).__init__()
         
         self.lr = nn.LeakyReLU()

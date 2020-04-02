@@ -63,12 +63,7 @@ def _train(args):
 
     # state_dict = torch.load('models/G_imitate_2.pt'.format(args.checkpoint), map_location=device)
     # G.load_state_dict(state_dict)
-    if args.checkpoint:
-        try:
-            state_dict = torch.load('models/G_{}.pt'.format(args.checkpoint), map_location=device)
-            G.load_state_dict(state_dict)
-        except:
-            pass
+
         # state_dict = torch.load('models/D_{}.pt'.format(args.checkpoint), map_location=device)
         # D.load_state_dict(state_dict)
 
@@ -99,6 +94,13 @@ def _train(args):
             
             model_actions = G.select_action(obs_batch)
             prob_expert, prob_policy, loss = update_discriminator(args, D_optimizer, loss_fn, D, obs_batch, act_batch, model_actions, writer, -1)
+    
+    if args.checkpoint:
+        try:
+            state_dict = torch.load('models/G_{}.pt'.format(args.checkpoint), map_location=device)
+            G.load_state_dict(state_dict)
+        except:
+            pass
 
     for epoch in range(args.epochs):
         batch_indices = np.random.randint(0, expert_observations.shape[0], (args.batch_size))
@@ -231,7 +233,7 @@ def generate_trajectories(env, steps=10, policy=None, d=None,  episodes=1, exper
 
 def do_policy_gradient(args, G, D, env, obs_batch, model_actions):
     if args.rollout:
-        obs, acts, _, _, _, _, _ = generate_trajectories(env, steps=10, episodes=1, policy=G, d=D)
+        obs, acts, _, _, _, vals, _ = generate_trajectories(env, steps=10, episodes=1, policy=G, d=D)
         obs = torch.stack(obs)
         acts = torch.cat(acts)
     else:
@@ -239,7 +241,7 @@ def do_policy_gradient(args, G, D, env, obs_batch, model_actions):
         acts = model_actions
 
     # loss_g = D(obs,acts).log().mean()
-    loss_g = torch.cat([d*args.gamma**i for i,d in enumerate(D(obs,acts).log())]).mean()
+    loss_g = torch.cat([d*args.gamma**i for i,d in enumerate(D(obs,acts).log()-torch.cat(vals))]).mean()
 
     return loss_g
 
@@ -273,19 +275,7 @@ def update_discriminator(args, D_optimizer, loss_fn, D, obs_batch, act_batch, mo
 
     return prob_expert.data, prob_policy.data, loss.data
 
-def compute_gae(next_value, rewards, masks, values, args):
-    values = values + [next_value]
-    # values = torch.cat((values,next_value))
-    gae = 0
-    returns = []
 
-    for step in reversed(range(len(rewards))):
-        delta = rewards[step] + args.gamma * values[step + 1] * masks[step] - values[step]
-        gae = delta + (args.gamma * args.lam * masks[step] * gae)
-        # prepend to get correct order back
-        returns.insert(0, gae + values[step])
-    
-    return returns
 
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]
@@ -319,6 +309,8 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
             loss.backward(retain_graph=True)
             G_optimizer.step()
 
+
+
             # track statistics
             # sum_returns += return_.mean()
             # sum_advantage += advantage.mean()
@@ -329,13 +321,6 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
             
             # count_steps += 1
 
-    # ## Compute Value loss
-    # V_optimizer.zero_grad()
-    # values = V(obs)
-    # rewards = -G(obs).log().mean().data
-    # v_loss = (rewards-values).pow(2).mean()
-
-    # ## Policy loss
 
 
 def get_ppo_loss(old_dist, old_value, new_dist, new_value, actions, rewards, advantages, args):
