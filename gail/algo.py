@@ -7,6 +7,7 @@ import torch.nn as nn
 import math
 from torch.utils.tensorboard import SummaryWriter
 
+import time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = "cpu"
@@ -14,9 +15,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class GAIL_Agent():
 
     def __init__(self, env, args, 
-                generator:nn.Module, discriminator:nn.Module, 
-                g_optimizer, d_optimizer, 
+                generator:nn.Module, 
                 update_with:str,
+                discriminator=None, 
+                g_optimizer= None,
+                d_optimizer=None, 
                 stochastic=True):
 
         self.env = env
@@ -35,14 +38,24 @@ class GAIL_Agent():
 
         self.writer = SummaryWriter(comment='---{}/{}'.format(args.env_name, args.training_name))
 
-        if update_with == "PPO":
+        if args.imitation:
+            print("using imitate!")
+
+            self.update_generator = self.imitate
+
+        elif update_with == "PPO":
+            print("using ppo!")
             self.update_generator = self.ppo
         elif update_with == "POLICY GRADIENT":
             self.update_generator = policy_gradient
         elif update_with == "TRPO":
             self.update_generator = trpo
+        elif update_with == "BEHAVIOUR CLONE":
+            self.update_generator = self.imitate
         else:
             self.update_generator = self.vanilla_loss
+
+        
 
 
         self.loss_fn = nn.BCELoss()
@@ -147,6 +160,7 @@ class GAIL_Agent():
 
     def train(self, epochs):
 
+        best_reward = 0
         for epoch in range(epochs):
             batch_indices = np.random.randint(0, self.expert_trajectories['observations'].shape[0], (self.args.batch_size))
             obs_batch = self.expert_trajectories['observations'][batch_indices].float().to(device).data
@@ -166,14 +180,19 @@ class GAIL_Agent():
 
             print('epcoh %d, D loss=%.5f, G loss=%.5f' % (epoch, loss_d, loss_g))
             #Save Checkpoint
-            if epoch % 100 == 0:
-                torch.save(self.generator.state_dict(), '{}/{}-{}'.format(self.args.env_name, self.args.training_name,epoch))
-                torch.save(self.discriminator.state_dict(), '{}/{}-{}'.format(self.args.env_name, self.args.training_name,epoch))
+            if epoch % 20 == 0:
+                reward = self.eval()
+                if reward>best_reward:
+                    best_reward = reward
+                    torch.save(self.generator.state_dict(), '{}/g-{}'.format(self.args.env_name, self.args.training_name))
+                    torch.save(self.discriminator.state_dict(), '{}/d-{}'.format(self.args.env_name, self.args.training_name))
             torch.cuda.empty_cache()
 
         return
 
     def update_discriminator(self, obs_batch, act_batch, model_actions, epoch):
+        if self.args.imitation:
+            return 0
         self.d_optimizer.zero_grad()
         prob_expert = self.discriminator(obs_batch,act_batch)
         prob_policy = self.discriminator(obs_batch, model_actions)
@@ -198,7 +217,41 @@ class GAIL_Agent():
         
 
     def eval(self):
-        pass
+
+        policy_actions = self.generator.get_means(self.expert_trajectories['observations'].to(device))
+        reward = abs(self.expert_trajectories['actions'].to(device) - policy_actions).sum()
+        return reward
+
+    def enjoy(self):
+        self.generator.eval().to(device)
+
+        obs = self.env.reset()
+
+        # max_count = 0
+        while True:
+            obs = torch.from_numpy(obs).float().to(device).unsqueeze(0)
+
+            action = self.generator.get_means(obs)
+
+            action = action.squeeze().data.cpu().numpy()
+            # print("\nAction taken::", action, "\n")
+            obs, reward, done, info = self.env.step(action)
+            self.env.render()
+            
+
+            # if max_count > 50:
+            #     max_count = 0
+            #     obs = env.reset()
+
+            if done:
+                if reward < 0:
+                    print('*** FAILED ***')
+                    time.sleep(0.7)
+                # max_count += 1
+                obs = self.env.reset()
+                self.env.render()
+                # if max_count > 10:
+                #     break
 
     def ppo(self, obs_batch, act_batch, policy_action, epoch):
         
@@ -222,7 +275,7 @@ class GAIL_Agent():
         advantage = returns - values
         advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
         
-        loss = do_ppo_step(states, actions, log_probs, returns, advantage, self.args, self.generator, self.g_optimizer)
+        loss = self.do_ppo_step(states, actions, log_probs, returns, advantage, self.args, self.generator, self.g_optimizer, epoch)
 
         return loss
 
@@ -245,58 +298,73 @@ class GAIL_Agent():
         self.writer.add_scalar("generator/loss", loss.data, epoch)
         return loss.data
 
+    def imitate(self, obs_batch, act_batch, policy_action, epoch):
+        self.g_optimizer.zero_grad()
+        loss = (policy_action - act_batch).norm(2).mean()
+
+        loss.backward()
+        
+        self.g_optimizer.step()
+        return loss.data
+
+    def do_ppo_step(self, states, actions, log_probs, returns, advantages, args, G, G_optimizer, epoch):
+        '''
+        from https://github.com/colinskow/move37/blob/f57afca9d15ce0233b27b2b0d6508b99b46d4c7f/ppo/ppo_train.py#L63
+        '''
+        count_steps = 0
+        sum_returns = 0.0
+        sum_advantage = 0.0
+        sum_loss_actor = 0.0
+        sum_loss_critic = 0.0
+        sum_entropy = 0.0
+        sum_loss_total = 0.0
+
+        for e in range(args.ppo_epochs):
+            for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
+                dist, value = G(state)
+                entropy = dist.entropy().mean()
+                new_log_probs = dist.log_prob(action.squeeze(1)).unsqueeze(1)
+
+                ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
+                surr1 = ratio * advantage
+                surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * advantage
+
+                # print("logprobs", new_log_probs)
+                actor_loss  = - torch.min(surr1, surr2).mean()
+                critic_loss = (return_ - value).pow(2).mean()
+                # print("actorloss", actor_loss.data, "criticloss",critic_loss.data, "entropy",entropy)
+
+                # print(args.critic_discount, critic_loss, actor_loss, args.entropy_beta, entropy)
+                loss = args.critic_discount* critic_loss + actor_loss - args.entropy_beta * entropy
+                # print(loss)
+                G_optimizer.zero_grad()
+                loss.backward(retain_graph=True)
+                G.float()
+                G_optimizer.step()
+
+                for p in G.parameters():
+                    p = torch.clamp(p, -0.01,0.01)
+                            
+                sum_returns += return_.mean()
+                sum_advantage += advantage.mean()
+                sum_loss_actor += actor_loss
+                sum_loss_critic += critic_loss
+                sum_loss_total += loss
+                sum_entropy += entropy
+                
+                count_steps += 1
+        self.writer.add_scalar("returns", (sum_returns / count_steps).data, epoch)
+        self.writer.add_scalar("advantage", (sum_advantage / count_steps).data, epoch)
+        self.writer.add_scalar("loss_actor", (sum_loss_actor / count_steps).data, epoch)
+        self.writer.add_scalar("loss_critic", (sum_loss_critic / count_steps).data, epoch)
+        self.writer.add_scalar("entropy", (sum_entropy / count_steps).data, epoch)
+        self.writer.add_scalar("loss_total", (sum_loss_total / count_steps).data, epoch)
+
+        return (sum_loss_total / count_steps).data
 
 def trpo():
     pass
 
-def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_optimizer):
-    '''
-    from https://github.com/colinskow/move37/blob/f57afca9d15ce0233b27b2b0d6508b99b46d4c7f/ppo/ppo_train.py#L63
-    '''
-    count_steps = 0
-    sum_returns = 0.0
-    sum_advantage = 0.0
-    sum_loss_actor = 0.0
-    sum_loss_critic = 0.0
-    sum_entropy = 0.0
-    sum_loss_total = 0.0
-
-    for e in range(args.ppo_epochs):
-        for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
-            dist, value = G(state)
-            entropy = dist.entropy().mean()
-            new_log_probs = dist.log_prob(action.squeeze(1)).unsqueeze(1)
-
-            ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
-            surr1 = ratio * advantage
-            surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * advantage
-
-            # print("logprobs", new_log_probs)
-            actor_loss  = - torch.min(surr1, surr2).mean()
-            critic_loss = (return_ - value).pow(2).mean()
-            # print("actorloss", actor_loss.data, "criticloss",critic_loss.data, "entropy",entropy)
-
-            # print(args.critic_discount, critic_loss, actor_loss, args.entropy_beta, entropy)
-            loss = args.critic_discount* critic_loss + actor_loss - args.entropy_beta * entropy
-            # print(loss)
-            G_optimizer.zero_grad()
-            loss.backward(retain_graph=True)
-            G.float()
-            G_optimizer.step()
-
-            for p in G.parameters():
-                p = torch.clamp(p, -0.01,0.01)
-                        
-            sum_returns += return_.mean()
-            sum_advantage += advantage.mean()
-            sum_loss_actor += actor_loss
-            sum_loss_critic += critic_loss
-            sum_loss_total += loss
-            sum_entropy += entropy
-            
-            count_steps += 1
-
-    return (sum_loss_total / count_steps).data
 
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]

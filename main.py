@@ -14,7 +14,7 @@ parser.add_argument("--batch-size", default=32, type=int, help="Training batch s
 parser.add_argument("--epochs", default=201, type=int, help="Number of training epochs")
 parser.add_argument("--model-directory", default="models/", type=str, help="Where to save models")
 parser.add_argument("--data-directory", default="D:/Michael/Learning/duckietown_data/", type=str, help="Where to save generated expert data")
-parser.add_argument("--lrG", default=0.000004, type=float, help="Generator learning rate")
+parser.add_argument("--lrG", default=0.0004, type=float, help="Generator learning rate")
 parser.add_argument("--lrD", default=0.0004, type=float, help="Discriminator learning rate")
 parser.add_argument("--get-samples", default=1, type=int, help="Generate expert data")
 parser.add_argument("--use-checkpoint", default=0, type=int, help="Use checkpoint for training")
@@ -36,10 +36,12 @@ parser.add_argument("--lam", default=0.97, type=float)
 parser.add_argument("--clip-param", default=0.2, type=float)
 parser.add_argument("--entropy-beta", default=0.001, type=float)
 parser.add_argument("--ppo-epsilon", default=0.02, type=float)
-parser.add_argument("--ppo-epochs", default=1, type=int)
-parser.add_argument("--ppo-steps", default=50, type=int)
+parser.add_argument("--ppo-epochs", default=6, type=int)
+parser.add_argument("--ppo-steps", default=256, type=int)
 parser.add_argument("--critic-discount", default=0.5, type=float)
 
+parser.add_argument("--imitation", default=0, type=int)
+parser.add_argument("--pretrain-name", default="imitate")
 
 
 def main(args):
@@ -76,6 +78,11 @@ def main(args):
     D = Discriminator(observation_shape, action_dim)
     D.to(device)
 
+    state_dict = torch.load('{}/g-{}'.format(args.env_name, args.pretrain_name), map_location=device)
+    G.load_state_dict(state_dict)
+
+
+
     D_optimizer = optim.SGD(
         D.parameters(), 
         lr = args.lrD,
@@ -90,7 +97,7 @@ def main(args):
     
     ## Setup GAIL
 
-    gail_agent = GAIL_Agent(env, args, G, D,G_optimizer,D_optimizer,"PPO")
+    gail_agent = GAIL_Agent(env, args, generator=G, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with="PPO")
     
     gail_agent.get_expert_trajectories(args.episodes, args.steps, expert)
 
@@ -99,6 +106,27 @@ def main(args):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    if args.enjoy:
+
+        from learning.utils.env import launch_env
+        from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+            DtRewardWrapper, ActionWrapper, ResizeWrapper
+        from learning.utils.teacher import PurePursuitExpert   
+
+        env = launch_env()
+        env = ResizeWrapper(env)
+        env = NormalizeWrapper(env) 
+        env = ImgWrapper(env)
+        env = ActionWrapper(env)
+        env = DtRewardWrapper(env)
+
+        model = Generator(0,action_dim=2)
+        state_dict = torch.load('{}/g-{}'.format(args.env_name, args.training_name), map_location=device)
+        model.load_state_dict(state_dict)
+        gail_agent = GAIL_Agent(env, args, model,"PPO")
+
+        gail_agent.enjoy()
 
     main(args)
 
