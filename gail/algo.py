@@ -66,28 +66,46 @@ class GAIL_Agent():
                         "actions": [],
                         }
         for ep in range(episodes):
-            while True:
-                try:
-                    o, a, l, r, m, v = [], [], [], [], [], []
+            if self.args.env_name == "duckietown":
+                while True:
+                    try:
+                        o, a, l, r, m, v = [], [], [], [], [], []
+    
+                        obs = self.env.reset()
+                        for step in range(0, steps):
+                            o.append(torch.FloatTensor(obs))
+                            action = expert_agent.predict(obs)
+    
+                            a.append(torch.FloatTensor(action))
+                            obs, reward, done, info = self.env.step(action)
+    
+                        trajectories["observations"].append(torch.stack(o))
+                        trajectories["actions"].append(torch.stack(a))
+    
+                        break
+                    except ValueError or KeyboardInterrupt:
+                        break
+                    except:
+                        print("Unexpected error:", sys.exc_info()[0])
+                        pass
+            elif self.args.env_name in  ['CartPole-v1']:
+                o, a, l, r, m, v = [], [], [], [], [], []
 
-                    obs = self.env.reset()
-                    for step in range(0, steps):
-                        o.append(torch.FloatTensor(obs))
-                        action = expert_agent.predict(None)
+                obs = self.env.reset()
+                for step in range(0, steps):
+                    o.append(torch.FloatTensor(obs))
+                    action = expert_agent.predict(obs)
+                    obs, reward, done, info = self.env.step(action)
+                    self.env.render()
 
-                        a.append(torch.FloatTensor(action))
-                        obs, reward, done, info = self.env.step(action)
+                    if type(action) != list:
+                        action = [action]
+                    a.append(torch.FloatTensor(action))
 
+                    
+                trajectories["observations"].append(torch.stack(o))
+                trajectories["actions"].append(torch.stack(a))
 
-                    trajectories["observations"].append(torch.stack(o))
-                    trajectories["actions"].append(torch.stack(a))
-
-                    break
-                except ValueError or KeyboardInterrupt:
-                    break
-                except:
-                    print("Unexpected error:", sys.exc_info()[0])
-                    pass
 
         for key in trajectories:
             trajectories[key] = torch.cat(trajectories[key])
@@ -364,7 +382,6 @@ class GAIL_Agent():
 
 def trpo():
     pass
-
 
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]
