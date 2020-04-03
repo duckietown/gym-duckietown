@@ -74,6 +74,7 @@ class Generator(nn.Module):
         x = self.lr(self.lin2(x))
 
         mu = self.mu_head(x)
+
         sig = abs(self.sig_head(x))
 
         dist = Normal(*[mu, sig])

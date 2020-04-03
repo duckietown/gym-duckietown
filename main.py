@@ -36,17 +36,18 @@ parser.add_argument("--lam", default=0.97, type=float)
 parser.add_argument("--clip-param", default=0.2, type=float)
 parser.add_argument("--entropy-beta", default=0.001, type=float)
 parser.add_argument("--ppo-epsilon", default=0.02, type=float)
-parser.add_argument("--ppo-epochs", default=5, type=int)
+parser.add_argument("--ppo-epochs", default=6, type=int)
 parser.add_argument("--ppo-steps", default=256, type=int)
 parser.add_argument("--critic-discount", default=0.5, type=float)
-parser.add_argument("--do-ppo", default=0, type=int)
 
+parser.add_argument("--imitation", default=0, type=int)
+parser.add_argument("--pretrain-name", default="imitate")
 
 
 def main(args):
     ## Set cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    # device = "cpu"
     ## Setup environment
 
     # Duckietown environment
@@ -82,13 +83,18 @@ def main(args):
     D = Discriminator(observation_shape, action_dim)
     D.to(device)
 
+    state_dict = torch.load('{}/g-{}'.format(args.env_name, args.pretrain_name), map_location=device)
+    G.load_state_dict(state_dict)
+
+
+
     D_optimizer = optim.SGD(
         D.parameters(), 
         lr = args.lrD,
         weight_decay=1e-3
         )
 
-    G_optimizer = optim.Adam(
+    G_optimizer = optim.SGD(
         G.parameters(),
         lr = args.lrG,
         weight_decay=1e-3,
@@ -96,7 +102,7 @@ def main(args):
     
     ## Setup GAIL
 
-    gail_agent = GAIL_Agent(env, args, G, D,G_optimizer,D_optimizer,"PPO")
+    gail_agent = GAIL_Agent(env, args, generator=G, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with="PPO")
     
     gail_agent.get_expert_trajectories(args.episodes, args.steps, expert)
 
@@ -105,6 +111,27 @@ def main(args):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    if args.enjoy:
+
+        from learning.utils.env import launch_env
+        from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
+            DtRewardWrapper, ActionWrapper, ResizeWrapper
+        from learning.utils.teacher import PurePursuitExpert   
+
+        env = launch_env()
+        env = ResizeWrapper(env)
+        env = NormalizeWrapper(env) 
+        env = ImgWrapper(env)
+        env = ActionWrapper(env)
+        env = DtRewardWrapper(env)
+
+        model = Generator(0,action_dim=2)
+        state_dict = torch.load('{}/g-{}'.format(args.env_name, args.training_name), map_location=device)
+        model.load_state_dict(state_dict)
+        gail_agent = GAIL_Agent(env, args, model,"PPO")
+
+        gail_agent.enjoy()
 
     main(args)
 

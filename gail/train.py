@@ -275,7 +275,19 @@ def update_discriminator(args, D_optimizer, loss_fn, D, obs_batch, act_batch, mo
 
     return prob_expert.data, prob_policy.data, loss.data
 
+def compute_gae(next_value, rewards, masks, values, args):
+    values = values + [next_value]
+    # values = torch.cat((values,next_value))
+    gae = 0
+    returns = []
 
+    for step in reversed(range(len(rewards))):
+        delta = rewards[step] + args.gamma * values[step + 1] * masks[step] - values[step]
+        gae = delta + (args.gamma * args.lam * masks[step] * gae)
+        # prepend to get correct order back
+        returns.insert(0, gae + values[step])
+    
+    return returns
 
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]
@@ -309,8 +321,6 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
             loss.backward(retain_graph=True)
             G_optimizer.step()
 
-
-
             # track statistics
             # sum_returns += return_.mean()
             # sum_advantage += advantage.mean()
@@ -321,6 +331,13 @@ def do_ppo_step(states, actions, log_probs, returns, advantages, args, G, G_opti
             
             # count_steps += 1
 
+    # ## Compute Value loss
+    # V_optimizer.zero_grad()
+    # values = V(obs)
+    # rewards = -G(obs).log().mean().data
+    # v_loss = (rewards-values).pow(2).mean()
+
+    # ## Policy loss
 
 
 def get_ppo_loss(old_dist, old_value, new_dist, new_value, actions, rewards, advantages, args):
