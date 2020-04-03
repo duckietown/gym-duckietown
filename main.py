@@ -13,7 +13,7 @@ parser.add_argument("--steps", default=50, type=int, help="Number of steps per e
 parser.add_argument("--batch-size", default=32, type=int, help="Training batch size")
 parser.add_argument("--epochs", default=201, type=int, help="Number of training epochs")
 parser.add_argument("--model-directory", default="models/", type=str, help="Where to save models")
-parser.add_argument("--data-directory", default="D:/Michael/Learning/duckietown_data/", type=str, help="Where to save generated expert data")
+parser.add_argument("--data-directory", default="C:/Users/cps/Desktop/CSC2621/gym-duckietown/data", type=str, help="Where to save generated expert data")
 parser.add_argument("--lrG", default=0.0004, type=float, help="Generator learning rate")
 parser.add_argument("--lrD", default=0.0004, type=float, help="Discriminator learning rate")
 parser.add_argument("--get-samples", default=1, type=int, help="Generate expert data")
@@ -29,7 +29,7 @@ parser.add_argument("--eval-steps", default=5, type=int, help="number of steps t
 parser.add_argument("--eval-episodes", default=50, type=int)
 parser.add_argument("--enjoy", default=0, type=int)
 parser.add_argument("--pretrain-D", default=50, type=int)
-parser.add_argument("--env_name", default="duckietown", type=str)
+parser.add_argument("--env_name", default='CartPole-v1', type=str)
 
 parser.add_argument("--gamma", default=0.995, type=float)
 parser.add_argument("--lam", default=0.97, type=float)
@@ -53,20 +53,25 @@ def main(args):
     from learning.utils.env import launch_env
     from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, \
         DtRewardWrapper, ActionWrapper, ResizeWrapper
-    from learning.utils.teacher import PurePursuitExpert   
+    from learning.utils.teacher import PurePursuitExpert, CartpoleController
 
-    env = launch_env()
-    env = ResizeWrapper(env)
-    env = NormalizeWrapper(env) 
-    env = ImgWrapper(env)
-    env = ActionWrapper(env)
-    env = DtRewardWrapper(env)
+    env = launch_env(args.env_name)
+    if args.env_name == 'duckietown':
+        env = ResizeWrapper(env)
+        env = NormalizeWrapper(env) 
+        env = ImgWrapper(env)
+        env = ActionWrapper(env)
+        env = DtRewardWrapper(env)
 
     observation_shape = env.observation_space.shape
-    action_dim = int(env.action_space.shape[0])
+    action_dim = 1 # int(env.action_space.shape[0])
 
     # Duckietown expert
-    expert = PurePursuitExpert(env=env)
+    if args.env_name == "duckietown":
+        expert = PurePursuitExpert(env=env)
+    if args.env_name in ['CartPole-v1']:
+        expert = CartpoleController(env=env)
+    
 
     ## Setup Models
 
