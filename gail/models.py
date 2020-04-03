@@ -5,6 +5,7 @@ from torch.autograd import Variable
 import torchvision.models as models
 
 from torch.distributions import LogNormal, Normal, MultivariateNormal, Independent
+from functools import reduce
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -49,30 +50,51 @@ class Generator(nn.Module):
         self.sig_head = nn.Linear(128, action_dim)
 
 
-        self.value_head = nn.Sequential( nn.Linear(256,128),
-                                    self.lr,
-                                    nn.Linear(128,1)
-                                    )
-    
+        self.value_head = nn.Linear(128, 1)
 
+        self.VAE =  nn.Sequential(nn.Linear(reduce(lambda x,y: x*y, observation_dim), 256),
+                                    self.lr,
+                                    nn.Linear(256,128),
+                                    self.lr,
+                                    nn.Linear(128,64),
+                                    self.lr,
+                                    nn.Linear(64,32),
+                                    self.lr,
+                                    nn.Linear(32,64),
+                                    self.lr,
+                                    nn.Linear(64,128))
+
+        if reduce(lambda x,y: x*y, observation_dim) == 4:
+            self.VAE = nn.Sequential(nn.Linear(4,4),
+                                    nn.LeakyReLU(),
+                                    nn.Linear(4,4),
+                                    nn.LeakyReLU())
+
+            self.mu_head = nn.Linear(4, action_dim)
+            self.sig_head = nn.Linear(4, action_dim)
+
+
+            self.value_head = nn.Linear(4, 1)
 
     def forward(self,x):
-        r = self.lr(self.resnet(x))
+        # print(self.flatten(x).shape)
+        # r = self.lr(self.resnet(x))
+        x = self.VAE(self.flatten(x))
 
-        c = self.lr(self.conv1(x))
+        # c = self.lr(self.conv1(x))
 
-        f = self.lr(self.conv4(x))
+        # f = self.lr(self.conv4(x))
 
-        x = torch.cat((r,c,f),1)
+        # x = torch.cat((r,c,f),1)
 
-        x = self.lr(self.conv5(x))
-        x = self.dropout(self.flatten(x))
-        x = self.lr(self.lin1(x))
+        # x = self.lr(self.conv5(x))
+        # x = self.dropout(self.flatten(x))
+        # x = self.lr(self.lin1(x))
 
         value = self.lr(self.value_head(x))
 
-        x = self.lr(self.lin2(x))
-
+        # x = self.lr(self.lin2(x))
+        
         mu = self.mu_head(x)
 
         sig = abs(self.sig_head(x))
@@ -98,6 +120,8 @@ class Discriminator(nn.Module):
     def __init__(self, observation_dim, action_dim):
         super(Discriminator,self).__init__()
         
+        self.observation_dim = observation_dim
+        self.action_dim = action_dim
         self.lr = nn.LeakyReLU()
         self.sig = nn.Sigmoid()
         self.tanh = nn.Tanh()
@@ -117,6 +141,27 @@ class Discriminator(nn.Module):
         # self.lin1 = nn.Linear(128*4*3+action_dim, 256)
         self.lin2 = nn.Linear(256, 128)
         self.lin3 = nn.Linear(128, 1)
+
+        self.VAE =  nn.Sequential(nn.Linear(reduce(lambda x,y: x*y, observation_dim)+action_dim, 256),
+                            self.lr,
+                            nn.Linear(256,128),
+                            self.lr,
+                            nn.Linear(128,64),
+                            self.lr,
+                            nn.Linear(64,32),
+                            self.lr,
+                            nn.Linear(32,64),
+                            self.lr,
+                            nn.Linear(64,128))
+
+        if reduce(lambda x,y: x*y, observation_dim) == 4:
+            self.VAE = nn.Sequential(nn.Linear(4+action_dim,4),
+                                    nn.LeakyReLU(),
+                                    nn.Linear(4,4),
+                                    nn.LeakyReLU())
+
+            self.lin3 = nn.Linear(4, 1)
+
         
     def forward(self,observations, actions):
         # x = self.lr(self.conv1(observations))
@@ -124,13 +169,14 @@ class Discriminator(nn.Module):
         # x = self.lr(self.conv3(x))
 
         # x = self.flatten(x)
-        x = self.resnet(observations)
+        # x = self.resnet(observations)
 
-        x = torch.cat((x,actions),1)
-        
-        x = self.lr(self.lin1(x))
-        x = self.lr(self.lin2(x))
+        x = torch.cat((self.flatten(observations),actions),1)
+        x = self.VAE(x)
         x = self.sig(self.lin3(x))
+        # x = self.lr(self.lin1(x))
+        # x = self.lr(self.lin2(x))
+        # x = self.sig(self.lin3(x))
         # # x = self.lr(self.lin3(x))
         # x = self.lin3(x)
 

@@ -3,7 +3,8 @@ import gym_duckietown
 
 def launch_env(id=None):
     env = None
-    if id is None:
+    print(id)
+    if id is None or id == "duckietown":
         # Launch the environment
         from gym_duckietown.simulator import Simulator
         env = Simulator(

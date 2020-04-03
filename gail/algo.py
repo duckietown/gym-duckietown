@@ -6,6 +6,7 @@ import sys
 import torch.nn as nn
 import math
 from torch.utils.tensorboard import SummaryWriter
+from gail.models import *
 
 import time
 
@@ -40,9 +41,7 @@ class GAIL_Agent():
 
         if args.imitation:
             print("using imitate!")
-
             self.update_generator = self.imitate
-
         elif update_with == "PPO":
             print("using ppo!")
             self.update_generator = self.ppo
@@ -64,24 +63,26 @@ class GAIL_Agent():
     def get_expert_trajectories(self, episodes, steps, expert_agent):
         trajectories = {"observations": [],
                         "actions": [],
+                        "rewards":[],
                         }
-        for ep in range(episodes):
+        for e in range(episodes):
             if self.args.env_name == "duckietown":
                 while True:
                     try:
                         o, a, l, r, m, v = [], [], [], [], [], []
-    
+
                         obs = self.env.reset()
                         for step in range(0, steps):
                             o.append(torch.FloatTensor(obs))
                             action = expert_agent.predict(obs)
-    
+
                             a.append(torch.FloatTensor(action))
                             obs, reward, done, info = self.env.step(action)
-    
+                            r.append(torch.FloatTensor(reward))
                         trajectories["observations"].append(torch.stack(o))
                         trajectories["actions"].append(torch.stack(a))
-    
+                        trajectories["rewards"].append(torch.stack(reward))
+
                         break
                     except ValueError or KeyboardInterrupt:
                         break
@@ -95,23 +96,27 @@ class GAIL_Agent():
                 for step in range(0, steps):
                     o.append(torch.FloatTensor(obs))
                     action = expert_agent.predict(obs)
+
                     obs, reward, done, info = self.env.step(action)
+                    r.append(torch.FloatTensor([reward]))
+
+
                     self.env.render()
+
 
                     if type(action) != list:
                         action = [action]
                     a.append(torch.FloatTensor(action))
-
-                    
+                    if done:
+                        break                    
                 trajectories["observations"].append(torch.stack(o))
                 trajectories["actions"].append(torch.stack(a))
-
-
+                trajectories["rewards"].append(torch.stack(r))
         for key in trajectories:
             trajectories[key] = torch.cat(trajectories[key])
 
         self.expert_trajectories = trajectories
-        return
+        return trajectories
 
     def get_policy_trajectory(self, episodes, steps):
         trajectories = {"observations": [],
@@ -121,53 +126,100 @@ class GAIL_Agent():
                         "masks":[],
                         "values":[],
                         "next_value":0}
-
         for ep in range(episodes):
-            # while True:
-            #     try:
-            o, a, l, r, m, v = [], [], [], [], [], []
+            if self.args.env_name == "CartPole-v1":
+                o, a, l, r, m, v = [], [], [], [], [], []
+                obs = self.env.reset()
+                for step in range(0, steps):
+                    obs = torch.FloatTensor(obs)
+                    o.append(obs)
 
-            obs = self.env.reset()
-            for step in range(0, steps):
-                obs = torch.FloatTensor(obs)
-                o.append(obs)
+                    obs = obs.unsqueeze(0).to(device)
+                    action = self.generator.sample_action(obs)
+                    a.append(action)
 
-                obs = obs.unsqueeze(0).to(device)
-                action = self.generator.sample_action(obs)
-                a.append(action)
+                    action = action.to(device)
 
-                action = action.to(device)
+                    r.append(self.discriminator(obs,action)) 
 
-                r.append(self.discriminator(obs,action)) 
+                    dist, value = self.generator(obs)
+                    l.append(dist.log_prob(action))
+                    v.append(value)
 
-                dist, value = self.generator(obs)
-                l.append(dist.log_prob(action))
-                v.append(value)
+                    action = action.squeeze().data.cpu().numpy()
 
-                action = action.squeeze().data.cpu().numpy()
+                    action = int(action)
 
-                obs, reward, done, info = self.env.step(action)
+                    obs, reward, done, info = self.env.step(action)
+                    if self.args.env_name == "CartPole-v1":
 
-                _, next_value = self.generator(torch.FloatTensor(obs).unsqueeze(0).to(device))
+                        self.env.render()
+                    _, next_value = self.generator(torch.FloatTensor(obs).unsqueeze(0).to(device))
+                    mask = 0 if done or step == steps-1 else 1
+                    m.append(mask)
+                    if done:
+                        break
 
-                mask = 0 if done or step == steps-1 else 1
-                m.append(mask)
 
-            trajectories["observations"].append(torch.stack(o))
-            trajectories["actions"].append(torch.stack(a))
-            trajectories["log_probs"].append(torch.stack(l))
-            trajectories["rewards"].append(torch.stack(r))
-            trajectories["masks"].append(torch.FloatTensor(m))
-            trajectories["values"].append(torch.stack(v))
-            trajectories["next_value"] = next_value
-            break
-                # except ValueError:
-                #     break
-                # except KeyboardInterrupt:
-                #     break
-                # except:
-                #     print("Unexpected error:", sys.exc_info()[0])
-                #     pass
+                trajectories["observations"].append(torch.stack(o))
+                trajectories["actions"].append(torch.stack(a))
+                trajectories["log_probs"].append(torch.stack(l))
+                trajectories["rewards"].append(torch.stack(r))
+                trajectories["masks"].append(torch.FloatTensor(m))
+                trajectories["values"].append(torch.stack(v))
+                trajectories["next_value"] = next_value
+        else:
+            while True:
+                try:
+                    o, a, l, r, m, v = [], [], [], [], [], []
+                    obs = self.env.reset()
+                    for step in range(0, steps):
+                        obs = torch.FloatTensor(obs)
+                        o.append(obs)
+
+                        obs = obs.unsqueeze(0).to(device)
+                        action = self.generator.sample_action(obs)
+                        a.append(action)
+
+                        action = action.to(device)
+
+                        r.append(self.discriminator(obs,action)) 
+
+                        dist, value = self.generator(obs)
+                        l.append(dist.log_prob(action))
+                        v.append(value)
+
+                        action = action.squeeze().data.cpu().numpy()
+
+                        if self.args.env_name == "CartPole-v1":
+                            action = int(action)
+
+                        obs, reward, done, info = self.env.step(action)
+                        if self.args.env_name == "CartPole-v1":
+
+                            self.env.render()
+                        _, next_value = self.generator(torch.FloatTensor(obs).unsqueeze(0).to(device))
+                        mask = 0 if done or step == steps-1 else 1
+                        m.append(mask)
+                        if done:
+                            break
+
+
+                    trajectories["observations"].append(torch.stack(o))
+                    trajectories["actions"].append(torch.stack(a))
+                    trajectories["log_probs"].append(torch.stack(l))
+                    trajectories["rewards"].append(torch.stack(r))
+                    trajectories["masks"].append(torch.FloatTensor(m))
+                    trajectories["values"].append(torch.stack(v))
+                    trajectories["next_value"] = next_value
+                    break
+                except ValueError:
+                    break
+                except KeyboardInterrupt:
+                    break
+                except:
+                    print("Unexpected error:", sys.exc_info()[0])
+                    pass
         
         for key in trajectories:
             if key != "next_value":
@@ -178,7 +230,14 @@ class GAIL_Agent():
 
     def train(self, epochs):
 
-        best_reward = 0
+        if self.args.pretrain_D:
+            for _ in range(self.args.pretrain_D):
+                batch_indices = np.random.randint(0, self.expert_trajectories['observations'].shape[0], (self.args.batch_size))
+                obs_batch = self.expert_trajectories['observations'][batch_indices].float().to(device).data
+                act_batch = self.expert_trajectories['actions'][batch_indices].float().to(device).data
+                policy_action = self.generator.sample_action(obs_batch)
+                self.update_discriminator(obs_batch, act_batch, policy_action, -1)
+        least_loss = 9999999
         for epoch in range(epochs):
             batch_indices = np.random.randint(0, self.expert_trajectories['observations'].shape[0], (self.args.batch_size))
             obs_batch = self.expert_trajectories['observations'][batch_indices].float().to(device).data
@@ -198,10 +257,14 @@ class GAIL_Agent():
 
             print('epcoh %d, D loss=%.5f, G loss=%.5f' % (epoch, loss_d, loss_g))
             #Save Checkpoint
+            loss_eval = self.eval()
+            print(loss_eval.data)
+
             if epoch % 20 == 0:
-                reward = self.eval()
-                if reward>best_reward:
-                    best_reward = reward
+                # loss_eval = self.eval()
+                if loss_eval<least_loss:
+                    least_loss = loss_eval
+                    print("Made new checkpoint for model with loss of ", loss_eval)
                     torch.save(self.generator.state_dict(), '{}/g-{}'.format(self.args.env_name, self.args.training_name))
                     torch.save(self.discriminator.state_dict(), '{}/d-{}'.format(self.args.env_name, self.args.training_name))
             torch.cuda.empty_cache()
@@ -210,27 +273,32 @@ class GAIL_Agent():
 
     def update_discriminator(self, obs_batch, act_batch, model_actions, epoch):
         if self.args.imitation:
-            return 0
+            return torch.zeros(1)
         self.d_optimizer.zero_grad()
         prob_expert = self.discriminator(obs_batch,act_batch)
         prob_policy = self.discriminator(obs_batch, model_actions)
 
-        # if self.update_loss == "BCE":     
-        exp_label = torch.full((self.args.batch_size,1), 0, device=device).float()
-        policy_label = torch.full((self.args.batch_size,1), 1, device=device).float()
+        if self.args.update_d == "BCE":     
+            exp_label = torch.full((self.args.batch_size,1), 0, device=device).float()
+            policy_label = torch.full((self.args.batch_size,1), 1, device=device).float()
 
-        expert_loss = self.loss_fn(prob_expert, exp_label)
-        policy_loss = self.loss_fn(prob_policy, policy_label)
+            expert_loss = self.loss_fn(prob_expert, exp_label)
+            policy_loss = self.loss_fn(prob_policy, policy_label)
 
-        loss = expert_loss + policy_loss
+            loss = expert_loss + policy_loss
+            for p in self.discriminator.parameters():
+                p.data.clamp_(-0.01,0.01)
+
+        elif self.args.update_d == "WGAN":
+            loss = -(prob_expert.mean() - prob_policy.mean())
+            for p in self.discriminator.parameters():
+                p.data.clamp_(-0.01,0.01)
 
         loss.backward(retain_graph=True)
         self.d_optimizer.step()
-            
-        # else:
-        #     loss = -(prob_expert.mean() - prob_policy.mean())
-        
-        self.writer.add_scalar("discriminator/loss", loss.data, epoch)
+
+        if epoch != -1:
+            self.writer.add_scalar("discriminator/loss", loss.data, epoch)
         return loss.data
         
 
@@ -238,11 +306,11 @@ class GAIL_Agent():
 
         policy_actions = self.generator.get_means(self.expert_trajectories['observations'].to(device))
         reward = abs(self.expert_trajectories['actions'].to(device) - policy_actions).sum()
+
         return reward
 
     def enjoy(self):
         self.generator.eval().to(device)
-
         obs = self.env.reset()
 
         # max_count = 0
@@ -252,6 +320,8 @@ class GAIL_Agent():
             action = self.generator.get_means(obs)
 
             action = action.squeeze().data.cpu().numpy()
+            if self.args.env_name == "CartPole-v1":
+                action = int(action)
             # print("\nAction taken::", action, "\n")
             obs, reward, done, info = self.env.step(action)
             self.env.render()
@@ -273,7 +343,7 @@ class GAIL_Agent():
 
     def ppo(self, obs_batch, act_batch, policy_action, epoch):
         
-        trajectories = self.get_policy_trajectory(steps=self.args.steps, episodes=1)
+        trajectories = self.get_policy_trajectory(steps=self.args.ppo_steps, episodes=self.args.sampling_eps)
         observations, actions, log_probs, rewards, masks, values, next_value = trajectories['observations'],\
                                                                                 trajectories['actions'],\
                                                                                 trajectories['log_probs'],\
@@ -283,7 +353,6 @@ class GAIL_Agent():
                                                                                 trajectories['next_value']
 
         returns = compute_gae(next_value, rewards, masks, values, self.args)
-
         returns   = torch.cat(returns).detach().view(len(returns),1).to(device)
         log_probs = log_probs.detach().to(device).detach()
         values    = values.detach().to(device).detach()
@@ -321,7 +390,7 @@ class GAIL_Agent():
         loss = (policy_action - act_batch).norm(2).mean()
 
         loss.backward()
-        
+        self.writer.add_scalar("imitation/loss", loss.data, epoch)
         self.g_optimizer.step()
         return loss.data
 
@@ -337,11 +406,33 @@ class GAIL_Agent():
         sum_entropy = 0.0
         sum_loss_total = 0.0
 
+        last_dist = 0
         for e in range(args.ppo_epochs):
             for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
+
                 dist, value = G(state)
+
+                # print("ahhh",dist.scale)
                 entropy = dist.entropy().mean()
+                if torch.isnan(entropy):
+                    print("entropy")
+                    print("curr scale", dist.scale, e)
+                    print("prev scale", last_dist.scale, e)
+
+                    print(dist.entropy())
+                    break
                 new_log_probs = dist.log_prob(action.squeeze(1)).unsqueeze(1)
+                if torch.isnan(old_log_probs.min()):
+                    print("old_log_probs")
+                    print("scale", dist.scale, e)
+                    print(old_log_probs)
+                    break
+
+                if torch.isnan(new_log_probs.min()):
+                    print("new_log_probs")
+                    print("scale", dist.scale, e)
+                    print(new_log_probs)
+                    break
 
                 ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
                 surr1 = ratio * advantage
@@ -353,7 +444,7 @@ class GAIL_Agent():
                 # print("actorloss", actor_loss.data, "criticloss",critic_loss.data, "entropy",entropy)
 
                 # print(args.critic_discount, critic_loss, actor_loss, args.entropy_beta, entropy)
-                loss = args.critic_discount* critic_loss + actor_loss - args.entropy_beta * entropy
+                loss = actor_loss - args.critic_discount*critic_loss +  args.entropy_beta*entropy
                 # print(loss)
                 G_optimizer.zero_grad()
                 loss.backward(retain_graph=True)
@@ -369,8 +460,11 @@ class GAIL_Agent():
                 sum_loss_critic += critic_loss
                 sum_loss_total += loss
                 sum_entropy += entropy
-                
+
                 count_steps += 1
+                last_dist = dist
+
+                
         self.writer.add_scalar("returns", (sum_returns / count_steps).data, epoch)
         self.writer.add_scalar("advantage", (sum_advantage / count_steps).data, epoch)
         self.writer.add_scalar("loss_actor", (sum_loss_actor / count_steps).data, epoch)
@@ -382,6 +476,7 @@ class GAIL_Agent():
 
 def trpo():
     pass
+
 
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]

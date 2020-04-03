@@ -71,3 +71,12 @@ class ActionWrapper(gym.ActionWrapper):
     def action(self, action):
         action_ = [action[0], action[1]]
         return action_
+
+
+class PixelWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super(PixelWrapper, self).__init__(env)
+
+    def observation(self, observation):
+        observation_ = self.env.render(mode="rgb_array")
+        return observation_
