@@ -102,7 +102,7 @@ class GAIL_Agent():
                     r.append(torch.FloatTensor([reward]))
 
 
-                    self.env.render()
+                    # self.env.render()
 
 
                     if type(action) != list:
@@ -157,8 +157,8 @@ class GAIL_Agent():
                     #     print("Unexpected error:", sys.exc_info()[0])
                     #     print(action)
 
-                    if self.args.env_name == "CartPole-v1":
-                        self.env.render()
+                    # if self.args.env_name == "CartPole-v1":
+                    #     self.env.render()
                     _, next_value = self.generator(torch.FloatTensor(obs).unsqueeze(0).to(device))
                     mask = 0 if done or step == steps-1 else 1
                     m.append(mask)
@@ -235,12 +235,12 @@ class GAIL_Agent():
     def train(self, epochs):
 
         if self.args.pretrain_D:
-            for _ in range(self.args.pretrain_D):
+            for i in range(self.args.pretrain_D):
                 batch_indices = np.random.randint(0, self.expert_trajectories['observations'].shape[0], (self.args.batch_size))
                 obs_batch = self.expert_trajectories['observations'][batch_indices].float().to(device).data
                 act_batch = self.expert_trajectories['actions'][batch_indices].float().to(device).data
                 policy_action = self.generator.sample_action(obs_batch)
-                self.update_discriminator(obs_batch, act_batch, policy_action, -1)
+                self.update_discriminator(obs_batch, act_batch, policy_action, -i)
         best_reward = 0
         for epoch in range(epochs):
             batch_indices = np.random.randint(0, self.expert_trajectories['observations'].shape[0], (self.args.batch_size))
@@ -283,13 +283,13 @@ class GAIL_Agent():
         prob_policy = self.discriminator(obs_batch, model_actions)
 
         if self.args.update_d == "BCE":     
-            exp_label = torch.full((self.args.batch_size,1), 0, device=device).float()
-            policy_label = torch.full((self.args.batch_size,1), 1, device=device).float()
+            exp_label = torch.full((self.args.batch_size,1), 1, device=device).float()
+            policy_label = torch.full((self.args.batch_size,1), 0, device=device).float()
 
             expert_loss = self.loss_fn(prob_expert, exp_label)
             policy_loss = self.loss_fn(prob_policy, policy_label)
 
-            loss = expert_loss + policy_loss
+            loss =  policy_loss + expert_loss
             for p in self.discriminator.parameters():
                 p.data.clamp_(-0.01,0.01)
 
@@ -301,8 +301,7 @@ class GAIL_Agent():
         loss.backward(retain_graph=True)
         self.d_optimizer.step()
 
-        if epoch != -1:
-            self.writer.add_scalar("discriminator/loss", loss.data, epoch)
+        self.writer.add_scalar("discriminator/loss", loss.data, epoch)
         return loss.data
         
 
@@ -372,35 +371,7 @@ class GAIL_Agent():
         loss = self.do_ppo_step(states, actions, log_probs, returns, advantage, self.args, self.generator, self.g_optimizer, epoch)
 
         return loss
-
-    def vanilla_loss(self, obs_batch, act_batch, policy_action, epoch):
-        self.g_optimizer.zero_grad()
-        loss = -self.discriminator(obs_batch,policy_action).log().mean()
-        loss.backward()
-        self.g_optimizer.step()
-        self.writer.add_scalar("generator/loss", loss.data, epoch)
-
-        return loss.data
-
-    def policy_gradient(self, obs_batch, act_batch, epoch):
-        policy_trajectories = get_policy_trajectory(1, 50)
-
-        self.g_optimizer.zero_grad()
-        loss = self.discriminator(obs_batch,act_batch).log().mean()
-        loss.backward()
-        self.g_optimizer.step()
-        self.writer.add_scalar("generator/loss", loss.data, epoch)
-        return loss.data
-
-    def imitate(self, obs_batch, act_batch, policy_action, epoch):
-        self.g_optimizer.zero_grad()
-        loss = (policy_action - act_batch).norm(2).mean()
-
-        loss.backward()
-        self.writer.add_scalar("imitation/loss", loss.data, epoch)
-        self.g_optimizer.step()
-        return loss.data
-
+    
     def do_ppo_step(self, states, actions, log_probs, returns, advantages, args, G, G_optimizer, epoch):
         '''
         from https://github.com/colinskow/move37/blob/f57afca9d15ce0233b27b2b0d6508b99b46d4c7f/ppo/ppo_train.py#L63
@@ -446,7 +417,7 @@ class GAIL_Agent():
                 surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * advantage
 
                 # print("logprobs", new_log_probs)
-                actor_loss  = - torch.min(surr1, surr2).mean()
+                actor_loss  = -torch.min(surr1, surr2).mean()
                 critic_loss = (return_ - value).pow(2).mean()
                 # print("actorloss", actor_loss.data, "criticloss",critic_loss.data, "entropy",entropy)
 
@@ -484,6 +455,35 @@ class GAIL_Agent():
             break
         return (sum_loss_total / count_steps).data
 
+    def vanilla_loss(self, obs_batch, act_batch, policy_action, epoch):
+        self.g_optimizer.zero_grad()
+        loss = -self.discriminator(obs_batch,policy_action).log().mean()
+        loss.backward()
+        self.g_optimizer.step()
+        self.writer.add_scalar("generator/loss", loss.data, epoch)
+
+        return loss.data
+
+    def policy_gradient(self, obs_batch, act_batch, epoch):
+        policy_trajectories = get_policy_trajectory(1, 50)
+
+        self.g_optimizer.zero_grad()
+        loss = self.discriminator(obs_batch,act_batch).log().mean()
+        loss.backward()
+        self.g_optimizer.step()
+        self.writer.add_scalar("generator/loss", loss.data, epoch)
+        return loss.data
+
+    def imitate(self, obs_batch, act_batch, policy_action, epoch):
+        self.g_optimizer.zero_grad()
+        loss = (policy_action - act_batch).norm(2).mean()
+
+        loss.backward()
+        self.writer.add_scalar("imitation/loss", loss.data, epoch)
+        self.g_optimizer.step()
+        return loss.data
+
+    
 def trpo():
     pass
 
@@ -491,7 +491,7 @@ def trpo():
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]
     # generates random mini-batches until we have covered the full batch
-    for _ in range(batch_size // 5):
+    for _ in range(batch_size // 30):
         rand_ids = np.random.randint(0, batch_size, 5)
         yield states[rand_ids, :], actions[rand_ids, :], log_probs[rand_ids, :], returns[rand_ids, :], advantage[rand_ids, :]
         

@@ -97,7 +97,7 @@ class Generator(nn.Module):
         
         mu = self.mu_head(x)
 
-        sig = abs(self.sig_head(x))
+        sig = self.sig(self.sig_head(x))
 
         dist = Normal(*[mu, sig])
 

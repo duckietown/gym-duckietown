@@ -43,7 +43,7 @@ parser.add_argument("--ppo-epochs", default=6, type=int)
 parser.add_argument("--ppo-steps", default=256, type=int)
 parser.add_argument("--critic-discount", default=0.5, type=float)
 
-parser.add_argument("--sampling-eps", default= 1, type=int)
+parser.add_argument("--sampling-eps", default= 50, type=int)
 
 
 parser.add_argument("--imitation", default=0, type=int)
