@@ -28,7 +28,7 @@ parser.add_argument("--eps", default=0.000001, type=float, help="epsilon for imi
 parser.add_argument("--eval-steps", default=5, type=int, help="number of steps to evaluate policy on")
 parser.add_argument("--eval-episodes", default=50, type=int)
 parser.add_argument("--enjoy", default=0, type=int)
-parser.add_argument("--pretrain-D", default=10, type=int)
+parser.add_argument("--pretrain-D", default=50, type=int)
 parser.add_argument("--env_name", default='CartPole-v1', type=str)
 
 parser.add_argument("--eval-seed", default=0, type=int)
@@ -49,6 +49,7 @@ parser.add_argument("--sampling-eps", default= 1, type=int)
 parser.add_argument("--imitation", default=0, type=int)
 parser.add_argument("--pretrain-name", default="imitate")
 parser.add_argument("--update-d", default="WGAN")
+parser.add_argument("--update-with",default = "")
 
 
 def main(args):
@@ -117,7 +118,7 @@ def main(args):
     
     if args.train:
 
-        gail_agent = GAIL_Agent(env, args, generator=G, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with="PPO")
+        gail_agent = GAIL_Agent(env, args, generator=G, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with=args.update_with)
 
         env.seed(args.seed)
         gail_agent.get_expert_trajectories(args.episodes, args.steps, expert)
@@ -129,8 +130,8 @@ def main(args):
         state_dict = torch.load('{}/g-{}'.format(args.env_name, args.training_name), map_location=device)
         G.load_state_dict(state_dict)
 
-        gail_agent = GAIL_Agent(env, args, generator=G, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with="PPO")
-        gail_agent_random = GAIL_Agent(env, args, generator=G_random, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with="PPO")
+        gail_agent = GAIL_Agent(env, args, generator=G, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with=args.update_with)
+        gail_agent_random = GAIL_Agent(env, args, generator=G_random, discriminator=D, g_optimizer=G_optimizer,d_optimizer=D_optimizer,update_with=args.update_with)
 
         gail_agent.env.seed(args.eval_seed)
         print(gail_agent.get_expert_trajectories(args.episodes, args.steps, expert)["rewards"].sum())
