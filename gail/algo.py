@@ -37,8 +37,10 @@ class GAIL_Agent():
 
         self.args = args
 
-        self.writer = SummaryWriter(comment='---{}/{}'.format(args.env_name, args.training_name))
 
+        if self.args.train:
+            self.writer = SummaryWriter(comment='---{}/{}'.format(args.env_name, args.training_name))
+        
         if args.imitation:
             print("using imitate!")
             self.update_generator = self.imitate
@@ -79,10 +81,12 @@ class GAIL_Agent():
 
                             a.append(torch.FloatTensor(action))
                             obs, reward, done, info = self.env.step(action)
-                            r.append(torch.FloatTensor(reward))
+                            r.append(torch.FloatTensor([reward]))
+                      
                         trajectories["observations"].append(torch.stack(o))
                         trajectories["actions"].append(torch.stack(a))
-                        trajectories["rewards"].append(torch.stack(reward))
+                        
+                        trajectories["rewards"].append(torch.stack(r))
 
                         break
                     except ValueError or KeyboardInterrupt:
@@ -241,7 +245,7 @@ class GAIL_Agent():
                 act_batch = self.expert_trajectories['actions'][batch_indices].float().to(device).data
                 policy_action = self.generator.sample_action(obs_batch)
                 self.update_discriminator(obs_batch, act_batch, policy_action, -i)
-        best_reward = 0
+        best_reward = -float("inf")
         for epoch in range(epochs):
             batch_indices = np.random.randint(0, self.expert_trajectories['observations'].shape[0], (self.args.batch_size))
             obs_batch = self.expert_trajectories['observations'][batch_indices].float().to(device).data
@@ -290,25 +294,28 @@ class GAIL_Agent():
             policy_loss = self.loss_fn(prob_policy, policy_label)
 
             loss =  policy_loss + expert_loss
-            for p in self.discriminator.parameters():
-                p.data.clamp_(-0.01,0.01)
 
         elif self.args.update_d == "WGAN":
-            loss = -(prob_expert.mean() - prob_policy.mean())
-            for p in self.discriminator.parameters():
-                p.data.clamp_(-0.01,0.01)
+            loss = (prob_expert.mean() - prob_policy.mean()).norm(2)
 
         loss.backward(retain_graph=True)
         self.d_optimizer.step()
+        
+        for p in self.discriminator.parameters():
+                p.data.clamp_(-0.01,0.01)
 
         self.writer.add_scalar("discriminator/loss", loss.data, epoch)
         return loss.data
         
 
     def eval(self):
+        if self.args.env_name == "duckietown":
+            policy_actions = self.generator.get_means(self.expert_trajectories['observations'].to(device))
+            reward = -abs(self.expert_trajectories['actions'].to(device) - policy_actions).sum()
         
-        trajectories = self.get_policy_trajectory(1, 100)
-        reward = trajectories["rewards"].sum()
+        else:
+            trajectories = self.get_policy_trajectory(1, 100)
+            reward = trajectories["rewards"].sum()
         # policy_actions = self.generator.get_means(self.expert_trajectories['observations'].to(device))
         # reward = abs(self.expert_trajectories['actions'].to(device) - policy_actions).sum()
         
@@ -358,6 +365,9 @@ class GAIL_Agent():
                                                                                 trajectories['values'],\
                                                                                 trajectories['next_value']
 
+        self.learning_rate = self.args.lrG * (1 - (epoch/self.args.epochs))
+        self.clip_param = self.args.clip_param * (1 - (epoch/self.args.epochs))
+
         returns = compute_gae(next_value, rewards, masks, values, self.args)
         returns   = torch.cat(returns).detach().view(len(returns),1).to(device)
         log_probs = log_probs.detach().to(device).detach()
@@ -385,6 +395,10 @@ class GAIL_Agent():
         sum_loss_total = 0.0
 
         last_dist = 0
+
+        for pg in self.g_optimizer.param_groups:
+            pg['lr'] = self.learning_rate
+
         for e in range(args.ppo_epochs):
             for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
 
@@ -414,7 +428,7 @@ class GAIL_Agent():
 
                 ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
                 surr1 = ratio * advantage
-                surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * advantage
+                surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * advantage
 
                 # print("logprobs", new_log_probs)
                 actor_loss  = -torch.min(surr1, surr2).mean()
@@ -429,8 +443,11 @@ class GAIL_Agent():
                 G.float()
                 G_optimizer.step()
 
-                for p in G.parameters():
-                    p = torch.clamp(p, -0.01,0.01)
+
+                # for p in G.parameters():
+                #     if torch.isnan(p.min()):
+                #         print(p)
+                #     p = torch.clamp(p, -0.01,0.01)
                             
                 sum_returns += return_.mean()
                 sum_advantage += advantage.mean()
@@ -491,8 +508,8 @@ def trpo():
 def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]
     # generates random mini-batches until we have covered the full batch
-    for _ in range(batch_size // 30):
-        rand_ids = np.random.randint(0, batch_size, 5)
+    for _ in range(32):
+        rand_ids = np.random.randint(0, batch_size, 32)
         yield states[rand_ids, :], actions[rand_ids, :], log_probs[rand_ids, :], returns[rand_ids, :], advantage[rand_ids, :]
         
 

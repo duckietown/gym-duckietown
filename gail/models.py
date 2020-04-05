@@ -37,14 +37,14 @@ class Generator(nn.Module):
 
         self.flatten = Flatten()
         self.dropout = nn.Dropout(.5)
-        resnet = models.resnet50(pretrained=True)
-        self.resnet = nn.Sequential(*list(resnet.children())[:-2])
 
+        self.resnet = models.resnet50(pretrained=True)
         for param in self.resnet.parameters():
             param.requires_grad = False
-          
-        self.lin1 = nn.Linear(32*5*4, 256)
-        self.lin2 = nn.Linear(256, 128)
+        self.resnet.fc = nn.Linear(2048,256)
+
+        # self.lin1 = nn.Linear(32*10, 256)
+        self.lin1 = nn.Linear(256, 128)
 
         self.mu_head = nn.Linear(128, action_dim)
         self.sig_head = nn.Linear(128, action_dim)
@@ -78,27 +78,19 @@ class Generator(nn.Module):
 
     def forward(self,x):
         # print(self.flatten(x).shape)
-        # r = self.lr(self.resnet(x))
-        x = self.VAE(self.flatten(x))
+       
+        # x = self.VAE(self.flatten(x))
 
-        # c = self.lr(self.conv1(x))
+        x = self.lr(self.resnet(x))
 
-        # f = self.lr(self.conv4(x))
+        x = self.flatten(x)
 
-        # x = torch.cat((r,c,f),1)
-
-        # x = self.lr(self.conv5(x))
-        # x = self.dropout(self.flatten(x))
-        # x = self.lr(self.lin1(x))
+        x = self.lr(self.lin1(x))
+        # x = self.lr(self.lin2(x))
 
         value = self.lr(self.value_head(x))
-
-        # x = self.lr(self.lin2(x))
-        
         mu = self.mu_head(x)
-
-        sig = self.sig(self.sig_head(x))
-
+        sig = abs(self.sig_head(x)) + 1e-10
         dist = Normal(*[mu, sig])
 
         return dist, value
