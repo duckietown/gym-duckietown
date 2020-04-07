@@ -12,60 +12,38 @@ class Flatten(nn.Module):
         return input.view(input.size(0), -1)
 
 class Generator(nn.Module):
-    def __init__(self,observation_dim, action_dim):
+    def __init__(self,observation_dim, action_dim, use_VAE=False):
         super(Generator,self).__init__()
         
+        self.use_VAE = use_VAE
         self.lr = nn.LeakyReLU()
         self.tanh = nn.Tanh()
         self.sig = nn.Sigmoid()
         self.softmax = nn.Softmax()
-
-        self.conv1 = nn.Sequential( nn.Conv2d(3, 32, 7, stride=4, padding=3),
-                                    self.lr,
-                                    nn.Conv2d(32,32, 5, stride=4, padding=2),
-                                    self.lr,
-                                    nn.Conv2d(32,32, 3, stride=2, padding=1)
-                                    # self.lr()
-                                    )
-        # self.conv1 = nn.Conv2d(3, 32, 7, stride=4, padding=3)
-        # self.conv2 = nn.Conv2d(32,32, 5, stride=4, padding=2)
-        # self.conv3 = nn.Conv2d(32,32, 3, stride=2, padding=1)
-
-        self.conv4 = nn.Conv2d(3,32, 20, stride=30)   
-
-        self.conv5 = nn.Conv2d(2112, 32, 3, stride=1, padding=1)   
-
         self.flatten = Flatten()
-        self.dropout = nn.Dropout(.5)
+        if self.use_VAE:
+            self.encoder = Encoder(observation_dim)
+            state_dict = torch.load('duckietown/vae-encoder')
+            self.encoder.load_state_dict(state_dict)
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+        else:
+            self.encoder =  models.resnet50(pretrained=True)
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+            self.encoder = nn.Sequential(self.encoder,
+                                        self.lr,
+                                        nn.Linear(1000,256),
+                                        self.lr)
+        self.lin1 = nn.Linear(256, 256)
 
-        self.resnet = models.resnet50(pretrained=True)
-        for param in self.resnet.parameters():
-            param.requires_grad = False
-        self.resnet.fc = nn.Linear(2048,256)
+        self.mu_head = nn.Linear(256, action_dim)
+        self.sig_head = nn.Linear(256, action_dim)
+        self.value_head = nn.Linear(256, 1)
 
-        # self.lin1 = nn.Linear(32*10, 256)
-        self.lin1 = nn.Linear(256, 128)
-
-        self.mu_head = nn.Linear(128, action_dim)
-        self.sig_head = nn.Linear(128, action_dim)
-
-
-        self.value_head = nn.Linear(128, 1)
-
-        self.VAE =  nn.Sequential(nn.Linear(reduce(lambda x,y: x*y, observation_dim), 256),
-                                    self.lr,
-                                    nn.Linear(256,128),
-                                    self.lr,
-                                    nn.Linear(128,64),
-                                    self.lr,
-                                    nn.Linear(64,32),
-                                    self.lr,
-                                    nn.Linear(32,64),
-                                    self.lr,
-                                    nn.Linear(64,128))
 
         if reduce(lambda x,y: x*y, observation_dim) == 4:
-            self.VAE = nn.Sequential(nn.Linear(4,4),
+            self.encoder = nn.Sequential(nn.Linear(4,4),
                                     nn.LeakyReLU(),
                                     nn.Linear(4,4),
                                     nn.LeakyReLU())
@@ -77,16 +55,10 @@ class Generator(nn.Module):
             self.value_head = nn.Linear(4, 1)
 
     def forward(self,x):
-        # print(self.flatten(x).shape)
-       
-        # x = self.VAE(self.flatten(x))
 
-        x = self.lr(self.resnet(x))
-
+        x = self.lr(self.encoder(x))
         x = self.flatten(x)
-
         x = self.lr(self.lin1(x))
-        # x = self.lr(self.lin2(x))
 
         value = self.lr(self.value_head(x))
         mu = self.mu_head(x)
@@ -109,73 +81,92 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, observation_dim, action_dim):
+    def __init__(self, observation_dim, action_dim, use_VAE=False):
         super(Discriminator,self).__init__()
-        
+        self.use_VAE = bool(use_VAE)
         self.observation_dim = observation_dim
         self.action_dim = action_dim
         self.lr = nn.LeakyReLU()
         self.sig = nn.Sigmoid()
         self.tanh = nn.Tanh()
 
-        self.conv1 = nn.Conv2d(3, 32, 3, stride=4, padding=2)
-        self.conv2 = nn.Conv2d(32,64, 3, stride=4, padding=2)
-        self.conv3 = nn.Conv2d(64,128,3, stride=4, padding=2)
-
         self.flatten = Flatten()
         self.softmax = nn.Softmax()
-        self.resnet = models.resnet50(pretrained=True)
-        for param in self.resnet.parameters():
-            param.requires_grad = False
-        self.resnet.fc = nn.Linear(2048,1000)
-        
-        self.lin1 = nn.Linear(1000+action_dim,256)
-        # self.lin1 = nn.Linear(128*4*3+action_dim, 256)
-        self.lin2 = nn.Linear(256, 128)
-        self.lin3 = nn.Linear(128, 1)
-
-        self.VAE =  nn.Sequential(nn.Linear(reduce(lambda x,y: x*y, observation_dim)+action_dim, 256),
-                            self.lr,
-                            nn.Linear(256,128),
-                            self.lr,
-                            nn.Linear(128,64),
-                            self.lr,
-                            nn.Linear(64,32),
-                            self.lr,
-                            nn.Linear(32,64),
-                            self.lr,
-                            nn.Linear(64,128))
 
         if reduce(lambda x,y: x*y, observation_dim) == 4:
-            self.VAE = nn.Sequential(nn.Linear(4+action_dim,4),
+            self.encoder = nn.Sequential(nn.Linear(4,4),
                                     nn.LeakyReLU(),
                                     nn.Linear(4,4),
                                     nn.LeakyReLU())
+            self.lin1 = nn.Linear(4+action_dim, 2)
+            self.lin2 = nn.Linear(2,1)
 
-            self.lin3 = nn.Linear(4, 1)
+        else:
+            if self.use_VAE:
+                self.encoder = Encoder(observation_dim)
+                state_dict = torch.load('duckietown/vae-encoder')
+                self.encoder.load_state_dict(state_dict)
+                for param in self.encoder.parameters():
+                    param.requires_grad = False
+            else:
+                self.encoder =  models.resnet50(pretrained=True)
+                for param in self.encoder.parameters():
+                    param.requires_grad = False
+                self.encoder = nn.Sequential(self.encoder,
+                                            self.lr,
+                                            nn.Linear(1000,40),
+                                            self.lr)
+
+            self.lin1 = nn.Linear(40+action_dim,128)
+            self.lin2 = nn.Linear(128, 1)
 
         
     def forward(self,observations, actions):
-        # x = self.lr(self.conv1(observations))
-        # x = self.lr(self.conv2(x))
-        # x = self.lr(self.conv3(x))
 
-        # x = self.flatten(x)
-        # x = self.resnet(observations)
-
-        x = torch.cat((self.flatten(observations),actions),1)
-        x = self.VAE(x)
-        x = self.sig(self.lin3(x))
-        # x = self.lr(self.lin1(x))
-        # x = self.lr(self.lin2(x))
-        # x = self.sig(self.lin3(x))
-        # # x = self.lr(self.lin3(x))
-        # x = self.lin3(x)
-
-
-
+        x = self.encoder(observations)
+        x = torch.cat((x,actions),1)
+        x = self.lr(self.lin1(x))
+        x = self.sig(self.lin2(x))
         return x
-  
+
+class Encoder(nn.Module):
+    def __init__(self, observation_dim):
+        super(Encoder,self).__init__()
+        self.flatten = Flatten()
+        self.lr = nn.LeakyReLU()
+        self.fc = nn.Sequential(self.flatten,
+                                nn.Linear(reduce(lambda x,y: x*y, observation_dim), 1024),
+                                self.lr,
+                                nn.Linear(1024,512),
+                                self.lr,
+                                )
+        self.mu_head = nn.Linear(512,256)
+        self.sig_head = nn.Linear(512,256)
+        
+    def forward(self, x):
+        mu = self.mu_head(self.fc(x))
+        sig = abs(self.sig_head(self.fc(x))) + 1e-10
+
+        dist = Normal(*[mu, sig])
+        sampled = dist.rsample()
+
+        return sampled
+
+class Decoder(nn.Module):
+    def __init__(self, observation_dim):
+        super(Decoder,self).__init__()
+        self.flatten = Flatten()
+        self.lr = nn.LeakyReLU()
+        self.fc = nn.Sequential(nn.Linear(256,512),
+                                self.lr,
+                                nn.Linear(512,1024),
+                                self.lr,
+                                nn.Linear(1024,reduce(lambda x,y: x*y, observation_dim)),
+                                )
+        
+    def forward(self, x):
+        return(self.fc(x))
+
 if __name__ == "__main__":
 
     pass

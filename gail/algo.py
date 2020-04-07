@@ -48,7 +48,7 @@ class GAIL_Agent():
             print("using ppo!")
             self.update_generator = self.ppo
         elif update_with == "POLICY GRADIENT":
-            self.update_generator = policy_gradient
+            self.update_generator = self.policy_gradient
         elif update_with == "TRPO":
             self.update_generator = trpo
         elif update_with == "BEHAVIOUR CLONE":
@@ -59,6 +59,7 @@ class GAIL_Agent():
 
         
 
+        self.validation_set = {}
 
         self.loss_fn = nn.BCELoss()
         
@@ -148,7 +149,7 @@ class GAIL_Agent():
                     r.append(self.discriminator(obs,action)) 
 
                     dist, value = self.generator(obs)
-                    l.append(dist.log_prob(action))
+                    l.append(log_prob(dist,action))
                     v.append(value)
 
                     action = action.squeeze().data.cpu()
@@ -195,7 +196,7 @@ class GAIL_Agent():
                             r.append(self.discriminator(obs,action)) 
 
                             dist, value = self.generator(obs)
-                            l.append(dist.log_prob(action))
+                            l.append(log_prob(dist, action))
                             v.append(value)
 
                             action = action.squeeze().data.cpu().numpy()
@@ -258,9 +259,11 @@ class GAIL_Agent():
         
             #Update Discriminator
             if epoch % self.args.d_schedule == 0:
-                loss_d = self.update_discriminator(obs_batch, act_batch, policy_action, epoch)
+                for i in range(self.args.D_iter):
+                    loss_d = self.update_discriminator(obs_batch, act_batch, policy_action, epoch)
         
             #Update Generator
+            self.learning_rate = self.args.lrG * (1 - (epoch/self.args.epochs))
             loss_g = self.update_generator(obs_batch, act_batch, policy_action, epoch)
 
             print('epcoh %d, D loss=%.5f, G loss=%.5f' % (epoch, loss_d, loss_g))
@@ -300,7 +303,7 @@ class GAIL_Agent():
 
         loss.backward(retain_graph=True)
         self.d_optimizer.step()
-        
+
         for p in self.discriminator.parameters():
                 p.data.clamp_(-0.01,0.01)
 
@@ -310,8 +313,8 @@ class GAIL_Agent():
 
     def eval(self):
         if self.args.env_name == "duckietown":
-            policy_actions = self.generator.get_means(self.expert_trajectories['observations'].to(device))
-            reward = -abs(self.expert_trajectories['actions'].to(device) - policy_actions).sum()
+            policy_actions = self.generator.get_means(self.validation_set['observations'].to(device))
+            reward = -abs(self.validation_set['actions'].to(device) - policy_actions).sum()
         
         else:
             trajectories = self.get_policy_trajectory(1, 100)
@@ -365,7 +368,7 @@ class GAIL_Agent():
                                                                                 trajectories['values'],\
                                                                                 trajectories['next_value']
 
-        self.learning_rate = self.args.lrG * (1 - (epoch/self.args.epochs))
+        
         self.clip_param = self.args.clip_param * (1 - (epoch/self.args.epochs))
 
         returns = compute_gae(next_value, rewards, masks, values, self.args)
@@ -376,7 +379,7 @@ class GAIL_Agent():
         states    = observations.to(device)
         actions   = actions.to(device)
         advantage = returns - values
-        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-5)
         
         loss = self.do_ppo_step(states, actions, log_probs, returns, advantage, self.args, self.generator, self.g_optimizer, epoch)
 
@@ -399,40 +402,34 @@ class GAIL_Agent():
         for pg in self.g_optimizer.param_groups:
             pg['lr'] = self.learning_rate
 
+        buffer_size = states.size(0)
+        shuffled_inds = np.random.permutation(buffer_size)
+        batch_size = 32
         for e in range(args.ppo_epochs):
-            for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
-
-                dist, value = G(state)
+            # for state, action, old_log_probs, return_, advantage in ppo_iter(states, actions, log_probs, returns, advantages):
+            for i in range(int(buffer_size/batch_size)):
+                rand_ints = shuffled_inds[int(i*batch_size):int((i+1)*batch_size)]
+                dist, value = G(states[rand_ints,:])
 
                 # print("ahhh",dist.scale)
                 entropy = dist.entropy().mean()
-                if torch.isnan(entropy):
-                    print("entropy")
-                    print("curr scale", dist.scale, e)
-                    print("prev scale", last_dist.scale, e)
+                # entropy[torch.isnan(entropy)] = 1e-9
+                new_log_probs = log_prob(dist, actions[rand_ints,:].squeeze(1)).unsqueeze(1)
+                # new_log_probs[torch.isnan(new_log_probs)] = 1e-9
+                self.writer.add_scalar("PPO_STEP/entropy", entropy.data, epoch*int(buffer_size/batch_size)+count_steps)
+                self.writer.add_scalar("PPO_STEP/new_log_probs", new_log_probs.mean().data, epoch*int(buffer_size/batch_size)+count_steps)
+                self.writer.add_scalar("PPO_STEP/dist_means", dist.loc.mean().data, epoch*int(buffer_size/batch_size)+count_steps)
+                self.writer.add_scalar("PPO_STEP/dist_scales", dist.scale.mean().data, epoch*int(buffer_size/batch_size)+count_steps)
 
-                    print(dist.entropy())
-                    break
-                new_log_probs = dist.log_prob(action.squeeze(1)).unsqueeze(1)
-                if torch.isnan(old_log_probs.min()):
-                    print("old_log_probs")
-                    print("scale", dist.scale, e)
-                    print(old_log_probs)
-                    break
-
-                if torch.isnan(new_log_probs.min()):
-                    print("new_log_probs")
-                    print("scale", dist.scale, e)
-                    print(new_log_probs)
-                    break
-
-                ratio = (new_log_probs.to(device) - old_log_probs.to(device)).exp()
-                surr1 = ratio * advantage
-                surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * advantage
-
+                ratio = (new_log_probs.to(device) - log_probs[rand_ints,:].to(device)).exp()
+                surr1 = ratio * advantages[rand_ints,:]
+                surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * advantages[rand_ints,:]
+                # print(surr1.mean(), surr2.mean())
                 # print("logprobs", new_log_probs)
-                actor_loss  = -torch.min(surr1, surr2).mean()
-                critic_loss = (return_ - value).pow(2).mean()
+                actor_loss  = -torch.min(surr1.mean(), surr2.mean())
+
+                # print(actor_loss)
+                critic_loss = (returns[rand_ints,:] - value).pow(2).mean()
                 # print("actorloss", actor_loss.data, "criticloss",critic_loss.data, "entropy",entropy)
 
                 # print(args.critic_discount, critic_loss, actor_loss, args.entropy_beta, entropy)
@@ -441,7 +438,10 @@ class GAIL_Agent():
                 G_optimizer.zero_grad()
                 loss.backward(retain_graph=True)
                 G.float()
+                torch.nn.utils.clip_grad_norm_(self.generator.parameters(), 0.25)
                 G_optimizer.step()
+
+  
 
 
                 # for p in G.parameters():
@@ -449,8 +449,8 @@ class GAIL_Agent():
                 #         print(p)
                 #     p = torch.clamp(p, -0.01,0.01)
                             
-                sum_returns += return_.mean()
-                sum_advantage += advantage.mean()
+                sum_returns += returns[rand_ints,:].mean()
+                sum_advantage += advantages[rand_ints,:].mean()
                 sum_loss_actor += actor_loss
                 sum_loss_critic += critic_loss
                 sum_loss_total += loss
@@ -458,7 +458,6 @@ class GAIL_Agent():
 
                 count_steps += 1
                 last_dist = dist
-
                 
         self.writer.add_scalar("PPO/returns", (sum_returns / count_steps).data, epoch)
         self.writer.add_scalar("PPO/advantage", (sum_advantage / count_steps).data, epoch)
@@ -481,11 +480,11 @@ class GAIL_Agent():
 
         return loss.data
 
-    def policy_gradient(self, obs_batch, act_batch, epoch):
-        policy_trajectories = get_policy_trajectory(1, 50)
+    def policy_gradient(self, obs_batch, act_batch, policy_action, epoch):
+        policy_trajectories = self.get_policy_trajectory(5, 50).to(device)
 
         self.g_optimizer.zero_grad()
-        loss = self.discriminator(obs_batch,act_batch).log().mean()
+        loss = policy_trajectories["rewards"].log().mean()
         loss.backward()
         self.g_optimizer.step()
         self.writer.add_scalar("generator/loss", loss.data, epoch)
@@ -493,6 +492,8 @@ class GAIL_Agent():
 
     def imitate(self, obs_batch, act_batch, policy_action, epoch):
         self.g_optimizer.zero_grad()
+        for pg in self.g_optimizer.param_groups:
+            pg['lr'] = self.learning_rate
         loss = (policy_action - act_batch).norm(2).mean()
 
         loss.backward()
@@ -509,7 +510,7 @@ def ppo_iter(states, actions, log_probs, returns, advantage):
     batch_size = states.shape[0]
     # generates random mini-batches until we have covered the full batch
     for _ in range(32):
-        rand_ids = np.random.randint(0, batch_size, 32)
+        rand_ids = np.random.randint(0, batch_size, 1000)
         yield states[rand_ids, :], actions[rand_ids, :], log_probs[rand_ids, :], returns[rand_ids, :], advantage[rand_ids, :]
         
 
@@ -526,6 +527,8 @@ def compute_gae(next_value, rewards, masks, values, args):
     
     return returns
 
+def log_prob(dist, x):
+    return ((1/(dist.scale*(2*math.pi)**(0.5)))*(math.e**(-0.5*((0-dist.loc)/dist.scale)**2)) + 1e-10).log()
 
 if __name__ == "__main__":
     pass
