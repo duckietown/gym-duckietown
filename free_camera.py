@@ -4,7 +4,6 @@
 This script allows you to manually control the simulator or Duckiebot
 using the keyboard arrows.
 """
-import numpy as np
 
 import argparse
 import sys
@@ -23,6 +22,7 @@ parser.add_argument('--draw-curve', action='store_true', help='draw the lane fol
 parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 parser.add_argument('--frame-skip', default=1, type=int, help='number of frames to skip')
+parser.add_argument('--distortion', default=False,  action='store_true')
 args = parser.parse_args()
 
 if args.env_name is None:
@@ -31,7 +31,8 @@ if args.env_name is None:
         draw_curve=args.draw_curve,
         draw_bbox=args.draw_bbox,
         domain_rand=args.domain_rand,
-        frame_skip=args.frame_skip
+        frame_skip=args.frame_skip,
+        distortion=args.distortion
     )
 else:
     env = gym.make(args.env_name)
@@ -72,9 +73,9 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.E:
         cam_angle[2] += 5
     elif symbol == key.UP:
-        cam_offset[0] = cam_offset[0]+0.1
+        cam_offset[0] = cam_offset[0] + 0.1
     elif symbol == key.DOWN:
-        cam_offset[0]  = cam_offset[0] - .1
+        cam_offset[0] = cam_offset[0] - .1
     elif symbol == key.LEFT:
         cam_offset[2] -= 0.1
     elif symbol == key.RIGHT:
@@ -89,11 +90,10 @@ def on_key_press(symbol, modifiers):
         cam_offset[2] = -1.2
         cam_angle[0] = 90
         cam_angle[1] = -40
-        cam_angle[2] = 0 
+        cam_angle[2] = 0
     elif symbol == key.H:
         print(f"offset: {cam_offset}")
         print(f"angle: {cam_angle}")
-
 
     # Take a screenshot
     # UNCOMMENT IF NEEDED - Skimage depencency

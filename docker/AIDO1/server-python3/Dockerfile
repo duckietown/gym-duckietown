@@ -1,5 +1,6 @@
 FROM pytorch/pytorch
 
+
 # we need git for certain dependencies
 RUN apt-get update -y &&\
     apt-get install -y software-properties-common &&\
@@ -13,8 +14,11 @@ RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 
 WORKDIR /gym-duckietown
 
+ARG PIP_INDEX_URL
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+
 COPY requirements* ./
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.resolved
 RUN pipdeptree
 
 COPY . .
