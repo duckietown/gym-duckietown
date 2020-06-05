@@ -1339,7 +1339,7 @@ class Simulator(gym.Env):
         if self.domain_rand:
             frame_skip = self.randomization_settings["frame_skip"]
         
-        for _ in range(frame_skip):
+        for _ in range(int(frame_skip)):
             self.update_physics(action)
 
         # Generate the current camera image
