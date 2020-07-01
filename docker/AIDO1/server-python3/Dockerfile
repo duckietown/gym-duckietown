@@ -1,7 +1,7 @@
 FROM pytorch/pytorch
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
-    xvfb freeglut3-dev libglib2.0-dev && rm -rf /var/lib/apt/lists/*
+    xvfb freeglut3-dev libglib2.0-dev gcc && rm -rf /var/lib/apt/lists/*
 
 RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 
