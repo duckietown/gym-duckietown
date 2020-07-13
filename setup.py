@@ -33,7 +33,7 @@ install_requires = [
     'pyyaml>=3.11',
     'cloudpickle',
     'duckietown-world-daffy-aido4',
-    'pygeometry',
+    'PyGeometry-z6',
     'carnivalmirror==0.6.2',
 ]
 
