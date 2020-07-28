@@ -67,8 +67,6 @@ class Texture(object):
         gl.glBindTexture(self.tex.target, self.tex.id)
 
 def should_black_out(tex_path):
-    # TODO replace this with a better way + add global variable that enable/disables segmentation
-
     for yes in ["sign", "trafficlight", "asphalt"]:
         if yes in tex_path:
             return True
