@@ -359,7 +359,7 @@ class Simulator(gym.Env):
         ]
         self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
-    def reset(self):
+    def reset(self, segment=False):
         """
         Reset the simulation at the start of a new episode
         This also randomizes many environment parameters (domain randomization)
@@ -566,7 +566,7 @@ class Simulator(gym.Env):
         logger.info('Starting at %s %s' % (self.cur_pos, self.cur_angle))
 
         # Generate the first camera image
-        obs = self.render_obs()
+        obs = self.render_obs(segment=segment)
 
         # Return first observation
         return obs
@@ -1421,7 +1421,7 @@ class Simulator(gym.Env):
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
     def _render_img(self, width, height, multi_fbo,
-                    final_fbo, img_array, top_down=True):
+                    final_fbo, img_array, top_down=True, segment=False):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1436,6 +1436,17 @@ class Simulator(gym.Env):
         self.shadow_window.switch_to()
 
         from pyglet import gl
+
+        if segment:
+            gl.glDisable(gl.GL_LIGHT0)
+            gl.glDisable(gl.GL_LIGHTING)
+            gl.glDisable(gl.GL_COLOR_MATERIAL)
+        else:
+            gl.glEnable(gl.GL_LIGHT0)
+            gl.glEnable(gl.GL_LIGHTING)
+            gl.glEnable(gl.GL_COLOR_MATERIAL)
+
+
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
@@ -1443,7 +1454,7 @@ class Simulator(gym.Env):
 
         # Clear the color and depth buffers
 
-        c0, c1, c2 = self.horizon_color
+        c0, c1, c2 = self.horizon_color if not segment else [255,0,255]
         gl.glClearColor(c0, c1, c2, 1.0)
         gl.glClearDepth(1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -1510,14 +1521,16 @@ class Simulator(gym.Env):
 
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
-        gl.glColor3f(*self.ground_color)
+        # background is magenta when segmenting for easy isolation of main map image
+        gl.glColor3f(*self.ground_color if not segment else [255,0,255])
         gl.glPushMatrix()
         gl.glScalef(50, 1, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
         gl.glPopMatrix()
 
         # Draw the ground/noise triangles
-        self.tri_vlist.draw(gl.GL_TRIANGLES)
+        if not segment:
+            self.tri_vlist.draw(gl.GL_TRIANGLES)
 
         # Draw the road quads
         gl.glEnable(gl.GL_TEXTURE_2D)
@@ -1545,7 +1558,7 @@ class Simulator(gym.Env):
                 gl.glRotatef(angle * 90, 0, 1, 0)
 
                 # Bind the appropriate texture
-                texture.bind()
+                texture.bind(segment)
 
                 self.road_vlist.draw(gl.GL_QUADS)
                 gl.glPopMatrix()
@@ -1571,7 +1584,7 @@ class Simulator(gym.Env):
 
         # For each object
         for idx, obj in enumerate(self.objects):
-            obj.render(self.draw_bbox)
+            obj.render(self.draw_bbox, segment)
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
@@ -1628,7 +1641,7 @@ class Simulator(gym.Env):
 
         return img_array
 
-    def render_obs(self):
+    def render_obs(self, segment=False):
         """
         Render an observation from the point of view of the agent
         """
@@ -1639,7 +1652,8 @@ class Simulator(gym.Env):
                 self.multi_fbo,
                 self.final_fbo,
                 self.img_array,
-                top_down=False
+                top_down=False,
+                segment=segment
         )
 
         # self.undistort - for UndistortWrapper
@@ -1648,7 +1662,7 @@ class Simulator(gym.Env):
 
         return observation
 
-    def render(self, mode='human', close=False):
+    def render(self, mode='human', close=False, segment=False):
         """
         Render the environment for human viewing
         """
@@ -1666,7 +1680,8 @@ class Simulator(gym.Env):
                 self.multi_fbo_human,
                 self.final_fbo_human,
                 self.img_array_human,
-                top_down=top_down
+                top_down=top_down,
+                segment=segment
         )
 
         # self.undistort - for UndistortWrapper
