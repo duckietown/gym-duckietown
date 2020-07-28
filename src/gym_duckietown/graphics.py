@@ -66,7 +66,7 @@ class Texture(object):
 
         gl.glBindTexture(self.tex.target, self.tex.id)
 
-def should_black_out(tex_path):
+def should_segment_out(tex_path):
     for yes in ["sign", "trafficlight", "asphalt"]:
         if yes in tex_path:
             return True
@@ -85,7 +85,7 @@ def load_texture(tex_path, segment=False, segment_into_color=[0,0,0]):
     img = pyglet.image.load(tex_path)
 
     if segment:
-        if should_black_out(tex_path):  # replace all by 'segment_into_color'
+        if should_segment_out(tex_path):  # replace all by 'segment_into_color'
             # https://gamedev.stackexchange.com/questions/55945/how-to-draw-image-in-memory-manually-in-pyglet
             to_fill = np.ones((img.height, img.width), dtype=int)
             to_fill = np.kron(to_fill, np.array(segment_into_color, dtype=int))
