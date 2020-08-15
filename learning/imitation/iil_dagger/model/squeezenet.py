@@ -22,7 +22,7 @@ class Squeezenet(nn.Module):
         takes images as input and predict the action space unnormalized
     """
 
-    def __init__(self, num_outputs=2, max_velocity = 0.7, max_steering=np.pi/2):
+    def __init__(self, num_outputs=2, max_velocity = 0.7, max_steering=np.pi/2, is_critic=False):
         """
         Parameters
         ----------
@@ -37,6 +37,7 @@ class Squeezenet(nn.Module):
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = models.squeezenet1_1()
         self.num_outputs = num_outputs
+        self.max_velocity = max_velocity
         self.max_velocity_tensor = torch.tensor(max_velocity).to(self._device)
         self.max_steering = max_steering
 
@@ -54,6 +55,15 @@ class Squeezenet(nn.Module):
         )
         self.model.num_classes = self.num_outputs
         self._init_weights()
+
+        self.activation = torch.nn.Tanh()#(torch.nn.Sigmoid(), torch.nn.Tanh())
+
+        self.is_critic = is_critic
+
+    def __copy__(self):
+        copy = Squeezenet(self.num_outputs, self.max_velocity, self.max_steering, self.is_critic)
+        copy.load_state_dict(self.state_dict())
+        return copy
 
     def _init_weights(self):
         for m in self.model.classifier.modules():
@@ -77,6 +87,10 @@ class Squeezenet(nn.Module):
             normalized predicted action from the model
         """
         action = self.model(images)
+
+        action = self.activation(action)
+        action = action.squeeze()
+
         return action
 
     def loss(self, *args):
@@ -113,14 +127,8 @@ class Squeezenet(nn.Module):
             action having velocity and omega of shape (batch_size, 2)
         """
         images = args[0]
-        output = self.model(images)
-        if self.num_outputs==1:
-            omega = output
-            v_tensor = self.max_velocity_tensor.clone()
-        else:
-            v_tensor = output[:,0].unsqueeze(1)
-            omega = output[:,1].unsqueeze(1) * self.max_steering
-        output = torch.cat((v_tensor, omega), 1).squeeze().detach()
+        output = self(images).detach()
+
         return output
 
 if __name__ == '__main__':

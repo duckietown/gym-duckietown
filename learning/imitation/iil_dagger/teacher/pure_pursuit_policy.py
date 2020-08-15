@@ -7,6 +7,8 @@ REF_VELOCITY = 0.7
 FOLLOWING_DISTANCE = 0.24
 AGENT_SAFETY_GAIN = 1.15
 
+GAIN = 10
+
 
 class PurePursuitPolicy:
     """
@@ -23,7 +25,7 @@ class PurePursuitPolicy:
     predict(observation)
         takes an observation image and predicts using env information the action
     """
-    def __init__(self, env, ref_velocity=REF_VELOCITY, following_distance=FOLLOWING_DISTANCE, max_iterations=1000):
+    def __init__(self, env, ref_velocity=REF_VELOCITY, following_distance=FOLLOWING_DISTANCE, max_iterations=1000, rescale_vel=False):
         """
         Parameters
         ----------
@@ -36,6 +38,8 @@ class PurePursuitPolicy:
         self.following_distance = following_distance
         self.max_iterations = max_iterations
         self.ref_velocity = ref_velocity
+
+        self.rescale_vel = rescale_vel
 
     def predict(self, observation):
         """
@@ -95,6 +99,9 @@ class PurePursuitPolicy:
             omega = 0
 
         action = [velocity , omega]
+
+        if self.rescale_vel:    # rescale to -1,1
+            action[0] = 2*(action[0]/self.ref_velocity)-1
 
         return action
     
