@@ -1,6 +1,8 @@
 # coding=utf-8
 import math
 
+from pyglet.gl import GLubyte
+
 from . import logger
 
 import numpy as np
@@ -23,7 +25,7 @@ class Texture(object):
     tex_cache = {}
 
     @classmethod
-    def get(self, tex_name, rng=None):
+    def get(self, tex_name, rng=None, segment=False):
         paths = self.tex_paths.get(tex_name, [])
 
         # Get an inventory of the existing texture files
@@ -42,24 +44,97 @@ class Texture(object):
         else:
             path = paths[0]
 
+        oldpath = path
+        if segment:
+            path = path+".SEGMENTED"
+
         if path not in self.tex_cache:
-            self.tex_cache[path] = Texture(load_texture(path))
+            self.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
 
         return self.tex_cache[path]
 
-    def __init__(self, tex):
+    def __init__(self, tex, tex_name, rng):
         assert not isinstance(tex, str)
         self.tex = tex
+        self.tex_name = tex_name
+        self.rng = rng
 
-    def bind(self):
+    def bind(self, segment=False):
         from pyglet import gl
+        if segment:
+             self = Texture.get(self.tex_name, self.rng, True)
+
         gl.glBindTexture(self.tex.target, self.tex.id)
 
-def load_texture(tex_path):
+def should_segment_out(tex_path):
+    for yes in ["sign", "trafficlight", "asphalt"]:
+        if yes in tex_path:
+            return True
+    for no in ["left", "right", "way", "curve", "straight"]:
+        if no in tex_path:
+            return False
+    return True
+
+# segment_into_black controls what type of segmentation we apply: for tiles and all ground textures, replacing
+# unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too (for
+# example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of things).
+def load_texture(tex_path, segment=False, segment_into_color=[0,0,0]):
     from pyglet import gl
     logger.debug('loading texture "%s"' % os.path.basename(tex_path))
     import pyglet
     img = pyglet.image.load(tex_path)
+
+    if segment:
+        if should_segment_out(tex_path):  # replace all by 'segment_into_color'
+            # https://gamedev.stackexchange.com/questions/55945/how-to-draw-image-in-memory-manually-in-pyglet
+            to_fill = np.ones((img.height, img.width), dtype=int)
+            to_fill = np.kron(to_fill, np.array(segment_into_color, dtype=int))
+            to_fill = list(to_fill.flatten())
+            rawData = (GLubyte * len(to_fill))(*to_fill)
+            img = pyglet.image.ImageData(img.width, img.height, 'RGB', rawData)
+        else:  # replace asphalt by black
+            # https://gist.github.com/nkymut/1cb40ea6ae4de0cf9ded7332f1ca0d55
+            import cv2
+            import pyglet
+            import cv2
+            from PIL import Image
+
+            im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)
+
+            hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+
+            # Threshold of blue in HSV space
+
+            lower = np.array([0, 0, 0], dtype="uint8")
+            upper = np.array([179, 100, 160], dtype="uint8")
+            mask = cv2.inRange(hsv, lower, upper)
+            mask = cv2.bitwise_not(mask)
+
+            kernel1 = np.array([[0, 0, 0],
+                                [0, 1, 0],
+                                [0, 0, 0]], np.uint8)
+            kernel2 = np.array([[1, 1, 1],
+                                [1, 0, 1],
+                                [1, 1, 1]], np.uint8)
+            hitormiss1 = cv2.morphologyEx(mask, cv2.MORPH_ERODE, kernel1)
+            hitormiss2 = cv2.morphologyEx(hitormiss1, cv2.MORPH_ERODE, kernel2)
+            mask = cv2.bitwise_and(hitormiss1, hitormiss2)
+
+            result = cv2.bitwise_and(hsv, hsv, mask=mask)
+            im = cv2.cvtColor(result, cv2.COLOR_HSV2BGR)
+
+            rows, cols, channels = im.shape
+
+            raw_img = Image.fromarray(im).tobytes()
+
+            top_to_bottom_flag = -1
+            bytes_per_row = channels * cols
+            img = pyglet.image.ImageData(width=cols,
+                                         height=rows,
+                                         format="BGR",
+                                         data=raw_img,
+                                         pitch=top_to_bottom_flag * bytes_per_row)
+
     tex = img.get_texture()
     gl.glEnable(tex.target)
     gl.glBindTexture(tex.target, tex.id)

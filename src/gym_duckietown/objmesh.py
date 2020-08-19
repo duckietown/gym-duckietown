@@ -13,7 +13,7 @@ class ObjMesh(object):
     cache = {}
 
     @classmethod
-    def get(self, mesh_name):
+    def get(self, mesh_name, segment=False):
         """
         Load a mesh or used a cached version
         """
@@ -21,15 +21,20 @@ class ObjMesh(object):
         # Assemble the absolute path to the mesh file
         file_path = get_file_path('meshes', mesh_name, 'obj')
 
+        # Save old file path because that's the actual "link" to the file. The cache will have a .SEGMENTED though.
+        old_file_path = file_path
+        if segment:
+            file_path += ".SEGMENTED"
+
         if file_path in self.cache:
             return self.cache[file_path]
 
-        mesh = ObjMesh(file_path)
+        mesh = ObjMesh(old_file_path, mesh_name, segment)
         self.cache[file_path] = mesh
 
         return mesh
 
-    def __init__(self, file_path):
+    def __init__(self, file_path, mesh_name, segment=False):
         """
         Load an OBJ model file
 
@@ -37,6 +42,8 @@ class ObjMesh(object):
         - only one object/group
         - only triangle faces
         """
+
+        self.mesh_name = mesh_name
 
         # Comments
         # mtllib file_name
@@ -203,11 +210,32 @@ class ObjMesh(object):
                 ('c3f', list_color[start_idx:end_idx, :, :].reshape(-1))
             )
 
+            # If we want to control the colors of the objects, we'd need to replace this by a config file or something
+            # better than a bad hash function. This implementation, however, doesn't seem to have any collisions, and
+            # generates super well to new objects, so it'd be good to keep it in anyways for future-proofing.
+            def gen_segmentation_color(string):  # Dont care about having an awesome hash really, just want this to be deterministic
+                hashed = "".join([str(ord(char)) for char in string])
+                segment_into_color = [int(hashed[i:i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
+                assert len(segment_into_color) == 3
+                return segment_into_color
+
+
             mtl = chunk['mtl']
             if 'map_Kd' in mtl:
-                texture = load_texture(mtl['map_Kd'])
+                segment_into_color = 0
+                if segment:
+                    segment_into_color = gen_segmentation_color(mesh_name)
+
+                texture = load_texture(mtl['map_Kd'], segment=segment, segment_into_color=segment_into_color)
             else:
                 texture = None
+                if segment:
+                    # nice little hack: load a tile that we know gets segmented into all-black, and then change it
+                    # to another, more useful color for a world obj
+                    # However, it seems like the objects that don't have a texture file actually pull their color
+                    # straight from their .obj or .mtl file? Because this hack only overlays the two colors, it doesn't
+                    # work very well. FIXME the objects that fall in this category need to have texture files too
+                    texture = load_texture(get_file_path('textures', "black_tile", 'png'), segment=True, segment_into_color=gen_segmentation_color(mesh_name))
 
             self.vlists.append(vlist)
             self.textures.append(texture)
@@ -276,7 +304,10 @@ class ObjMesh(object):
 
         return materials
 
-    def render(self):
+    def render(self, segment=False):
+        if segment:
+            self = ObjMesh.get(self.mesh_name, True)
+
         from pyglet import gl
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]
