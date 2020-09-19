@@ -3,13 +3,10 @@ import math
 import os
 from ctypes import byref
 
-from pyglet.gl import GLubyte
-
-from . import logger
-
 import numpy as np
 import pyglet
 from pyglet import gl
+from pyglet.gl import GLubyte
 
 from . import logger
 from .utils import get_file_path
@@ -27,8 +24,8 @@ class Texture:
     tex_cache = {}
 
     @classmethod
-    def get(self, tex_name, rng=None, segment=False):
-        paths = self.tex_paths.get(tex_name, [])
+    def get(cls, tex_name, rng=None, segment=False):
+        paths = cls.tex_paths.get(tex_name, [])
 
         # Get an inventory of the existing texture files
         if len(paths) == 0:
@@ -48,10 +45,10 @@ class Texture:
 
         oldpath = path
         if segment:
-            path = path+".SEGMENTED"
+            path = path + ".SEGMENTED"
 
-        if path not in self.tex_cache:
-            self.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
+        if path not in cls.tex_cache:
+            cls.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
 
         return cls.tex_cache[path]
 
@@ -62,11 +59,11 @@ class Texture:
         self.rng = rng
 
     def bind(self, segment=False):
-        from pyglet import gl
         if segment:
-             self = Texture.get(self.tex_name, self.rng, True)
+            self = Texture.get(self.tex_name, self.rng, True)
 
         gl.glBindTexture(self.tex.target, self.tex.id)
+
 
 def should_segment_out(tex_path):
     for yes in ["sign", "trafficlight", "asphalt"]:
@@ -77,10 +74,13 @@ def should_segment_out(tex_path):
             return False
     return True
 
+
 # segment_into_black controls what type of segmentation we apply: for tiles and all ground textures, replacing
-# unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too (for
-# example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of things).
-def load_texture(tex_path, segment=False, segment_into_color=[0,0,0]):
+# unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too
+# (for
+# example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of
+# things).
+def load_texture(tex_path, segment=False, segment_into_color=[0, 0, 0]):
     from pyglet import gl
     logger.debug('loading texture "%s"' % os.path.basename(tex_path))
     img = pyglet.image.load(tex_path)
@@ -190,7 +190,8 @@ def create_frame_buffers(width, height, num_samples):
         depth_rb = gl.GLuint(0)
         gl.glGenRenderbuffers(1, byref(depth_rb))
         gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, depth_rb)
-        gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width, height)
+        gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width,
+                                            height)
         gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
     except:
@@ -352,7 +353,6 @@ def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
 
 
 def bezier_draw(cps, n=20, red=False):
-
     pts = [bezier_point(cps, i / (n - 1)) for i in range(0, n)]
     gl.glBegin(gl.GL_LINE_STRIP)
 
