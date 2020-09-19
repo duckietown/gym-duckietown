@@ -2,7 +2,7 @@ AIDO_REGISTRY ?= docker.io
 PIP_INDEX_URL ?= https://pypi.org/simple
 
 branch=$(shell git rev-parse --abbrev-ref HEAD)
-branch=daffy-aido4
+branch=daffy
 
 img3=$(AIDO_REGISTRY)/duckietown/gym-duckietown-server-python3:$(branch)
 
@@ -37,11 +37,13 @@ update-reqs:
 build_options=\
 	--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL)
 
+
+dockerfile=docker/server-python3/Dockerfile
 build-docker-python3: update-reqs
-	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile $(build_options) .
+	docker build --pull -t $(img3) -f $(dockerfile) $(build_options) .
 
 build-docker-python3-no-cache: update-reqs
-	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile  $(build_options) --no-cache .
+	docker build --pull -t $(img3) -f $(dockerfile)  $(build_options) --no-cache .
 
 
 push-docker-python3:

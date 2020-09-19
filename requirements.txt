@@ -10,7 +10,7 @@ cloudpickle
 
 dataclasses<=0.6; python_version < '3.7'
 carnivalmirror==0.6.2
-duckietown-world-daffy-aido4
+duckietown-world-daffy
 
 # testing
 pipdeptree
