@@ -32,7 +32,7 @@ install_requires = [
     'opencv-python>=3.4',
     'pyyaml>=3.11',
     'cloudpickle',
-    f'duckietown-world-{daffy}',
+    f'duckietown-world-{line}',
     'PyGeometry-z6',
     'carnivalmirror==0.6.2',
 ]
