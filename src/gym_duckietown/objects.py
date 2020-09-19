@@ -103,7 +103,7 @@ class WorldObj:
 
                 gl.glPopMatrix()
 
-    def render(self, draw_bbox):
+    def render(self, draw_bbox, segment=False):
         """
         Renders the object to screen
         """
@@ -127,8 +127,7 @@ class WorldObj:
         gl.glRotatef(self.y_rot, 0, 1, 0)
         gl.glRotatef(self.z_rot, 0, 0, 1)  # Niki-added
         gl.glColor3f(*self.color)
-
-        self.render_mesh()
+        self.mesh.render(segment)
         gl.glPopMatrix()
 
     # Below are the functions that need to
