@@ -6,7 +6,7 @@ pyzmq>=16.0.0
 scikit-image>=0.13.1
 opencv-python>=3.4
 pyyaml>=3.11
-cloudpickle
+cloudpickle>=1.2.0,<1.4.0
 
 dataclasses<=0.6; python_version < '3.7'
 carnivalmirror==0.6.2
