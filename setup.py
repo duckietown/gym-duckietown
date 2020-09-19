@@ -20,7 +20,7 @@ def get_version(filename):
 
 version = get_version(filename='src/gym_duckietown/__init__.py')
 
-
+line = 'daffy'
 
 install_requires = [
     'gym>=0.17.1',
@@ -32,7 +32,7 @@ install_requires = [
     'opencv-python>=3.4',
     'pyyaml>=3.11',
     'cloudpickle',
-    'duckietown-world-daffy-aido4',
+    f'duckietown-world-{daffy}',
     'PyGeometry-z6',
     'carnivalmirror==0.6.2',
 ]
@@ -43,7 +43,7 @@ if system_version < (3, 7):
     install_requires.append('dataclasses')
 
 
-line = 'daffy-aido4'
+
 
 setup(
     name=f'duckietown-gym-{line}',
