@@ -8,23 +8,25 @@ from ctypes import POINTER
 from dataclasses import dataclass
 from typing import cast, List, NewType, Optional, Sequence, Tuple
 
+import geometry
 import gym
 import numpy as np
 import pyglet
 import yaml
+from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
 from pyglet import gl, image, window
 
-import geometry
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from . import logger
 from .check_hw import get_graphics_information
-from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, intersects, safety_circle_intersection,
+from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, intersects,
+                        safety_circle_intersection,
                         safety_circle_overlap, tile_corners)
 from .distortion import Distortion
-from .graphics import (bezier_closest, bezier_draw, bezier_point, bezier_tangent, create_frame_buffers, gen_rot_matrix,
+from .graphics import (bezier_closest, bezier_draw, bezier_point, bezier_tangent, create_frame_buffers,
+                       gen_rot_matrix,
                        Texture)
 from .objects import (CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj)
 from .objmesh import ObjMesh
@@ -779,7 +781,7 @@ class Simulator(gym.Env):
 
             # If the object intersects with a drivable tile
             if static and kind != "trafficlight" and self._collidable_object(
-                    obj.obj_corners, obj.obj_norm, possible_tiles
+                obj.obj_corners, obj.obj_norm, possible_tiles
             ):
                 self.collidable_centers.append(pos)
                 self.collidable_corners.append(obj.obj_corners.T)
@@ -1068,7 +1070,8 @@ class Simulator(gym.Env):
 
         return pts
 
-    def closest_curve_point(self, pos: np.array, angle: float) -> Tuple[Optional[np.array], Optional[np.array]]:
+    def closest_curve_point(self, pos: np.array, angle: float) -> Tuple[
+        Optional[np.array], Optional[np.array]]:
         """
             Get the closest point on the curve to a given point
             Also returns the tangent at that point.
@@ -1212,10 +1215,10 @@ class Simulator(gym.Env):
         # Check collisions with Static Objects
         if len(self.collidable_corners) > 0:
             collision = intersects(
-                    agent_corners,
-                    self.collidable_corners,
-                    agent_norm,
-                    self.collidable_norms
+                agent_corners,
+                self.collidable_corners,
+                agent_norm,
+                self.collidable_norms
             )
             if collision:
                 return True
@@ -1442,8 +1445,6 @@ class Simulator(gym.Env):
         # pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
-        from pyglet import gl
-
         if segment:
             gl.glDisable(gl.GL_LIGHT0)
             gl.glDisable(gl.GL_LIGHTING)
@@ -1453,7 +1454,6 @@ class Simulator(gym.Env):
             gl.glEnable(gl.GL_LIGHTING)
             gl.glEnable(gl.GL_COLOR_MATERIAL)
 
-
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
@@ -1461,7 +1461,7 @@ class Simulator(gym.Env):
 
         # Clear the color and depth buffers
 
-        c0, c1, c2 = self.horizon_color if not segment else [255,0,255]
+        c0, c1, c2 = self.horizon_color if not segment else [255, 0, 255]
         gl.glClearColor(c0, c1, c2, 1.0)
         gl.glClearDepth(1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -1529,7 +1529,7 @@ class Simulator(gym.Env):
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
         # background is magenta when segmenting for easy isolation of main map image
-        gl.glColor3f(*self.ground_color if not segment else [255,0,255])
+        gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])
         gl.glPushMatrix()
         gl.glScalef(50, 1, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
@@ -1654,13 +1654,13 @@ class Simulator(gym.Env):
         """
 
         observation = self._render_img(
-                self.camera_width,
-                self.camera_height,
-                self.multi_fbo,
-                self.final_fbo,
-                self.img_array,
-                top_down=False,
-                segment=segment
+            self.camera_width,
+            self.camera_height,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array,
+            top_down=False,
+            segment=segment
         )
 
         # self.undistort - for UndistortWrapper
@@ -1683,13 +1683,13 @@ class Simulator(gym.Env):
         top_down = mode == 'top_down'
         # Render the image
         img = self._render_img(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                self.multi_fbo_human,
-                self.final_fbo_human,
-                self.img_array_human,
-                top_down=top_down,
-                segment=segment
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            self.multi_fbo_human,
+            self.final_fbo_human,
+            self.img_array_human,
+            top_down=top_down,
+            segment=segment
         )
 
         # self.undistort - for UndistortWrapper

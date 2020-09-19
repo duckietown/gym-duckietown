@@ -1,9 +1,9 @@
 # coding=utf-8
 import os
 
+from pyglet import gl
 import numpy as np
 import pyglet
-from pyglet import gl
 
 from . import logger
 from .graphics import load_texture
@@ -314,7 +314,6 @@ class ObjMesh:
         if segment:
             self = ObjMesh.get(self.mesh_name, True)
 
-        from pyglet import gl
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]
 

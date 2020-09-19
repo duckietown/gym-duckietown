@@ -17,17 +17,10 @@ def get_graphics_information() -> Dict:
     results = {}
     for o, code in options.items():
         a = gl.glGetString(code)
-        res = asstr(cast(a, c_char_p).value)
+        res = str(cast(a, c_char_p).value)
         results[o] = res
     return results
 
-
-def asstr(s):
-    if s is None:
-        return ''
-    if isinstance(s, str):
-        return s
-    return s.decode("utf-8")
 
 
 if __name__ == '__main__':

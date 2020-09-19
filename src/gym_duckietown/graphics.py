@@ -3,8 +3,11 @@ import math
 import os
 from ctypes import byref
 
+import cv2
 import numpy as np
 import pyglet
+import pyglet.image
+from PIL import Image
 from pyglet import gl
 from pyglet.gl import GLubyte
 
@@ -80,8 +83,9 @@ def should_segment_out(tex_path):
 # (for
 # example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of
 # things).
-def load_texture(tex_path, segment=False, segment_into_color=[0, 0, 0]):
-    from pyglet import gl
+def load_texture(tex_path, segment=False, segment_into_color=None):
+    if segment_into_color is None:
+        segment_into_color = [0, 0, 0]
     logger.debug('loading texture "%s"' % os.path.basename(tex_path))
     img = pyglet.image.load(tex_path)
 
@@ -95,10 +99,7 @@ def load_texture(tex_path, segment=False, segment_into_color=[0, 0, 0]):
             img = pyglet.image.ImageData(img.width, img.height, 'RGB', rawData)
         else:  # replace asphalt by black
             # https://gist.github.com/nkymut/1cb40ea6ae4de0cf9ded7332f1ca0d55
-            import cv2
-            import pyglet
-            import cv2
-            from PIL import Image
+
 
             im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)
 

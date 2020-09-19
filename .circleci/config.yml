@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  test:
+  test-3.6: &template
     docker:
       - image: circleci/python:3.6
     steps:
@@ -11,8 +11,21 @@ jobs:
       - run: pip3 install --user flake8
       - run: python3 -m flake8 . --count --show-source --statistics --select=E901,E999,F821,F822,F823
       - run: xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ./run_tests.py
+  test-3.8:
+    <<: *template
+    docker:
+      - image: python:3.8
+  test-3.7:
+    <<: *template
+    docker:
+      - image: python:3.7
 workflows:
   version: 2
   build_and_test:
     jobs:
-      - test
+      - test-3.8:
+          context: pip-staging
+      - test-3.7:
+          context: pip-staging
+      - test-3.6:
+          context: pip-staging
