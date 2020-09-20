@@ -1,13 +1,41 @@
 # coding=utf-8
 from __future__ import division
 
+import math
+import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import Tuple
-import geometry
+from typing import cast, List, NewType, Optional, Sequence, Tuple
 
+import geometry
+import gym
+import numpy as np
+import pyglet
+import yaml
 from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
+from gym import spaces
+from gym.utils import seeding
+from numpy.random.mtrand import RandomState
+from pyglet import gl, image, window
+
+from . import logger
+from .check_hw import get_graphics_information
+from .collision import (agent_boundbox, find_candidate_tiles, generate_norm, intersects,
+                        safety_circle_intersection,
+                        safety_circle_overlap, tile_corners)
+from .distortion import Distortion
+from .graphics import (bezier_closest, bezier_draw, bezier_point, bezier_tangent, create_frame_buffers,
+                       gen_rot_matrix,
+                       Texture)
+from .objects import (CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj)
+from .objmesh import ObjMesh
+from .randomization import Randomizer
+from .utils import get_file_path
+
+DIM = 0.5
+TileDict = NewType('TileDict', dict)
+
 
 @dataclass
 class DoneRewardInfo:
@@ -22,18 +50,6 @@ class DynamicsInfo:
     motor_left: float
     motor_right: float
 
-import gym
-import yaml
-from gym import spaces
-from gym.utils import seeding
-
-from .collision import *
-# Objects utility code
-from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj, CheckerboardObj
-# Graphics utility code
-from .objmesh import *
-# Randomization code
-from .randomization import Randomizer
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -49,8 +65,10 @@ BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
 # Color meant to approximate interior walls
 WALL_COLOR = np.array([0.64, 0.71, 0.28])
 
+# np.array([0.15, 0.15, 0.15])
+GREEN = (0.0, 1.0, 0.0)
 # Ground/floor color
-GROUND_COLOR = np.array([0.15, 0.15, 0.15])
+
 
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 19.15
@@ -146,27 +164,35 @@ class Simulator(gym.Env):
     cur_pos: np.ndarray
     cam_offset: np.ndarray
     road_tile_size: float
+    grid_width: int
+    grid_height: int
+    step_count: int
+    timestamp: float
+    np_random: RandomState
+    grid: List[TileDict]
 
     def __init__(
-            self,
-            map_name=DEFAULT_MAP_NAME,
-            max_steps=DEFAULT_MAX_STEPS,
-            draw_curve=False,
-            draw_bbox=False,
-            domain_rand=True,
-            frame_rate=DEFAULT_FRAMERATE,
-            frame_skip=DEFAULT_FRAME_SKIP,
-            camera_width=DEFAULT_CAMERA_WIDTH,
-            camera_height=DEFAULT_CAMERA_HEIGHT,
-            robot_speed=DEFAULT_ROBOT_SPEED,
-            accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
-            full_transparency=False,
-            user_tile_start=None,
-            seed=None,
-            distortion=False,
-            dynamics_rand=False,
-            camera_rand=False,
-            randomize_maps_on_reset=False,
+        self,
+        map_name: str = DEFAULT_MAP_NAME,
+        max_steps: int = DEFAULT_MAX_STEPS,
+        draw_curve: bool = False,
+        draw_bbox: bool = False,
+        domain_rand: bool = True,
+        frame_rate: float = DEFAULT_FRAMERATE,
+        frame_skip: bool = DEFAULT_FRAME_SKIP,
+        camera_width=DEFAULT_CAMERA_WIDTH,
+        camera_height=DEFAULT_CAMERA_HEIGHT,
+        robot_speed=DEFAULT_ROBOT_SPEED,
+        accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
+        full_transparency: bool = False,
+        user_tile_start=None,
+        seed=None,
+        distortion: bool = False,
+        dynamics_rand: bool = False,
+        camera_rand: bool = False,
+        randomize_maps_on_reset: bool = False,
+        num_tris_distractors: int = 12,
+        color_ground: Sequence[int] = (0.15, 0.15, 0.15)
     ):
         """
 
@@ -189,9 +215,15 @@ class Simulator(gym.Env):
         :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         """
+
+        information = get_graphics_information()
+        logger.info(f'Information about the graphics card: \n {information}')
+
         # first initialize the RNG
         self.seed_value = seed
         self.seed(seed=self.seed_value)
+        self.num_tris_distractors = num_tris_distractors
+        self.color_ground = color_ground
 
         # If true, then we publish all transparency information
         self.full_transparency = full_transparency
@@ -231,10 +263,10 @@ class Simulator(gym.Env):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
-                low=-1,
-                high=1,
-                shape=(2,),
-                dtype=np.float32
+            low=-1,
+            high=1,
+            shape=(2,),
+            dtype=np.float32
         )
 
         self.camera_width = camera_width
@@ -245,10 +277,10 @@ class Simulator(gym.Env):
         # Note: the pixels are in uint8 format because this is more compact
         # than float32 if sent over the network or stored in a dataset
         self.observation_space = spaces.Box(
-                low=0,
-                high=255,
-                shape=(self.camera_height, self.camera_width, 3),
-                dtype=np.uint8
+            low=0,
+            high=255,
+            shape=(self.camera_height, self.camera_width, 3),
+            dtype=np.uint8
         )
 
         self.reward_range = (-1000, 1000)
@@ -256,7 +288,6 @@ class Simulator(gym.Env):
         # Window for displaying the environment to humans
         self.window = None
 
-        import pyglet
         # Invisible window to render into (shadow OpenGL context)
         self.shadow_window = pyglet.window.Window(width=1,
                                                   height=1,
@@ -264,17 +295,17 @@ class Simulator(gym.Env):
 
         # For displaying text
         self.text_label = pyglet.text.Label(
-                font_name="Arial",
-                font_size=14,
-                x=5,
-                y=WINDOW_HEIGHT - 19
+            font_name="Arial",
+            font_size=14,
+            x=5,
+            y=WINDOW_HEIGHT - 19
         )
 
         # Create a frame buffer object for the observation
         self.multi_fbo, self.final_fbo = create_frame_buffers(
-                self.camera_width,
-                self.camera_height,
-                4
+            self.camera_width,
+            self.camera_height,
+            4
         )
 
         # Array to render the image into (for observation rendering)
@@ -283,9 +314,9 @@ class Simulator(gym.Env):
 
         # Create a frame buffer object for human rendering
         self.multi_fbo_human, self.final_fbo_human = create_frame_buffers(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                4
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            4
         )
 
         # Array to render the image into (for human rendering)
@@ -304,7 +335,7 @@ class Simulator(gym.Env):
         if not draw_bbox and distortion:
             if distortion:
                 self.camera_rand = camera_rand
-                from .distortion import Distortion
+
                 self.camera_model = Distortion(camera_rand=self.camera_rand)
 
         # Used by the UndistortWrapper, always initialized to False
@@ -319,7 +350,6 @@ class Simulator(gym.Env):
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
         if self.randomize_maps_on_reset:
-            import os
             self.map_names = os.listdir('maps')
             self.map_names = [mapfile.replace('.yaml', '') for mapfile in self.map_names]
 
@@ -330,7 +360,7 @@ class Simulator(gym.Env):
         self.wheelVels = np.array([0, 0])
 
     def _init_vlists(self):
-        import pyglet
+
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
         # rotate the tiles about their center
@@ -370,7 +400,7 @@ class Simulator(gym.Env):
         self.timestamp = 0.0
 
         # Robot's current speed
-        self.speed = 0
+        self.speed = 0.0
 
         if self.randomize_maps_on_reset:
             map_name = self.np_random.choice(self.map_names)
@@ -400,19 +430,20 @@ class Simulator(gym.Env):
         else:
             light_pos = [-40, 200, 100]
 
-        ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
-        # XXX: diffuse is not used?
-        diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
-        from pyglet import gl
+        ambient = np.array([0.50, 0.50, 0.50]) * DIM
+        ambient = self._perturb(ambient, 0.3)
+        diffuse = np.array([0.70, 0.70, 0.70]) * DIM
+        diffuse = self._perturb(diffuse, 0.99)
+
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, (gl.GLfloat * 4)(*light_pos))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
-        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1.0))
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(*diffuse))
         gl.glEnable(gl.GL_LIGHT0)
         gl.glEnable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_COLOR_MATERIAL)
 
         # Ground color
-        self.ground_color = self._perturb(GROUND_COLOR, 0.3)
+        self.ground_color = self._perturb(np.array(self.color_ground), 0.3)
 
         # Distance between the robot's wheels
         self.wheel_dist = self._perturb(WHEEL_DIST)
@@ -439,7 +470,7 @@ class Simulator(gym.Env):
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
-        numTris = 12
+        numTris = self.num_tris_distractors
         verts = []
         colors = []
         for _ in range(0, 3 * numTris):
@@ -448,7 +479,7 @@ class Simulator(gym.Env):
             c = self._perturb([c, c, c], 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
-        import pyglet
+
         self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors))
 
         # Randomize tile parameters
@@ -498,7 +529,7 @@ class Simulator(gym.Env):
             propose_pos = np.array([x, 0, z])
             propose_angle = self.start_pose[1]
 
-            logger.info('Using map pose start. \n Pose: %s, Angle: %s' %(propose_pos, propose_angle) )
+            logger.info('Using map pose start. \n Pose: %s, Angle: %s' % (propose_pos, propose_angle))
 
         else:
             # Keep trying to find a valid spawn position on this tile
@@ -603,6 +634,7 @@ class Simulator(gym.Env):
         # Create the grid
         self.grid_height = len(tiles)
         self.grid_width = len(tiles[0])
+        # noinspection PyTypeChecker
         self.grid = [None] * self.grid_width * self.grid_height
 
         # We keep a separate list of drivable tiles
@@ -636,12 +668,12 @@ class Simulator(gym.Env):
                     angle = 0
                     drivable = False
 
-                tile = {
+                tile = cast(TileDict, {
                     'coords': (i, j),
                     'kind': kind,
                     'angle': angle,
                     'drivable': drivable
-                }
+                })
 
                 self._set_tile(i, j, tile)
 
@@ -707,8 +739,8 @@ class Simulator(gym.Env):
             assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
 
             static = desc.get('static', True)
-            #static = desc.get('static', False)
-            print('static is now', static)
+            # static = desc.get('static', False)
+            # print('static is now', static)
 
             obj_desc = {
                 'kind': kind,
@@ -749,7 +781,7 @@ class Simulator(gym.Env):
 
             # If the object intersects with a drivable tile
             if static and kind != "trafficlight" and self._collidable_object(
-                    obj.obj_corners, obj.obj_norm, possible_tiles
+                obj.obj_corners, obj.obj_norm, possible_tiles
             ):
                 self.collidable_centers.append(pos)
                 self.collidable_corners.append(obj.obj_corners.T)
@@ -777,12 +809,13 @@ class Simulator(gym.Env):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
 
-    def _set_tile(self, i, j, tile):
-        assert i >= 0 and i < self.grid_width
-        assert j >= 0 and j < self.grid_height
-        self.grid[j * self.grid_width + i] = tile
+    def _set_tile(self, i: int, j: int, tile: TileDict) -> None:
+        assert 0 <= i < self.grid_width
+        assert 0 <= j < self.grid_height
+        index: int = j * self.grid_width + i
+        self.grid[index] = tile
 
-    def _get_tile(self, i, j):
+    def _get_tile(self, i: int, j: int) -> Optional[TileDict]:
         """
             Returns None if the duckiebot is not in a tile.
         """
@@ -794,15 +827,13 @@ class Simulator(gym.Env):
             return None
         return self.grid[j * self.grid_width + i]
 
-    def _perturb(self, val, scale=0.1):
+    def _perturb(self, val: np.array, scale=0.1):
         """
         Add noise to a value. This is used for domain randomization.
         """
-        assert scale >= 0
-        assert scale < 1
+        assert 0 <= scale < 1
 
-        if isinstance(val, list):
-            val = np.array(val)
+        val = np.array(val)
 
         if not self.domain_rand:
             return val
@@ -845,8 +876,8 @@ class Simulator(gym.Env):
         # Find the corners for each candidate tile
         drivable_tiles = np.array([
             tile_corners(
-                    self._get_tile(pt[0], pt[1])['coords'],
-                    self.road_tile_size
+                self._get_tile(pt[0], pt[1])['coords'],
+                self.road_tile_size
             ).T for pt in drivable_tiles
         ])
 
@@ -861,7 +892,7 @@ class Simulator(gym.Env):
         # Only add it if one of the vertices is on a drivable tile
         return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
 
-    def get_grid_coords(self, abs_pos):
+    def get_grid_coords(self, abs_pos: np.array) -> Tuple[int, int]:
         """
         Compute the tile indices (i,j) for a given (x,_,z) world position
 
@@ -1039,29 +1070,8 @@ class Simulator(gym.Env):
 
         return pts
 
-    def get_dir_vec(self, angle=None):
-        """
-        Vector pointing in the direction the agent is looking
-        """
-        if angle == None:
-            angle = self.cur_angle
-
-        x = math.cos(angle)
-        z = -math.sin(angle)
-        return np.array([x, 0, z])
-
-    def get_right_vec(self, angle=None):
-        """
-        Vector pointing to the right of the agent
-        """
-        if angle == None:
-            angle = self.cur_angle
-
-        x = math.sin(angle)
-        z = math.cos(angle)
-        return np.array([x, 0, z])
-
-    def closest_curve_point(self, pos, angle=None):
+    def closest_curve_point(self, pos: np.array, angle: float) -> Tuple[
+        Optional[np.array], Optional[np.array]]:
         """
             Get the closest point on the curve to a given point
             Also returns the tangent at that point.
@@ -1103,11 +1113,11 @@ class Simulator(gym.Env):
         # Get the closest point along the right lane's Bezier curve,
         # and the tangent at that point
         point, tangent = self.closest_curve_point(pos, angle)
-        if point is None:
+        if point is None or tangent is None:
             msg = 'Point not in lane: %s' % pos
             raise NotInLane(msg)
 
-        assert point is not None
+        assert point is not None and tangent is not None
 
         # Compute the alignment of the agent direction with the curve tangent
         dirVec = get_dir_vec(angle)
@@ -1134,7 +1144,7 @@ class Simulator(gym.Env):
         return LanePosition(dist=signedDist, dot_dir=dotDir, angle_deg=angle_deg,
                             angle_rad=angle_rad)
 
-    def _drivable_pos(self, pos):
+    def _drivable_pos(self, pos) -> bool:
         """
         Check that the given (x,y,z) position is on a drivable tile
         """
@@ -1205,10 +1215,10 @@ class Simulator(gym.Env):
         # Check collisions with Static Objects
         if len(self.collidable_corners) > 0:
             collision = intersects(
-                    agent_corners,
-                    self.collidable_corners,
-                    agent_norm,
-                    self.collidable_norms
+                agent_corners,
+                self.collidable_corners,
+                agent_norm,
+                self.collidable_norms
             )
             if collision:
                 return True
@@ -1245,7 +1255,6 @@ class Simulator(gym.Env):
                         self._drivable_pos(r_pos) and
                         self._drivable_pos(f_pos))
 
-
         # Recompute the bounding boxes (BB) for the agent
         agent_corners = get_agent_corners(pos, angle)
         no_collision = not self._collision(agent_corners)
@@ -1262,8 +1271,8 @@ class Simulator(gym.Env):
 
         return res
 
-    def update_physics(self, action, delta_time=None):
-        #print("updating physics")
+    def update_physics(self, action, delta_time: float = None):
+        # print("updating physics")
         if delta_time is None:
             delta_time = self.delta_time
         self.wheelVels = action * self.robot_speed * 1
@@ -1283,16 +1292,17 @@ class Simulator(gym.Env):
 
         # Update world objects
         for obj in self.objects:
-            if not obj.static and obj.kind == "duckiebot":
-                obj_i, obj_j = self.get_grid_coords(obj.pos)
-                same_tile_obj = [
-                    o for o in self.objects if
-                    tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
-                ]
+            if obj.kind == "duckiebot":
+                if not obj.static:
+                    obj_i, obj_j = self.get_grid_coords(obj.pos)
+                    same_tile_obj = [
+                        o for o in self.objects if
+                        tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
+                    ]
 
-                obj.step(delta_time, self.closest_curve_point, same_tile_obj)
+                    obj.step_duckiebot(delta_time, self.closest_curve_point, same_tile_obj)
             else:
-                #print("stepping all objects")
+                # print("stepping all objects")
                 obj.step(delta_time)
 
     def get_agent_info(self):
@@ -1376,9 +1386,9 @@ class Simulator(gym.Env):
 
             # Compute the reward
             reward = (
-                    +1.0 * speed * lp.dot_dir +
-                    -10 * np.abs(lp.dist) +
-                    +40 * col_penalty
+                +1.0 * speed * lp.dot_dir +
+                -10 * np.abs(lp.dist) +
+                +40 * col_penalty
             )
         return reward
 
@@ -1435,8 +1445,6 @@ class Simulator(gym.Env):
         # pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
-        from pyglet import gl
-
         if segment:
             gl.glDisable(gl.GL_LIGHT0)
             gl.glDisable(gl.GL_LIGHTING)
@@ -1446,7 +1454,6 @@ class Simulator(gym.Env):
             gl.glEnable(gl.GL_LIGHTING)
             gl.glEnable(gl.GL_COLOR_MATERIAL)
 
-
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
@@ -1454,7 +1461,7 @@ class Simulator(gym.Env):
 
         # Clear the color and depth buffers
 
-        c0, c1, c2 = self.horizon_color if not segment else [255,0,255]
+        c0, c1, c2 = self.horizon_color if not segment else [255, 0, 255]
         gl.glClearColor(c0, c1, c2, 1.0)
         gl.glClearDepth(1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -1463,10 +1470,10 @@ class Simulator(gym.Env):
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
         gl.gluPerspective(
-                self.cam_fov_y,
-                width / float(height),
-                0.04,
-                100.0
+            self.cam_fov_y,
+            width / float(height),
+            0.04,
+            100.0
         )
 
         # Set modelview matrix
@@ -1494,35 +1501,35 @@ class Simulator(gym.Env):
 
         if top_down:
             gl.gluLookAt(
-                    # Eye position
-                    (self.grid_width * self.road_tile_size) / 2,
-                    5,
-                    (self.grid_height * self.road_tile_size) / 2,
-                    # Target
-                    (self.grid_width * self.road_tile_size) / 2,
-                    0,
-                    (self.grid_height * self.road_tile_size) / 2,
-                    # Up vector
-                    0, 0, -1.0
+                # Eye position
+                (self.grid_width * self.road_tile_size) / 2,
+                5,
+                (self.grid_height * self.road_tile_size) / 2,
+                # Target
+                (self.grid_width * self.road_tile_size) / 2,
+                0,
+                (self.grid_height * self.road_tile_size) / 2,
+                # Up vector
+                0, 0, -1.0
             )
         else:
             gl.gluLookAt(
-                    # Eye position
-                    x,
-                    y,
-                    z,
-                    # Target
-                    x + dx,
-                    y + dy,
-                    z + dz,
-                    # Up vector
-                    0, 1.0, 0.0
+                # Eye position
+                x,
+                y,
+                z,
+                # Target
+                x + dx,
+                y + dy,
+                z + dz,
+                # Up vector
+                0, 1.0, 0.0
             )
 
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
         # background is magenta when segmenting for easy isolation of main map image
-        gl.glColor3f(*self.ground_color if not segment else [255,0,255])
+        gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])
         gl.glPushMatrix()
         gl.glScalef(50, 1, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
@@ -1610,25 +1617,25 @@ class Simulator(gym.Env):
         gl.glBindFramebuffer(gl.GL_READ_FRAMEBUFFER, multi_fbo)
         gl.glBindFramebuffer(gl.GL_DRAW_FRAMEBUFFER, final_fbo)
         gl.glBlitFramebuffer(
-                0, 0,
-                width, height,
-                0, 0,
-                width, height,
-                gl.GL_COLOR_BUFFER_BIT,
-                gl.GL_LINEAR
+            0, 0,
+            width, height,
+            0, 0,
+            width, height,
+            gl.GL_COLOR_BUFFER_BIT,
+            gl.GL_LINEAR
         )
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, final_fbo)
         gl.glReadPixels(
-                0,
-                0,
-                width,
-                height,
-                gl.GL_RGB,
-                gl.GL_UNSIGNED_BYTE,
-                img_array.ctypes.data_as(POINTER(gl.GLubyte))
+            0,
+            0,
+            width,
+            height,
+            gl.GL_RGB,
+            gl.GL_UNSIGNED_BYTE,
+            img_array.ctypes.data_as(POINTER(gl.GLubyte))
         )
 
         # Unbind the frame buffer
@@ -1647,13 +1654,13 @@ class Simulator(gym.Env):
         """
 
         observation = self._render_img(
-                self.camera_width,
-                self.camera_height,
-                self.multi_fbo,
-                self.final_fbo,
-                self.img_array,
-                top_down=False,
-                segment=segment
+            self.camera_width,
+            self.camera_height,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array,
+            top_down=False,
+            segment=segment
         )
 
         # self.undistort - for UndistortWrapper
@@ -1666,6 +1673,7 @@ class Simulator(gym.Env):
         """
         Render the environment for human viewing
         """
+        assert mode in ['human', 'top_down', 'free_cam', 'rgb_array']
 
         if close:
             if self.window:
@@ -1675,13 +1683,13 @@ class Simulator(gym.Env):
         top_down = mode == 'top_down'
         # Render the image
         img = self._render_img(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                self.multi_fbo_human,
-                self.final_fbo_human,
-                self.img_array_human,
-                top_down=top_down,
-                segment=segment
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            self.multi_fbo_human,
+            self.final_fbo_human,
+            self.img_array_human,
+            top_down=top_down,
+            segment=segment
         )
 
         # self.undistort - for UndistortWrapper
@@ -1691,15 +1699,13 @@ class Simulator(gym.Env):
         if mode == 'rgb_array':
             return img
 
-        from pyglet import gl, window, image
-
         if self.window is None:
             config = gl.Config(double_buffer=False)
             self.window = window.Window(
-                    width=WINDOW_WIDTH,
-                    height=WINDOW_HEIGHT,
-                    resizable=False,
-                    config=config
+                width=WINDOW_WIDTH,
+                height=WINDOW_HEIGHT,
+                resizable=False,
+                config=config
             )
 
         self.window.clear()
@@ -1721,18 +1727,18 @@ class Simulator(gym.Env):
         height = img.shape[0]
         img = np.ascontiguousarray(np.flip(img, axis=0))
         img_data = image.ImageData(
-                width,
-                height,
-                'RGB',
-                img.ctypes.data_as(POINTER(gl.GLubyte)),
-                pitch=width * 3,
+            width,
+            height,
+            'RGB',
+            img.ctypes.data_as(POINTER(gl.GLubyte)),
+            pitch=width * 3,
         )
         img_data.blit(
-                0,
-                0,
-                0,
-                width=WINDOW_WIDTH,
-                height=WINDOW_HEIGHT
+            0,
+            0,
+            0,
+            width=WINDOW_WIDTH,
+            height=WINDOW_HEIGHT
         )
 
         # Display position/state information
@@ -1797,10 +1803,10 @@ def _actual_center(pos, angle):
 
 def get_agent_corners(pos, angle):
     agent_corners = agent_boundbox(
-            _actual_center(pos, angle),
-            ROBOT_WIDTH,
-            ROBOT_LENGTH,
-            get_dir_vec(angle),
-            get_right_vec(angle)
+        _actual_center(pos, angle),
+        ROBOT_WIDTH,
+        ROBOT_LENGTH,
+        get_dir_vec(angle),
+        get_right_vec(angle)
     )
     return agent_corners

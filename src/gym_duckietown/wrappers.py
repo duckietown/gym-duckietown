@@ -3,6 +3,8 @@ import numpy as np
 import gym
 from gym import spaces
 
+import cv2
+import cv2
 
 class DiscreteWrapper(gym.ActionWrapper):
     """
@@ -35,7 +37,7 @@ class SteeringToWheelVelWrapper(gym.ActionWrapper):
     [wheelvel_left|wheelvel_right] to comply with AIDO evaluation format
     """
 
-    def __init__(self, 
+    def __init__(self,
         env,
         gain=1.0,
         trim=0.0,
@@ -124,18 +126,16 @@ class ResizeWrapper(gym.ObservationWrapper):
         return observation
 
     def reset(self):
-        import cv2
         obs = gym.ObservationWrapper.reset(self)
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2)
 
     def step(self, actions):
-        import cv2
         obs, reward, done, info = gym.ObservationWrapper.step(self, actions)
         return cv2.resize(obs.swapaxes(0,2), dsize=(self.resize_w, self.resize_h), interpolation=cv2.INTER_CUBIC).swapaxes(0,2), reward, done, info
 
 
 class UndistortWrapper(gym.ObservationWrapper):
-    """ 
+    """
     To Undo the Fish eye transformation - undistorts the image with plumbbob distortion
     Using the default configuration parameters on the duckietown/Software repo
     https://github.com/duckietown/Software/blob/master18/catkin_ws/src/
@@ -160,7 +160,7 @@ class UndistortWrapper(gym.ObservationWrapper):
 
         # distortion parameters - (k1, k2, t1, t2, k3)
         distortion_coefs = [
-            -0.2,  0.0305, 
+            -0.2,  0.0305,
             0.0005859930422629722, -0.0006697840226199427, 0
         ]
         self.distortion_coefs = np.reshape(distortion_coefs, (1, 5))
@@ -171,8 +171,8 @@ class UndistortWrapper(gym.ObservationWrapper):
         # P - Projection Matrix - specifies the intrinsic (camera) matrix
         #  of the processed (rectified) image
         projection_matrix = [
-            220.2460277141687,      0,                  301.8668918355899,  0,                  
-            0,                      238.6758484095299,  227.0880056118307,  0,  
+            220.2460277141687,      0,                  301.8668918355899,  0,
+            0,                      238.6758484095299,  227.0880056118307,  0,
             0,                      0,                  1,                  0,
         ]
         self.projection_matrix = np.reshape(projection_matrix, (3, 4))
@@ -187,7 +187,6 @@ class UndistortWrapper(gym.ObservationWrapper):
         return self._undistort(observation)
 
     def _undistort(self, observation):
-        import cv2
         if self.mapx is None:
             # Not initialized - initialize all the transformations we'll need
             self.mapx = np.zeros(observation.shape)
@@ -196,8 +195,8 @@ class UndistortWrapper(gym.ObservationWrapper):
             H, W, _ = observation.shape
 
             # Initialize self.mapx and self.mapy (updated)
-            self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.camera_matrix, 
-                self.distortion_coefs, self.rectification_matrix, 
+            self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.camera_matrix,
+                self.distortion_coefs, self.rectification_matrix,
                 self.projection_matrix, (W, H), cv2.CV_32FC1)
 
         return cv2.remap(observation, self.mapx, self.mapy, cv2.INTER_NEAREST)

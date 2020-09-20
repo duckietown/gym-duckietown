@@ -1,10 +1,18 @@
 # coding=utf-8
-from .graphics import *
-from .utils import *
+import os
+
+from pyglet import gl
+import numpy as np
+import pyglet
+
 from . import logger
+from .graphics import load_texture
+from .utils import get_file_path
+
+__all__ = ['ObjMesh']
 
 
-class ObjMesh(object):
+class ObjMesh:
     """
     Load and render OBJ model files
     """
@@ -66,8 +74,6 @@ class ObjMesh(object):
         faces = []
 
         cur_mtl = ''
-
-        import pyglet
 
         # For each line of the input file
         for line in mesh_file:
@@ -151,7 +157,7 @@ class ObjMesh(object):
 
             # Get the color for this face
             f_mtl = materials[mtl_name]
-            f_color = f_mtl['Kd'] if f_mtl else np.array((1,1,1))
+            f_color = f_mtl['Kd'] if f_mtl else np.array((1, 1, 1))
 
             # For each tuple of indices
             for l_idx, indices in enumerate(face):
@@ -159,13 +165,13 @@ class ObjMesh(object):
                 # and texture coordinates are optional
                 if len(indices) == 3:
                     v_idx, t_idx, n_idx = indices
-                    vert = verts[v_idx-1]
-                    texc = texs[t_idx-1]
-                    normal = normals[n_idx-1]
+                    vert = verts[v_idx - 1]
+                    texc = texs[t_idx - 1]
+                    normal = normals[n_idx - 1]
                 else:
                     v_idx, n_idx = indices
-                    vert = verts[v_idx-1]
-                    normal = normals[n_idx-1]
+                    vert = verts[v_idx - 1]
+                    normal = normals[n_idx - 1]
                     texc = [0, 0]
 
                 list_verts[f_idx, l_idx, :] = vert
@@ -308,7 +314,6 @@ class ObjMesh(object):
         if segment:
             self = ObjMesh.get(self.mesh_name, True)
 
-        from pyglet import gl
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]
 

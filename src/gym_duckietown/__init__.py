@@ -1,11 +1,11 @@
 # coding=utf-8
-__version__ = '5.0.16'
+__version__ = '6.0.0'
 
 import logging
 
 logging.basicConfig()
 logger = logging.getLogger('gym-duckietown')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 logger.info('gym-duckietown %s\n' % __version__)
 

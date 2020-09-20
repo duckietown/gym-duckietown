@@ -1,19 +1,21 @@
 # coding=utf-8
 import math
+import os
+from ctypes import byref
 
+import cv2
+import numpy as np
+import pyglet
+import pyglet.image
+from PIL import Image
+from pyglet import gl
 from pyglet.gl import GLubyte
 
 from . import logger
-
-import numpy as np
-
+from .utils import get_file_path
 
 
-from ctypes import byref
-
-from .utils import *
-
-class Texture(object):
+class Texture:
     """
     Manage the caching of textures, and texture randomization
     """
@@ -25,8 +27,8 @@ class Texture(object):
     tex_cache = {}
 
     @classmethod
-    def get(self, tex_name, rng=None, segment=False):
-        paths = self.tex_paths.get(tex_name, [])
+    def get(cls, tex_name, rng=None, segment=False):
+        paths = cls.tex_paths.get(tex_name, [])
 
         # Get an inventory of the existing texture files
         if len(paths) == 0:
@@ -46,12 +48,12 @@ class Texture(object):
 
         oldpath = path
         if segment:
-            path = path+".SEGMENTED"
+            path = path + ".SEGMENTED"
 
-        if path not in self.tex_cache:
-            self.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
+        if path not in cls.tex_cache:
+            cls.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
 
-        return self.tex_cache[path]
+        return cls.tex_cache[path]
 
     def __init__(self, tex, tex_name, rng):
         assert not isinstance(tex, str)
@@ -60,11 +62,11 @@ class Texture(object):
         self.rng = rng
 
     def bind(self, segment=False):
-        from pyglet import gl
         if segment:
-             self = Texture.get(self.tex_name, self.rng, True)
+            self = Texture.get(self.tex_name, self.rng, True)
 
         gl.glBindTexture(self.tex.target, self.tex.id)
+
 
 def should_segment_out(tex_path):
     for yes in ["sign", "trafficlight", "asphalt"]:
@@ -75,13 +77,16 @@ def should_segment_out(tex_path):
             return False
     return True
 
+
 # segment_into_black controls what type of segmentation we apply: for tiles and all ground textures, replacing
-# unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too (for
-# example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of things).
-def load_texture(tex_path, segment=False, segment_into_color=[0,0,0]):
-    from pyglet import gl
+# unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too
+# (for
+# example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of
+# things).
+def load_texture(tex_path, segment=False, segment_into_color=None):
+    if segment_into_color is None:
+        segment_into_color = [0, 0, 0]
     logger.debug('loading texture "%s"' % os.path.basename(tex_path))
-    import pyglet
     img = pyglet.image.load(tex_path)
 
     if segment:
@@ -94,10 +99,7 @@ def load_texture(tex_path, segment=False, segment_into_color=[0,0,0]):
             img = pyglet.image.ImageData(img.width, img.height, 'RGB', rawData)
         else:  # replace asphalt by black
             # https://gist.github.com/nkymut/1cb40ea6ae4de0cf9ded7332f1ca0d55
-            import cv2
-            import pyglet
-            import cv2
-            from PIL import Image
+
 
             im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)
 
@@ -152,9 +154,9 @@ def load_texture(tex_path, segment=False, segment_into_color=[0,0,0]):
 
     return tex
 
+
 def create_frame_buffers(width, height, num_samples):
     """Create the frame buffer objects"""
-    from pyglet import gl
 
     # Create a frame buffer (rendering target)
     multi_fbo = gl.GLuint(0)
@@ -167,7 +169,7 @@ def create_frame_buffers(width, height, num_samples):
     try:
         # Create a multisampled texture to render into
         fbTex = gl.GLuint(0)
-        gl.glGenTextures( 1, byref(fbTex))
+        gl.glGenTextures(1, byref(fbTex))
         gl.glBindTexture(gl.GL_TEXTURE_2D_MULTISAMPLE, fbTex)
         gl.glTexImage2DMultisample(
             gl.GL_TEXTURE_2D_MULTISAMPLE,
@@ -178,9 +180,9 @@ def create_frame_buffers(width, height, num_samples):
             True
         )
         gl.glFramebufferTexture2D(
-                gl.GL_FRAMEBUFFER,
-                gl.GL_COLOR_ATTACHMENT0,
-                gl.GL_TEXTURE_2D_MULTISAMPLE,
+            gl.GL_FRAMEBUFFER,
+            gl.GL_COLOR_ATTACHMENT0,
+            gl.GL_TEXTURE_2D_MULTISAMPLE,
             fbTex,
             0
         )
@@ -189,7 +191,8 @@ def create_frame_buffers(width, height, num_samples):
         depth_rb = gl.GLuint(0)
         gl.glGenRenderbuffers(1, byref(depth_rb))
         gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, depth_rb)
-        gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width, height)
+        gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width,
+                                            height)
         gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
     except:
@@ -197,7 +200,7 @@ def create_frame_buffers(width, height, num_samples):
 
         # Create a plain texture texture to render into
         fbTex = gl.GLuint(0)
-        gl.glGenTextures( 1, byref(fbTex))
+        gl.glGenTextures(1, byref(fbTex))
         gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
         gl.glTexImage2D(
             gl.GL_TEXTURE_2D,
@@ -226,10 +229,10 @@ def create_frame_buffers(width, height, num_samples):
         gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
     # Sanity check
-    import pyglet
+
     if pyglet.options['debug_gl']:
-      res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
-      assert res == gl.GL_FRAMEBUFFER_COMPLETE
+        res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
+        assert res == gl.GL_FRAMEBUFFER_COMPLETE
 
     # Create the frame buffer used to resolve the final render
     final_fbo = gl.GLuint(0)
@@ -241,27 +244,27 @@ def create_frame_buffers(width, height, num_samples):
     gl.glGenTextures(1, byref(fbTex))
     gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
     gl.glTexImage2D(
-        gl. GL_TEXTURE_2D,
+        gl.GL_TEXTURE_2D,
         0,
         gl.GL_RGBA,
         width,
         height,
         0,
-        gl. GL_RGBA,
+        gl.GL_RGBA,
         gl.GL_FLOAT,
         None
     )
     gl.glFramebufferTexture2D(
-            gl.GL_FRAMEBUFFER,
-            gl.GL_COLOR_ATTACHMENT0,
-            gl.GL_TEXTURE_2D,
+        gl.GL_FRAMEBUFFER,
+        gl.GL_COLOR_ATTACHMENT0,
+        gl.GL_TEXTURE_2D,
         fbTex,
         0
     )
-    import pyglet
+
     if pyglet.options['debug_gl']:
-      res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
-      assert res == gl.GL_FRAMEBUFFER_COMPLETE
+        res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
+        assert res == gl.GL_FRAMEBUFFER_COMPLETE
 
     # Enable depth testing
     gl.glEnable(gl.GL_DEPTH_TEST)
@@ -270,6 +273,7 @@ def create_frame_buffers(width, height, num_samples):
     gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
     return multi_fbo, final_fbo
+
 
 def rotate_point(px, py, cx, cy, theta):
     """
@@ -284,6 +288,7 @@ def rotate_point(px, py, cx, cy, theta):
 
     return cx + new_dx, cy + new_dy
 
+
 def gen_rot_matrix(axis, angle):
     """
     Rotation matrix for a counterclockwise rotation around the given axis
@@ -294,10 +299,11 @@ def gen_rot_matrix(axis, angle):
     b, c, d = -axis * math.sin(angle / 2.0)
 
     return np.array([
-        [a*a+b*b-c*c-d*d, 2*(b*c-a*d), 2*(b*d+a*c)],
-        [2*(b*c+a*d), a*a+c*c-b*b-d*d, 2*(c*d-a*b)],
-        [2*(b*d-a*c), 2*(c*d+a*b), a*a+d*d-b*b-c*c]
+        [a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c)],
+        [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b)],
+        [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - b * b - c * c]
     ])
+
 
 def bezier_point(cps, t):
     """
@@ -305,12 +311,13 @@ def bezier_point(cps, t):
     B(t) = (1-t)^3 * P0 + 3t(1-t)^2 * P1 + 3t^2(1-t) * P2 + t^3 * P3
     """
 
-    p  = ((1-t)**3) * cps[0,:]
-    p += 3 * t * ((1-t)**2) * cps[1,:]
-    p += 3 * (t**2) * (1-t) * cps[2,:]
-    p += (t**3) * cps[3,:]
+    p = ((1 - t) ** 3) * cps[0, :]
+    p += 3 * t * ((1 - t) ** 2) * cps[1, :]
+    p += 3 * (t ** 2) * (1 - t) * cps[2, :]
+    p += (t ** 3) * cps[3, :]
 
     return p
+
 
 def bezier_tangent(cps, t):
     """
@@ -318,14 +325,15 @@ def bezier_tangent(cps, t):
     B'(t) = 3(1-t)^2(P1-P0) + 6(1-t)t(P2-P1) + 3t^2(P3-P2)
     """
 
-    p  = 3 * ((1-t)**2) * (cps[1,:] - cps[0,:])
-    p += 6 * (1-t) * t * (cps[2,:] - cps[1,:])
-    p += 3 * (t ** 2) * (cps[3,:] - cps[2,:])
+    p = 3 * ((1 - t) ** 2) * (cps[1, :] - cps[0, :])
+    p += 6 * (1 - t) * t * (cps[2, :] - cps[1, :])
+    p += 3 * (t ** 2) * (cps[3, :] - cps[2, :])
 
     norm = np.linalg.norm(p)
     p /= norm
 
     return p
+
 
 def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
     mid = (t_bot + t_top) * 0.5
@@ -340,13 +348,13 @@ def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
     d_top = np.linalg.norm(p_top - p)
 
     if d_bot < d_top:
-        return bezier_closest(cps, p, t_bot, mid, n-1)
+        return bezier_closest(cps, p, t_bot, mid, n - 1)
 
-    return bezier_closest(cps, p, mid, t_top, n-1)
+    return bezier_closest(cps, p, mid, t_top, n - 1)
 
-def bezier_draw(cps, n = 20, red=False):
-    from pyglet import gl
-    pts = [bezier_point(cps, i/(n-1)) for i in range(0,n)]
+
+def bezier_draw(cps, n=20, red=False):
+    pts = [bezier_point(cps, i / (n - 1)) for i in range(0, n)]
     gl.glBegin(gl.GL_LINE_STRIP)
 
     if red:
@@ -358,4 +366,4 @@ def bezier_draw(cps, n = 20, red=False):
         gl.glVertex3f(*p)
 
     gl.glEnd()
-    gl.glColor3f(1,1,1)
+    gl.glColor3f(1, 1, 1)

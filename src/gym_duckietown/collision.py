@@ -12,7 +12,7 @@ def agent_boundbox(true_pos, width, length, f_vec, r_vec):
     current position, and angle of rotation
     Order of points in bounding box:
     (front)
-    4 - 3    
+    4 - 3
     |   |
     1 - 2
     """
@@ -59,7 +59,7 @@ def is_between_ordered(val, lowerbound, upperbound):
     return lowerbound <= val and val <= upperbound
 
 
-def generate_corners(pos, min_coords, max_coords, theta, scale):
+def generate_corners(pos: np.array, min_coords: np.array, max_coords: np.array, theta: float, scale: float) -> np.array:
     """
     Generates corners given obj pos, extents, scale, and rotation
     """
@@ -73,7 +73,7 @@ def generate_corners(pos, min_coords, max_coords, theta, scale):
     ])
 
 
-def tile_corners(pos, width):
+def tile_corners(pos: np.array, width: float):
     """
     Generates the absolute corner coord for a tile, given grid pos and tile width
     """
@@ -88,7 +88,7 @@ def tile_corners(pos, width):
     ])
 
 
-def generate_norm(corners):
+def generate_norm(corners) -> np.array:
     """
     Generates both (orthogonal, 1 per axis) normal vectors
     for rectangle given vertices *in a particular order* (see generate_corners)
@@ -204,8 +204,8 @@ def safety_circle_intersection(d, r1, r2):
 
 def safety_circle_overlap(d, r1, r2):
     """
-    Returns a proxy for area (see issue #24) 
-    of two circles with centers separated by d 
+    Returns a proxy for area (see issue #24)
+    of two circles with centers separated by d
     and centered at r1 and r2
     """
     scores = d - r1 - r2

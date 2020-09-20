@@ -1,7 +1,9 @@
 import json
 
-from ..utils import *
+from numpy.random.mtrand import RandomState
+
 from .. import logger
+from ..utils import get_file_path
 
 
 class Randomizer:
@@ -18,18 +20,18 @@ class Randomizer:
 
         # Sorted list to generate parameters in the same order
         self.keys = sorted(set(list(self.randomization_config.keys()) + list(self.default_config.keys())))
-        
-    def randomize(self, rng=None):
+
+    def randomize(self, rng: RandomState) -> dict:
         """Returns a dictionary of randomized parameters, with key: parameter name and value: randomized
         value
         """
         randomization_settings = {}
-        
+
         for k in self.keys:
             setting = None
             if k in self.randomization_config:
                 randomization_definition = self.randomization_config[k]
-                
+
                 if randomization_definition['type'] == 'int':
                     try:
                         low = randomization_definition['low']

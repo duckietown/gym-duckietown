@@ -1,10 +1,9 @@
 # NOTE: This script should be run from the blender interface, otherwise the bpy module will not be available
 # Moreover, blender should be opened from the same place as this script is located
 
-import bpy
 import pathlib
-import os
 
+import bpy
 from mathutils import Vector
 
 debug = False
@@ -45,17 +44,17 @@ bpy.ops.object.select_all(action='DESELECT')
 render = bpy.context.scene.render
 
 for obj_fname in sorted(obj_root.glob('*.obj')):
-    
+
     # import obj
     bpy.ops.import_scene.obj(filepath=str(obj_fname))
-    
+
     # Create parent hierarchy to resize
     o = bpy.data.objects.new( obj_fname.stem, None )
     bpy.context.scene.objects.link( o )
     for obj in bpy.context.selected_objects:
         obj.parent = o
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    
+
     # Generate bounding box of multi group
     xmin = ymin = zmin = float("inf")
     xmax = ymax = zmax = -float("inf")
@@ -81,22 +80,22 @@ for obj_fname in sorted(obj_root.glob('*.obj')):
     xdim = xmax - xmin
     ydim = ymax - ymin
     zdim = zmax - zmin
-    
+
     dims = [xdim, ydim, zdim]
-    
+
     gdim = max(dims)
 
     # get this dimension's scale
     newscale = standard_size / gdim
-    
+
     # set oter dimensions scale to that
     bpy.ops.transform.resize(value=(newscale, newscale, newscale))
-    
+
     render.filepath = '//pngs/obj-%s' % obj_fname.stem
     bpy.ops.render.render(write_still=True)
 
     if debug: continue
-    
+
     # Cleaning:
     # Remember which meshes were just imported
     meshes_to_remove = []
@@ -120,17 +119,17 @@ print("Done !")
     #bpy.context.scene.objects.link( o )
     #for obj in bpy.context.selected_objects:
     #    obj.parent = o
-        
+
     # Create a group for easier manipulation
     #bpy.ops.group.create(name=obj_fname.stem)
     #for obj in bpy.context.selected_objects:
     #    #bpy.ops.object.group_link(group=obj_fname.stem)
     #    bpy.context.scene.objects.active=obj
     #    bpy.ops.object.group_link(group=obj_fname)
-    
 
 
-    
+
+
     #try:
     #    scale = scale_list[obj_fname.stem]
     #except KeyError:
@@ -144,20 +143,19 @@ print("Done !")
     #print(f"Used scale: {scale}")
     #
     #bpy.ops.transform.resize(value=(scale, scale, scale))
-    
-    
+
+
     # Scale
     # Get the greatest dimenswion of x,y,z
     #dims = list(bpy.context.active_object.dimensions)
     #gdim = dims.index(max(dims))
-    
+
     # Set this dimension to 1
     #bpy.context.active_object.dimensions[gdim] = 1
-    
+
     # get this dimension's scale
     #newscale = bpy.context.active_object.scale[gdim]
-    
+
     # set oter dimensions scale to that
     #bpy.context.active_object.scale = (newscale,newscale,newscale)
-    
-    
+

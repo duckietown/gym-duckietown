@@ -6,15 +6,15 @@ This script allows you to manually control the simulator or Duckiebot
 using the keyboard arrows.
 """
 
-import sys
 import argparse
+import sys
+
+import gym
+import numpy as np
 import pyglet
 from pyglet.window import key
-import numpy as np
-import gym
-import gym_duckietown
+
 from gym_duckietown.envs import DuckietownEnv
-from gym_duckietown.wrappers import UndistortWrapper
 
 # from experiments.utils import save_img
 
@@ -49,6 +49,7 @@ else:
 env.reset()
 env.render()
 
+
 @env.unwrapped.window.event
 def on_key_press(symbol, modifiers):
     """
@@ -73,9 +74,11 @@ def on_key_press(symbol, modifiers):
     #     img = env.render('rgb_array')
     #     save_img('screenshot.png', img)
 
+
 # Register a keyboard handler
 key_handler = key.KeyStateHandler()
 env.unwrapped.window.push_handlers(key_handler)
+
 
 def update(dt):
     """
@@ -101,10 +104,9 @@ def update(dt):
     v1 = action[0]
     v2 = action[1]
     # Limit radius of curvature
-    if (v1 == 0 or abs(v2 / v1) > (min_rad + wheel_distance/2.0)/(min_rad - wheel_distance/2.0)):
-
+    if (v1 == 0 or abs(v2 / v1) > (min_rad + wheel_distance / 2.0) / (min_rad - wheel_distance / 2.0)):
         # adjust velocities evenly such that condition is fulfilled
-        delta_v = (v2-v1)/2 - wheel_distance/(4*min_rad)*(v1+v2)
+        delta_v = (v2 - v1) / 2 - wheel_distance / (4 * min_rad) * (v1 + v2)
         v1 += delta_v
         v2 -= delta_v
 
@@ -130,6 +132,7 @@ def update(dt):
         env.render()
 
     env.render()
+
 
 pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 

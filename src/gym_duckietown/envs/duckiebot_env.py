@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding=utf-8
+import pyglet
+from pyglet import gl
 
+import cv2
 import gym
 from gym import spaces
 from gym.utils import seeding
@@ -8,7 +11,7 @@ import math
 import numpy
 import zmq
 import numpy as np
-
+import pyglet
 # For Python 3 compatibility
 import sys
 if sys.version_info > (3,):
@@ -80,7 +83,7 @@ class DuckiebotEnv(gym.Env):
         self.latest_img = None
 
         # For displaying text
-        import pyglet
+
         self.textLabel = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
@@ -114,7 +117,6 @@ class DuckiebotEnv(gym.Env):
         #    self.img = self.img[:, d:(w-d), :]
 
         # Resize the image
-        import cv2
         self.img = cv2.resize(
             self.img,
             (CAMERA_WIDTH, CAMERA_HEIGHT),
@@ -174,8 +176,6 @@ class DuckiebotEnv(gym.Env):
         if mode == 'rgb_array':
             return self.img
 
-        import pyglet
-        from pyglet import gl
         if self.window is None:
             context = pyglet.gl.get_current_context()
             self.window = pyglet.window.Window(
