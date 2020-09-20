@@ -69,3 +69,6 @@ upload:
 	python setup.py sdist
 	twine upload --verbose dist/*
 
+
+black:
+	black -l 110 src

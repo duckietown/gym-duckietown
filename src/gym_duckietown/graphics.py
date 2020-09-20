@@ -33,7 +33,7 @@ class Texture:
         # Get an inventory of the existing texture files
         if len(paths) == 0:
             for i in range(1, 10):
-                path = get_file_path('textures', '%s_%d' % (tex_name, i), 'png')
+                path = get_file_path("textures", "%s_%d" % (tex_name, i), "png")
                 if not os.path.exists(path):
                     break
                 paths.append(path)
@@ -96,10 +96,9 @@ def load_texture(tex_path, segment=False, segment_into_color=None):
             to_fill = np.kron(to_fill, np.array(segment_into_color, dtype=int))
             to_fill = list(to_fill.flatten())
             rawData = (GLubyte * len(to_fill))(*to_fill)
-            img = pyglet.image.ImageData(img.width, img.height, 'RGB', rawData)
+            img = pyglet.image.ImageData(img.width, img.height, "RGB", rawData)
         else:  # replace asphalt by black
             # https://gist.github.com/nkymut/1cb40ea6ae4de0cf9ded7332f1ca0d55
-
 
             im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)
 
@@ -112,12 +111,8 @@ def load_texture(tex_path, segment=False, segment_into_color=None):
             mask = cv2.inRange(hsv, lower, upper)
             mask = cv2.bitwise_not(mask)
 
-            kernel1 = np.array([[0, 0, 0],
-                                [0, 1, 0],
-                                [0, 0, 0]], np.uint8)
-            kernel2 = np.array([[1, 1, 1],
-                                [1, 0, 1],
-                                [1, 1, 1]], np.uint8)
+            kernel1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]], np.uint8)
+            kernel2 = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], np.uint8)
             hitormiss1 = cv2.morphologyEx(mask, cv2.MORPH_ERODE, kernel1)
             hitormiss2 = cv2.morphologyEx(hitormiss1, cv2.MORPH_ERODE, kernel2)
             mask = cv2.bitwise_and(hitormiss1, hitormiss2)
@@ -131,11 +126,9 @@ def load_texture(tex_path, segment=False, segment_into_color=None):
 
             top_to_bottom_flag = -1
             bytes_per_row = channels * cols
-            img = pyglet.image.ImageData(width=cols,
-                                         height=rows,
-                                         format="BGR",
-                                         data=raw_img,
-                                         pitch=top_to_bottom_flag * bytes_per_row)
+            img = pyglet.image.ImageData(
+                width=cols, height=rows, format="BGR", data=raw_img, pitch=top_to_bottom_flag * bytes_per_row
+            )
 
     tex = img.get_texture()
     gl.glEnable(tex.target)
@@ -149,7 +142,7 @@ def load_texture(tex_path, segment=False, segment_into_color=None):
         0,
         gl.GL_RGBA,
         gl.GL_UNSIGNED_BYTE,
-        img.get_image_data().get_data('RGBA', img.width * 4)
+        img.get_image_data().get_data("RGBA", img.width * 4),
     )
 
     return tex
@@ -172,54 +165,30 @@ def create_frame_buffers(width, height, num_samples):
         gl.glGenTextures(1, byref(fbTex))
         gl.glBindTexture(gl.GL_TEXTURE_2D_MULTISAMPLE, fbTex)
         gl.glTexImage2DMultisample(
-            gl.GL_TEXTURE_2D_MULTISAMPLE,
-            num_samples,
-            gl.GL_RGBA32F,
-            width,
-            height,
-            True
+            gl.GL_TEXTURE_2D_MULTISAMPLE, num_samples, gl.GL_RGBA32F, width, height, True
         )
         gl.glFramebufferTexture2D(
-            gl.GL_FRAMEBUFFER,
-            gl.GL_COLOR_ATTACHMENT0,
-            gl.GL_TEXTURE_2D_MULTISAMPLE,
-            fbTex,
-            0
+            gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D_MULTISAMPLE, fbTex, 0
         )
 
         # Attach a multisampled depth buffer to the FBO
         depth_rb = gl.GLuint(0)
         gl.glGenRenderbuffers(1, byref(depth_rb))
         gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, depth_rb)
-        gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width,
-                                            height)
+        gl.glRenderbufferStorageMultisample(
+            gl.GL_RENDERBUFFER, num_samples, gl.GL_DEPTH_COMPONENT, width, height
+        )
         gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
     except:
-        logger.debug('Falling back to non-multisampled frame buffer')
+        logger.debug("Falling back to non-multisampled frame buffer")
 
         # Create a plain texture texture to render into
         fbTex = gl.GLuint(0)
         gl.glGenTextures(1, byref(fbTex))
         gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
-        gl.glTexImage2D(
-            gl.GL_TEXTURE_2D,
-            0,
-            gl.GL_RGBA,
-            width,
-            height,
-            0,
-            gl.GL_RGBA,
-            gl.GL_FLOAT,
-            None
-        )
-        gl.glFramebufferTexture2D(
-            gl.GL_FRAMEBUFFER,
-            gl.GL_COLOR_ATTACHMENT0,
-            gl.GL_TEXTURE_2D,
-            fbTex,
-            0
-        )
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA, gl.GL_FLOAT, None)
+        gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, fbTex, 0)
 
         # Attach depth buffer to FBO
         depth_rb = gl.GLuint(0)
@@ -230,7 +199,7 @@ def create_frame_buffers(width, height, num_samples):
 
     # Sanity check
 
-    if pyglet.options['debug_gl']:
+    if pyglet.options["debug_gl"]:
         res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
         assert res == gl.GL_FRAMEBUFFER_COMPLETE
 
@@ -243,26 +212,10 @@ def create_frame_buffers(width, height, num_samples):
     fbTex = gl.GLuint(0)
     gl.glGenTextures(1, byref(fbTex))
     gl.glBindTexture(gl.GL_TEXTURE_2D, fbTex)
-    gl.glTexImage2D(
-        gl.GL_TEXTURE_2D,
-        0,
-        gl.GL_RGBA,
-        width,
-        height,
-        0,
-        gl.GL_RGBA,
-        gl.GL_FLOAT,
-        None
-    )
-    gl.glFramebufferTexture2D(
-        gl.GL_FRAMEBUFFER,
-        gl.GL_COLOR_ATTACHMENT0,
-        gl.GL_TEXTURE_2D,
-        fbTex,
-        0
-    )
+    gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA, gl.GL_FLOAT, None)
+    gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, fbTex, 0)
 
-    if pyglet.options['debug_gl']:
+    if pyglet.options["debug_gl"]:
         res = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
         assert res == gl.GL_FRAMEBUFFER_COMPLETE
 
@@ -298,11 +251,13 @@ def gen_rot_matrix(axis, angle):
     a = math.cos(angle / 2.0)
     b, c, d = -axis * math.sin(angle / 2.0)
 
-    return np.array([
-        [a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c)],
-        [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b)],
-        [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - b * b - c * c]
-    ])
+    return np.array(
+        [
+            [a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c)],
+            [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b)],
+            [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - b * b - c * c],
+        ]
+    )
 
 
 def bezier_point(cps, t):

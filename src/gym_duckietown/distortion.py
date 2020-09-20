@@ -13,17 +13,20 @@ class Distortion:
         self.W = 640
         # K - Intrinsic camera matrix for the raw (distorted) images.
         camera_matrix = [
-            305.5718893575089, 0, 303.0797142544728,
-            0, 308.8338858195428, 231.8845403702499,
-            0, 0, 1,
+            305.5718893575089,
+            0,
+            303.0797142544728,
+            0,
+            308.8338858195428,
+            231.8845403702499,
+            0,
+            0,
+            1,
         ]
         self.camera_matrix = np.reshape(camera_matrix, (3, 3))
 
         # distortion parameters - (k1, k2, t1, t2, k3)
-        distortion_coefs = [
-            -0.2, 0.0305,
-            0.0005859930422629722, -0.0006697840226199427, 0
-        ]
+        distortion_coefs = [-0.2, 0.0305, 0.0005859930422629722, -0.0006697840226199427, 0]
 
         self.distortion_coefs = np.reshape(distortion_coefs, (1, 5))
 
@@ -44,10 +47,12 @@ class Distortion:
 
         # New camera matrix - specifies the intrinsic (camera) matrix
         #  of the processed (rectified) image
-        self.new_camera_matrix, _ = cv2.getOptimalNewCameraMatrix(cameraMatrix=self.camera_matrix,
-                                                                  distCoeffs=self.distortion_coefs,
-                                                                  imageSize=(self.W, self.H),
-                                                                  alpha=0)
+        self.new_camera_matrix, _ = cv2.getOptimalNewCameraMatrix(
+            cameraMatrix=self.camera_matrix,
+            distCoeffs=self.distortion_coefs,
+            imageSize=(self.W, self.H),
+            alpha=0,
+        )
 
     def randomize_camera(self):
         """Randomizes parameters of the camera according to a specified range"""
@@ -57,15 +62,15 @@ class Distortion:
         # Define ranges for the parameters:
         # TODO move this to config file
         ranges = {
-            'fx': (0.95 * K[0, 0], 1.05 * K[0, 0]),
-            'fy': (0.95 * K[1, 1], 1.05 * K[1, 1]),
-            'cx': (0.95 * K[0, 2], 1.05 * K[0, 2]),
-            'cy': (0.95 * K[1, 2], 1.05 * K[1, 2]),
-            'k1': (0.95 * D[0, 0], 1.05 * D[0, 0]),
-            'k2': (0.95 * D[0, 1], 1.05 * D[0, 1]),
-            'p1': (0.95 * D[0, 2], 1.05 * D[0, 2]),
-            'p2': (0.95 * D[0, 3], 1.05 * D[0, 3]),
-            'k3': (0.95 * D[0, 4], 1.05 * D[0, 4])
+            "fx": (0.95 * K[0, 0], 1.05 * K[0, 0]),
+            "fy": (0.95 * K[1, 1], 1.05 * K[1, 1]),
+            "cx": (0.95 * K[0, 2], 1.05 * K[0, 2]),
+            "cy": (0.95 * K[1, 2], 1.05 * K[1, 2]),
+            "k1": (0.95 * D[0, 0], 1.05 * D[0, 0]),
+            "k2": (0.95 * D[0, 1], 1.05 * D[0, 1]),
+            "p1": (0.95 * D[0, 2], 1.05 * D[0, 2]),
+            "p2": (0.95 * D[0, 3], 1.05 * D[0, 3]),
+            "k3": (0.95 * D[0, 4], 1.05 * D[0, 4]),
         }
 
         # Create a ParameterSampler:
@@ -89,12 +94,14 @@ class Distortion:
             H, W, _ = observation.shape
 
             # Initialize self.mapx and self.mapy (updated)
-            self.mapx, self.mapy = cv2.initUndistortRectifyMap(cameraMatrix=self.camera_matrix,
-                                                               distCoeffs=self.distortion_coefs,
-                                                               R=self.rectification_matrix,
-                                                               newCameraMatrix=self.new_camera_matrix,
-                                                               size=(W, H),
-                                                               m1type=cv2.CV_32FC1)
+            self.mapx, self.mapy = cv2.initUndistortRectifyMap(
+                cameraMatrix=self.camera_matrix,
+                distCoeffs=self.distortion_coefs,
+                R=self.rectification_matrix,
+                newCameraMatrix=self.new_camera_matrix,
+                size=(W, H),
+                m1type=cv2.CV_32FC1,
+            )
 
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
@@ -198,7 +205,7 @@ class Distortion:
 
 def write_to_file(rgb, fname):
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-    compress = cv2.imencode('.jpg', bgr)[1]
+    compress = cv2.imencode(".jpg", bgr)[1]
     jpg_data = np.array(compress).tostring()
-    with open(fname, 'wb') as f:
+    with open(fname, "wb") as f:
         f.write(jpg_data)

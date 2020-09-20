@@ -3,14 +3,15 @@ from typing import Dict
 
 from pyglet import gl
 
-__all__ = ['get_graphics_information']
+__all__ = ["get_graphics_information"]
 
 
 def get_graphics_information() -> Dict:
     options = {
-        'vendor': gl.GL_VENDOR,
-        'renderer': gl.GL_RENDERER, 'version': gl.GL_VERSION, 'shading-language-version':
-            gl.GL_SHADING_LANGUAGE_VERSION,
+        "vendor": gl.GL_VENDOR,
+        "renderer": gl.GL_RENDERER,
+        "version": gl.GL_VERSION,
+        "shading-language-version": gl.GL_SHADING_LANGUAGE_VERSION,
         # 'extensions': gl.GL_EXTENSIONS
     }
 
@@ -22,6 +23,5 @@ def get_graphics_information() -> Dict:
     return results
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(str(get_graphics_information()))

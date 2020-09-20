@@ -6,8 +6,14 @@ import numpy as np
 from pyglet import gl
 from pyglet.gl import gluNewQuadric, gluSphere
 
-from .collision import (agent_boundbox, calculate_safety_radius, generate_corners, generate_norm, heading_vec,
-                        intersects_single_obj)
+from .collision import (
+    agent_boundbox,
+    calculate_safety_radius,
+    generate_corners,
+    generate_norm,
+    heading_vec,
+    intersects_single_obj,
+)
 from .graphics import load_texture, rotate_point
 from .utils import get_file_path
 
@@ -37,51 +43,50 @@ class WorldObj:
         self.angle = self.y_rot * (math.pi / 180)
 
         #  Find corners and normal vectors assoc w. object
-        self.obj_corners = generate_corners(self.pos,
-                                            self.min_coords, self.max_coords, self.angle, self.scale)
+        self.obj_corners = generate_corners(
+            self.pos, self.min_coords, self.max_coords, self.angle, self.scale
+        )
         self.obj_norm = generate_norm(self.obj_corners)
 
         self.x_rot = 0  # Niki-added
         self.z_rot = 0  # Niki-added
 
     def process_obj_dict(self, obj, safety_radius_mult):
-        self.kind = obj['kind']
-        self.mesh = obj['mesh']
-        self.pos = obj['pos']
-        self.scale = obj['scale']
-        self.y_rot = obj['y_rot']
-        self.optional = obj['optional']
-        self.min_coords = obj['mesh'].min_coords
-        self.max_coords = obj['mesh'].max_coords
-        self.static = obj['static']
-        self.safety_radius = safety_radius_mult * \
-                             calculate_safety_radius(self.mesh, self.scale)
+        self.kind = obj["kind"]
+        self.mesh = obj["mesh"]
+        self.pos = obj["pos"]
+        self.scale = obj["scale"]
+        self.y_rot = obj["y_rot"]
+        self.optional = obj["optional"]
+        self.min_coords = obj["mesh"].min_coords
+        self.max_coords = obj["mesh"].max_coords
+        self.static = obj["static"]
+        self.safety_radius = safety_radius_mult * calculate_safety_radius(self.mesh, self.scale)
 
     def render_mesh(self):
         self.mesh.render()
-        if self.kind in  ['duckiebot', 'duckiebot-player']:
-
+        if self.kind in ["duckiebot", "duckiebot-player"]:
 
             s_main = 0.01  # 1 cm sphere
             LIGHT_MULT_MAIN = 10
             s_halo = 0.03
             height = 0.04
             positions = {
-                'front_left': [0.1, -0.05, height],
-                'front_right': [0.1, +0.05, height],
-                'center': [0.1, +0, height],
-                'back_left': [-0.1, -0.05, height],
-                'back_right': [-0.1, +0.05, height],
+                "front_left": [0.1, -0.05, height],
+                "front_right": [0.1, +0.05, height],
+                "center": [0.1, +0, height],
+                "back_left": [-0.1, -0.05, height],
+                "back_right": [-0.1, +0.05, height],
             }
             if isinstance(self, DuckiebotObj):
                 colors = self.leds_color
             else:
                 colors = {
-                    'center': (0, 0, 1),
-                    'front_left': (0, 0, 1),
-                    'front_right': (0, 0, 1),
-                    'back_left': (0, 0, 1),
-                    'back_right': (0, 0, 1),
+                    "center": (0, 0, 1),
+                    "front_left": (0, 0, 1),
+                    "front_right": (0, 0, 1),
+                    "back_left": (0, 0, 1),
+                    "back_right": (0, 0, 1),
                 }
             for light_name, (px, py, pz) in positions.items():
                 color = colors[light_name]
@@ -163,9 +168,20 @@ class WorldObj:
 class DuckiebotObj(WorldObj):
     leds_color: Dict[str, Tuple[float, float, float]]
 
-    def __init__(self, obj, domain_rand, safety_radius_mult, wheel_dist,
-                 robot_width, robot_length, gain=2.0, trim=0.0, radius=0.0318,
-                 k=27.0, limit=1.0):
+    def __init__(
+        self,
+        obj,
+        domain_rand,
+        safety_radius_mult,
+        wheel_dist,
+        robot_width,
+        robot_length,
+        gain=2.0,
+        trim=0.0,
+        radius=0.0318,
+        k=27.0,
+        limit=1.0,
+    ):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
         if self.domain_rand:
             self.follow_dist = np.random.uniform(0.3, 0.4)
@@ -188,11 +204,11 @@ class DuckiebotObj(WorldObj):
 
         self.max_iterations = 1000
         self.leds_color = {
-            'center': (.0, .0, .0),
-            'front_left': (0.5, 0.5, 0.5),
-            'front_right': (0.5, 0.5, 0.5),
-            'back_left': (0.5, .0, .0),
-            'back_right': (0.5, .0, .0),
+            "center": (0.0, 0.0, 0.0),
+            "front_left": (0.5, 0.5, 0.5),
+            "front_right": (0.5, 0.5, 0.5),
+            "back_left": (0.5, 0.0, 0.0),
+            "back_right": (0.5, 0.0, 0.0),
         }
         # TODO: Make these DR as well
         self.k = k
@@ -207,7 +223,7 @@ class DuckiebotObj(WorldObj):
         # Find the curve point closest to the agent, and the tangent at that point
         closest_point, closest_tangent = closest_curve_point(self.pos, self.angle)
         if closest_point is None or closest_tangent is None:
-            msg = f'Cannot find closest point/tangent from {self.pos}, {self.angle} '
+            msg = f"Cannot find closest point/tangent from {self.pos}, {self.angle} "
             raise Exception(msg)
 
         iterations = 0
@@ -239,12 +255,7 @@ class DuckiebotObj(WorldObj):
         """
         See if the agent collided with this object
         """
-        return intersects_single_obj(
-            agent_corners,
-            self.obj_corners.T,
-            agent_norm,
-            self.obj_norm
-        )
+        return intersects_single_obj(agent_corners, self.obj_corners.T, agent_norm, self.obj_norm)
 
     def proximity(self, agent_pos, agent_safety_rad):
         """
@@ -309,11 +320,7 @@ class DuckiebotObj(WorldObj):
 
         # Recompute the bounding boxes (BB) for the duckiebot
         self.obj_corners = agent_boundbox(
-            self.pos,
-            self.robot_width,
-            self.robot_length,
-            get_dir_vec(self.angle),
-            get_right_vec(self.angle)
+            self.pos, self.robot_width, self.robot_length, get_dir_vec(self.angle), get_right_vec(self.angle)
         )
 
 
@@ -349,12 +356,7 @@ class DuckieObj(WorldObj):
         """
         See if the agent collided with this object
         """
-        return intersects_single_obj(
-            agent_corners,
-            self.obj_corners.T,
-            agent_norm,
-            self.obj_norm
-        )
+        return intersects_single_obj(agent_corners, self.obj_corners.T, agent_norm, self.obj_norm)
 
     def proximity(self, agent_pos, agent_safety_rad):
         """
@@ -423,7 +425,7 @@ class TrafficLightObj(WorldObj):
 
         self.texs = [
             load_texture(get_file_path("textures", "trafficlight_card0", "jpg")),
-            load_texture(get_file_path("textures", "trafficlight_card1", "jpg"))
+            load_texture(get_file_path("textures", "trafficlight_card1", "jpg")),
         ]
         self.time = 0
 
@@ -448,13 +450,13 @@ class TrafficLightObj(WorldObj):
             self.pattern ^= 1
             self.mesh.textures[0] = self.texs[self.pattern]
 
-    def is_green(self, direction='N'):
-        if direction == 'N' or direction == 'S':
+    def is_green(self, direction="N"):
+        if direction == "N" or direction == "S":
             if self.y_rot == 45 or self.y_rot == 135:
                 return self.pattern == 0
             elif self.y_rot == 225 or self.y_rot == 315:
                 return self.pattern == 1
-        elif direction == 'E' or direction == 'W':
+        elif direction == "E" or direction == "W":
             if self.y_rot == 45 or self.y_rot == 135:
                 return self.pattern == 1
             elif self.y_rot == 225 or self.y_rot == 315:
@@ -500,12 +502,7 @@ class CheckerboardObj(WorldObj):
         """
         See if the agent collided with this object
         """
-        return intersects_single_obj(
-            agent_corners,
-            self.obj_corners.T,
-            agent_norm,
-            self.obj_norm
-        )
+        return intersects_single_obj(agent_corners, self.obj_corners.T, agent_norm, self.obj_norm)
 
     def proximity(self, agent_pos, agent_safety_rad):
         """
@@ -526,7 +523,7 @@ class CheckerboardObj(WorldObj):
         self.time += delta_time
         step = self.steps  # %max_steps if self.steps>=0 else self.steps
         offset = 20
-        scaled_offset = offset * 1. / 3000
+        scaled_offset = offset * 1.0 / 3000
         move = True
         # move the checkerboard back and foreward
         if step < 0:
