@@ -1332,14 +1332,14 @@ class Simulator(gym.Env):
         # If the agent is not in a valid pose (on drivable tiles)
         if not self._valid_pose(self.cur_pos, self.cur_angle):
             msg = "Stopping the simulator because we are at an invalid pose."
-            logger.info(msg)
+            # logger.info(msg)
             reward = REWARD_INVALID_POSE
             done_code = "invalid-pose"
             done = True
         # If the maximum time step count is reached
         elif self.step_count >= self.max_steps:
             msg = "Stopping the simulator because we reached max_steps = %s" % self.max_steps
-            logger.info(msg)
+            # logger.info(msg)
             done = True
             reward = 0
             done_code = "max-steps-reached"

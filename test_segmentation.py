@@ -144,9 +144,10 @@ def seed(seed):
 
 seed(random.randint(0, 9999999))
 
+from PIL import Image
 
 def to_image(np_array):
-    from PIL import Image
+
     img = Image.fromarray(np_array, 'RGB')
     img.show()
     i = 0
