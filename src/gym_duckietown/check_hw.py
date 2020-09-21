@@ -18,7 +18,8 @@ def get_graphics_information() -> Dict:
     results = {}
     for o, code in options.items():
         a = gl.glGetString(code)
-        res = str(cast(a, c_char_p).value)
+        b: bytes = cast(a, c_char_p).value
+        res = b.decode()
         results[o] = res
     return results
 
