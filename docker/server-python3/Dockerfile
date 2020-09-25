@@ -1,4 +1,6 @@
-FROM pytorch/pytorch
+ARG AIDO_REGISTRY
+
+FROM ${AIDO_REGISTRY}/pytorch/pytorch
 
 
 # we need git for certain dependencies
