@@ -35,7 +35,10 @@ update-reqs:
 	aido-update-reqs requirements.resolved
 
 build_options=\
-	--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL)
+	--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL)\
+	--build-arg AIDO_REGISTRY=$(AIDO_REGISTRY)\
+	$(shell aido-labels)
+
 
 
 dockerfile=docker/server-python3/Dockerfile
