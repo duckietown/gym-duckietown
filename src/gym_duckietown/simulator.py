@@ -199,6 +199,7 @@ class Simulator(gym.Env):
         randomize_maps_on_reset: bool = False,
         num_tris_distractors: int = 12,
         color_ground: Sequence[int] = (0.15, 0.15, 0.15),
+        synthetic_tiles: bool = False,
     ):
         """
 
@@ -327,6 +328,9 @@ class Simulator(gym.Env):
 
         # Start tile
         self.user_tile_start = user_tile_start
+
+        # Use synthetic tiles pngs instead of realistic textures from pictures
+        self.synthetic_tiles = synthetic_tiles
 
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
@@ -464,7 +468,15 @@ class Simulator(gym.Env):
         for tile in self.grid:
             rng = self.np_random if self.domain_rand else None
             # Randomize the tile texture
-            tile["texture"] = Texture.get(tile["kind"], rng=rng)
+            texture_name = tile["kind"]
+            if self.synthetic_tiles:
+                synth_texture_name = "synth_" + texture_name
+                try:
+                    tile["texture"] = Texture.get(synth_texture_name, rng=rng)
+                except AssertionError as err:
+                    tile["texture"] = Texture.get(texture_name, rng=rng)
+            else:
+                tile["texture"] = Texture.get(texture_name, rng=rng)
 
             # Random tile color multiplier
             tile["color"] = self._perturb([1, 1, 1], 0.2)

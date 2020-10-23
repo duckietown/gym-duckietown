@@ -23,6 +23,7 @@ parser.add_argument('--draw-bbox', action='store_true', help='draw collision det
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 parser.add_argument('--frame-skip', default=1, type=int, help='number of frames to skip')
 parser.add_argument('--distortion', default=False,  action='store_true')
+parser.add_argument('--synth-tiles', default=False, action='store_true')
 args = parser.parse_args()
 
 if args.env_name is None:
@@ -32,7 +33,8 @@ if args.env_name is None:
         draw_bbox=args.draw_bbox,
         domain_rand=args.domain_rand,
         frame_skip=args.frame_skip,
-        distortion=args.distortion
+        distortion=args.distortion,
+        synthetic_tiles=args.synth_tiles
     )
 else:
     env = gym.make(args.env_name)
