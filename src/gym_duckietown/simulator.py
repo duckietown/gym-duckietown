@@ -6,6 +6,7 @@ import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
+from enum import Enum
 from typing import cast, List, NewType, Optional, Sequence, Tuple
 
 import geometry
@@ -145,6 +146,15 @@ MAX_SPAWN_ATTEMPTS = 5000
 
 LanePosition0 = namedtuple("LanePosition", "dist dot_dir angle_deg angle_rad")
 
+#List of available tile type
+TileStyle = Enum('TileStyle', 'synthetic photos')
+
+#String that prepends the texture filename of the specified type
+STYLE_PREPEND_STRS = {
+    TileStyle.synthetic: "synth_",
+    TileStyle.photos: ""
+}
+
 
 class LanePosition(LanePosition0):
     def as_json_dict(self):
@@ -199,6 +209,7 @@ class Simulator(gym.Env):
         randomize_maps_on_reset: bool = False,
         num_tris_distractors: int = 12,
         color_ground: Sequence[int] = (0.15, 0.15, 0.15),
+        style: str = "photos",
     ):
         """
 
@@ -220,6 +231,7 @@ class Simulator(gym.Env):
         :param dynamics_rand: If true, perturbs the trim of the Duckiebot
         :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
+        :param style: String that represent which tiles will be loaded. One of ["photos", "synthetic"]
         """
 
         information = get_graphics_information()
@@ -327,6 +339,12 @@ class Simulator(gym.Env):
 
         # Start tile
         self.user_tile_start = user_tile_start
+
+        # Define tile type
+        try:
+            self.style = TileStyle[style.lower()]
+        except KeyError:
+            self.style = TileStyle.photos
 
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
@@ -464,7 +482,14 @@ class Simulator(gym.Env):
         for tile in self.grid:
             rng = self.np_random if self.domain_rand else None
             # Randomize the tile texture
-            tile["texture"] = Texture.get(tile["kind"], rng=rng)
+            texture_name = tile["kind"]
+
+            try:
+                # Get texture according to specified style
+                tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
+            except AssertionError as err:
+                # On loading error, fallback to default
+                tile["texture"] = Texture.get(texture_name, rng=rng)
 
             # Random tile color multiplier
             tile["color"] = self._perturb([1, 1, 1], 0.2)
