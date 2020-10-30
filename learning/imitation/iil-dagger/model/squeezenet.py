@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 import numpy as np
 
+
 class Squeezenet(nn.Module):
     """
     A class used to define action regressor model based on squeezenet arch.
@@ -14,7 +15,7 @@ class Squeezenet(nn.Module):
     -------
     forward(images)
         makes a model forward pass on input images
-    
+
     loss(*args)
         takes images and target action to compute the loss function used in optimization
 
@@ -22,7 +23,7 @@ class Squeezenet(nn.Module):
         takes images as input and predict the action space unnormalized
     """
 
-    def __init__(self, num_outputs=2, max_velocity = 0.7, max_steering=np.pi/2):
+    def __init__(self, num_outputs=2, max_velocity=0.7, max_steering=np.pi / 2):
         """
         Parameters
         ----------
@@ -50,7 +51,7 @@ class Squeezenet(nn.Module):
             nn.Conv2d(64, 32, kernel_size=3, stride=1),
             nn.Dropout(p=0.15),
             self.final_conv,
-            nn.AdaptiveAvgPool2d((1, 1))
+            nn.AdaptiveAvgPool2d((1, 1)),
         )
         self.model.num_classes = self.num_outputs
         self._init_weights()
@@ -83,7 +84,7 @@ class Squeezenet(nn.Module):
         """
         Parameters
         ----------
-        *args : 
+        *args :
             takes batch of images and target action space to get the loss function.
         Returns
         -------
@@ -92,15 +93,15 @@ class Squeezenet(nn.Module):
         """
         self.train()
         images, target = args
-        prediction = self.forward(images) 
-        if self.num_outputs==1:
-            loss = F.mse_loss(prediction,target[:,-1].reshape(-1,1), reduction='mean')
+        prediction = self.forward(images)
+        if self.num_outputs == 1:
+            loss = F.mse_loss(prediction, target[:, -1].reshape(-1, 1), reduction="mean")
         else:
-            loss_omega = F.mse_loss(prediction[:,1], target[:,1], reduction='mean')
-            loss_v = F.mse_loss(prediction[:,0], target[:,0], reduction='mean')
+            loss_omega = F.mse_loss(prediction[:, 1], target[:, 1], reduction="mean")
+            loss_v = F.mse_loss(prediction[:, 0], target[:, 0], reduction="mean")
             loss = 0.2 * loss_v + 0.8 * loss_omega
         return loss
-    
+
     def predict(self, *args):
         """
         Parameters
@@ -114,20 +115,21 @@ class Squeezenet(nn.Module):
         """
         images = args[0]
         output = self.model(images)
-        if self.num_outputs==1:
+        if self.num_outputs == 1:
             omega = output
             v_tensor = self.max_velocity_tensor.clone()
         else:
-            v_tensor = output[:,0].unsqueeze(1)
-            omega = output[:,1].unsqueeze(1) * self.max_steering
+            v_tensor = output[:, 0].unsqueeze(1)
+            omega = output[:, 1].unsqueeze(1) * self.max_steering
         output = torch.cat((v_tensor, omega), 1).squeeze().detach()
         return output
 
-if __name__ == '__main__':
-    #TODO test the model input and output
+
+if __name__ == "__main__":
+    # TODO test the model input and output
     batch_size = 2
     img_size = (100, 80)
     model = Squeezenet()
-    input_image = torch.rand((batch_size,3,img_size[0], img_size[1])).to(model._device)
+    input_image = torch.rand((batch_size, 3, img_size[0], img_size[1])).to(model._device)
     prediction = model.predict(input_image)
-    assert list(prediction.shape) == [batch_size,model.num_outputs]
+    assert list(prediction.shape) == [batch_size, model.num_outputs]

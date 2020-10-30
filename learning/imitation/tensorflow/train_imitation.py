@@ -6,10 +6,10 @@ import numpy as np
 
 from utils.teacher import PurePursuitExpert
 from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+from utils.wrappers import NormalizeWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 from imitation.tensorflow.model import TensorflowModel
+
 
 def _train(args):
     print("Running Expert for {} Episodes of {} Steps".format(args.episodes, args.steps))
@@ -17,13 +17,13 @@ def _train(args):
 
     env = launch_env()
     env = ResizeWrapper(env)
-    env = NormalizeWrapper(env) 
+    env = NormalizeWrapper(env)
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
 
-    observation_shape = (None, ) + env.observation_space.shape
-    action_shape = (None, ) + env.action_space.shape
+    observation_shape = (None,) + env.observation_space.shape
+    action_shape = (None,) + env.action_space.shape
 
     # Create an imperfect demonstrator
     expert = PurePursuitExpert(env=env)
@@ -40,7 +40,7 @@ def _train(args):
             observation, reward, done, info = env.step(action)
             observations.append(observation)
             actions.append(action)
-            
+
         env.reset()
 
     env.close()
@@ -52,7 +52,7 @@ def _train(args):
         observation_shape=observation_shape,  # from the logs we've got
         action_shape=action_shape,  # same
         graph_location=args.model_directory,  # where do we want to store our trained models
-        seed=args.seed  # to seed all random operations in the model (e.g., dropout)
+        seed=args.seed,  # to seed all random operations in the model (e.g., dropout)
     )
 
     for i in range(args.epochs):
@@ -61,8 +61,8 @@ def _train(args):
         for batch in range(0, len(observations), args.batch_size):
             print("Training batch", batch)
             loss = model.train(
-                observations=observations[batch:batch + args.batch_size],
-                actions=actions[batch:batch + args.batch_size]
+                observations=observations[batch : batch + args.batch_size],
+                actions=actions[batch : batch + args.batch_size],
             )
 
         # every 10 epochs, we store the model we have
@@ -71,14 +71,17 @@ def _train(args):
 
     print("Training complete!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=1234, type=int, help="Sets Gym, TF, and Numpy seeds")
     parser.add_argument("--episodes", default=3, type=int, help="Number of epsiodes for experts")
     parser.add_argument("--steps", default=50, type=int, help="Number of steps per episode")
     parser.add_argument("--batch-size", default=32, type=int, help="Training batch size")
     parser.add_argument("--epochs", default=1, type=int, help="Number of training epochs")
-    parser.add_argument("--model-directory", default="imitation/tensorflow/models/", type=str, help="Where to save models")
+    parser.add_argument(
+        "--model-directory", default="imitation/tensorflow/models/", type=str, help="Where to save models"
+    )
 
     args = parser.parse_args()
 

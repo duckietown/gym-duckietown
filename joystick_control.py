@@ -17,19 +17,16 @@ from pyglet.window import key
 from gym_duckietown.envs import DuckietownEnv
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--env-name', default=None)
-parser.add_argument('--map-name', default='udem1')
-parser.add_argument('--distortion', default=False, action='store_true')
-parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
-parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
+parser.add_argument("--env-name", default=None)
+parser.add_argument("--map-name", default="udem1")
+parser.add_argument("--distortion", default=False, action="store_true")
+parser.add_argument("--draw-curve", action="store_true", help="draw the lane following curve")
+parser.add_argument("--domain-rand", action="store_true", help="enable domain randomization")
 args = parser.parse_args()
 
 if args.env_name is None:
     env = DuckietownEnv(
-        map_name=args.map_name,
-        distortion=args.distortion,
-        domain_rand=args.domain_rand,
-        max_steps=np.inf
+        map_name=args.map_name, distortion=args.distortion, domain_rand=args.domain_rand, max_steps=np.inf
     )
 else:
     env = gym.make(args.env_name)
@@ -47,13 +44,13 @@ recording = False
 def write_to_file(demos):
     num_steps = 0
     for demo in demos:
-        num_steps += len(demo['actions'])
-    print('num demos:', len(demos))
-    print('num steps:', num_steps)
+        num_steps += len(demo["actions"])
+    print("num demos:", len(demos))
+    print("num steps:", num_steps)
 
     # Store the trajectories in a JSON file
-    with open('experiments/demos_{}.json'.format(args.map_name), 'w') as outfile:
-        json.dump({'demos': demos}, outfile)
+    with open("experiments/demos_{}.json".format(args.map_name), "w") as outfile:
+        json.dump({"demos": demos}, outfile)
 
 
 def process_recording():
@@ -72,10 +69,7 @@ def process_recording():
     p = list(map(lambda p: [p[0].tolist(), p[1]], positions))
     a = list(map(lambda a: a.tolist(), actions))
 
-    demo = {
-        'positions': p,
-        'actions': a
-    }
+    demo = {"positions": p, "actions": a}
 
     demos.append(demo)
 
@@ -91,7 +85,7 @@ def on_key_press(symbol, modifiers):
     """
 
     if symbol == key.BACKSPACE or symbol == key.SLASH:
-        print('RESET')
+        print("RESET")
         env.reset()
         env.render()
     elif symbol == key.PAGEUP:
@@ -118,14 +112,14 @@ def on_joybutton_press(joystick, button):
     # A Button
     if button == 1:
         if not recording:
-            print('Start recording, Press A again to finish')
+            print("Start recording, Press A again to finish")
             recording = True
         else:
             recording = False
             process_recording()
             positions = []
             actions = []
-            print('Saved recording')
+            print("Saved recording")
 
     # X Button
     elif button == 0:
@@ -133,11 +127,11 @@ def on_joybutton_press(joystick, button):
         positions = []
         actions = []
         process_recording()
-        print('Deleted last recording')
+        print("Deleted last recording")
 
     # Y Button
     elif button == 3:
-        print('RESET')
+        print("RESET")
         env.reset()
         env.render()
 
@@ -174,10 +168,10 @@ def update(dt):
         actions.append(action)
 
     obs, reward, done, info = env.step(action)
-    print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
+    print("step_count = %s, reward=%.3f" % (env.unwrapped.step_count, reward))
 
     if done:
-        print('done!')
+        print("done!")
         env.reset()
         env.render()
 
@@ -185,7 +179,7 @@ def update(dt):
             process_recording()
             positions = []
             actions = []
-            print('Saved Recoding')
+            print("Saved Recoding")
 
     env.render()
 
@@ -194,7 +188,7 @@ pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
 # Registers joysticks and recording controls
 joysticks = pyglet.input.get_joysticks()
-assert joysticks, 'No joystick device is connected'
+assert joysticks, "No joystick device is connected"
 joystick = joysticks[0]
 joystick.open()
 joystick.push_handlers(on_joybutton_press)

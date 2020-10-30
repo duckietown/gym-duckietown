@@ -17,8 +17,7 @@ import torch
 import torch.optim as optim
 
 from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+from utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 from utils.teacher import PurePursuitExpert
 
 from imitation.pytorch.model import Model
@@ -26,17 +25,18 @@ from imitation.pytorch.model import Model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def _train(args):
     env = launch_env()
     env = ResizeWrapper(env)
-    env = NormalizeWrapper(env) 
+    env = NormalizeWrapper(env)
     env = ImgWrapper(env)
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
 
-    observation_shape = (None, ) + env.observation_space.shape
-    action_shape = (None, ) + env.action_space.shape
+    observation_shape = (None,) + env.observation_space.shape
+    action_shape = (None,) + env.action_space.shape
 
     # Create an imperfect demonstrator
     expert = PurePursuitExpert(env=env)
@@ -59,15 +59,11 @@ def _train(args):
     actions = np.array(actions)
     observations = np.array(observations)
 
-    model = Model(action_dim=2, max_action=1.)
+    model = Model(action_dim=2, max_action=1.0)
     model.train().to(device)
 
     # weight_decay is L2 regularization, helps avoid overfitting
-    optimizer = optim.SGD(
-        model.parameters(),
-        lr=0.0004,
-        weight_decay=1e-3
-    )
+    optimizer = optim.SGD(model.parameters(), lr=0.0004, weight_decay=1e-3)
 
     avg_loss = 0
     for epoch in range(args.epochs):
@@ -86,14 +82,14 @@ def _train(args):
         loss = loss.data[0]
         avg_loss = avg_loss * 0.995 + loss * 0.005
 
-        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
+        print("epoch %d, loss=%.3f" % (epoch, avg_loss))
 
         # Periodically save the trained model
         if epoch % 200 == 0:
-            torch.save(model.state_dict(), 'imitation/pytorch/models/imitate.pt')
+            torch.save(model.state_dict(), "imitation/pytorch/models/imitate.pt")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", default=1234, type=int, help="Sets Gym, TF, and Numpy seeds")
     parser.add_argument("--episodes", default=3, type=int, help="Number of epsiodes for experts")

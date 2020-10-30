@@ -29,8 +29,9 @@ class PurePursuitPolicy:
         takes an observation image and predicts using env information the action
     """
 
-    def __init__(self, env, ref_velocity=REF_VELOCITY, following_distance=FOLLOWING_DISTANCE,
-                 max_iterations=1000):
+    def __init__(
+        self, env, ref_velocity=REF_VELOCITY, following_distance=FOLLOWING_DISTANCE, max_iterations=1000
+    ):
         """
         Parameters
         ----------
@@ -55,12 +56,14 @@ class PurePursuitPolicy:
         action: list
             action having velocity and omega of current observation
         """
-        closest_point, closest_tangent = self.env.unwrapped.closest_curve_point(self.env.cur_pos,
-                                                                                self.env.cur_angle)
+        closest_point, closest_tangent = self.env.unwrapped.closest_curve_point(
+            self.env.cur_pos, self.env.cur_angle
+        )
         if closest_point is None or closest_tangent is None:
             self.env.reset()
-            closest_point, closest_tangent = self.env.unwrapped.closest_curve_point(self.env.cur_pos,
-                                                                                    self.env.cur_angle)
+            closest_point, closest_tangent = self.env.unwrapped.closest_curve_point(
+                self.env.cur_pos, self.env.cur_angle
+            )
 
         current_world_objects = self.env.objects
         # to slow down if there's a duckiebot in front of you
@@ -71,7 +74,8 @@ class PurePursuitPolicy:
             if not obj.static and obj.kind == "duckiebot":
                 if True:
                     collision_penalty = abs(
-                        obj.proximity(self.env.cur_pos, AGENT_SAFETY_RAD * AGENT_SAFETY_GAIN))
+                        obj.proximity(self.env.cur_pos, AGENT_SAFETY_RAD * AGENT_SAFETY_GAIN)
+                    )
                     if collision_penalty > 0:
                         # this means we are approaching and we need to slow down
                         velocity_slow_down = collision_penalty
@@ -84,7 +88,7 @@ class PurePursuitPolicy:
 
         current_tile_pos = self.env.get_grid_coords(self.env.cur_pos)
         current_tile = self.env._get_tile(*current_tile_pos)
-        if 'curve' in current_tile['kind'] or abs(projected_angle) < 0.92:
+        if "curve" in current_tile["kind"] or abs(projected_angle) < 0.92:
             # slowing down by a scale of 0.5
             velocity_scale = 0.5
         _, closest_point, curve_point = self._get_projected_angle_difference(lookup_distance)
@@ -146,9 +150,10 @@ seed(random.randint(0, 9999999))
 
 from PIL import Image
 
+
 def to_image(np_array):
 
-    img = Image.fromarray(np_array, 'RGB')
+    img = Image.fromarray(np_array, "RGB")
     img.show()
     i = 0
 
@@ -156,10 +161,7 @@ def to_image(np_array):
 os.chdir("./src/gym_duckietown")
 
 environment = DuckietownEnv(
-    domain_rand=False,
-    max_steps=math.inf,
-    randomize_maps_on_reset=False,
-    map_name="loop_obstacles"
+    domain_rand=False, max_steps=math.inf, randomize_maps_on_reset=False, map_name="loop_obstacles"
 )
 
 policy = PurePursuitPolicy(environment)

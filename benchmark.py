@@ -8,7 +8,7 @@ from gym_duckietown.envs import DuckietownEnv
 
 # Benchmark loading time
 st = time.time()
-env = DuckietownEnv(max_steps = 20000, map_name='loop_obstacles')
+env = DuckietownEnv(max_steps=20000, map_name="loop_obstacles")
 env.seed(0)
 env.reset()
 load_time = 1000 * (time.time() - st)
@@ -42,9 +42,9 @@ fps = num_frames / dt
 frame_time = 1000 * dt / num_frames
 
 print()
-print('load time: {} ms'.format(int(load_time)))
-print('reset time: {:,.1f} ms'.format(reset_time))
-print('frame time: {:,.1f} ms'.format(frame_time))
-print('frame rate: {:,.1f} FPS'.format(fps))
+print("load time: {} ms".format(int(load_time)))
+print("reset time: {:,.1f} ms".format(reset_time))
+print("frame time: {:,.1f} ms".format(frame_time))
+print("frame rate: {:,.1f} FPS".format(fps))
 
 env.close()

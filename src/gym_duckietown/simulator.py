@@ -146,14 +146,11 @@ MAX_SPAWN_ATTEMPTS = 5000
 
 LanePosition0 = namedtuple("LanePosition", "dist dot_dir angle_deg angle_rad")
 
-#List of available tile type
-TileStyle = Enum('TileStyle', 'synthetic photos')
+# List of available tile type
+TileStyle = Enum("TileStyle", "synthetic photos")
 
-#String that prepends the texture filename of the specified type
-STYLE_PREPEND_STRS = {
-    TileStyle.synthetic: "synth_",
-    TileStyle.photos: ""
-}
+# String that prepends the texture filename of the specified type
+STYLE_PREPEND_STRS = {TileStyle.synthetic: "synth_", TileStyle.photos: ""}
 
 
 class LanePosition(LanePosition0):

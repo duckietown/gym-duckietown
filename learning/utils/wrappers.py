@@ -4,6 +4,7 @@ import numpy as np
 
 from gym_duckietown.simulator import Simulator
 
+
 class MotionBlurWrapper(Simulator):
     def __init__(self, env=None):
         Simulator.__init__(self)
@@ -22,7 +23,7 @@ class MotionBlurWrapper(Simulator):
             self.env.update_physics(action)
 
         # Generate the current camera image
-        
+
         obs = self.env.render_obs()
         motion_blur_window.append(obs)
         obs = np.average(motion_blur_window, axis=0, weights=[0.8, 0.15, 0.04, 0.01])
@@ -30,7 +31,7 @@ class MotionBlurWrapper(Simulator):
         misc = self.env.get_agent_info()
 
         d = self.env._compute_done_reward()
-        misc['Simulator']['msg'] = d.done_why
+        misc["Simulator"]["msg"] = d.done_why
 
         return obs, d.reward, d.done, misc
 
@@ -43,11 +44,13 @@ class ResizeWrapper(gym.ObservationWrapper):
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
             shape,
-            dtype=self.observation_space.dtype)
+            dtype=self.observation_space.dtype,
+        )
         self.shape = shape
 
     def observation(self, observation):
         from scipy.misc import imresize
+
         return imresize(observation, self.shape)
 
 
@@ -74,7 +77,8 @@ class ImgWrapper(gym.ObservationWrapper):
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
             [obs_shape[2], obs_shape[0], obs_shape[1]],
-            dtype=self.observation_space.dtype)
+            dtype=self.observation_space.dtype,
+        )
 
     def observation(self, observation):
         return observation.transpose(2, 0, 1)

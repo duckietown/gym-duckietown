@@ -16,14 +16,14 @@ from gym_duckietown.envs import DuckietownEnv
 from gym_duckietown.simulator import Simulator
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--env-name', default=None)
-parser.add_argument('--map-name', default='udem1')
-parser.add_argument('--draw-curve', action='store_true', help='draw the lane following curve')
-parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
-parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
-parser.add_argument('--frame-skip', default=1, type=int, help='number of frames to skip')
-parser.add_argument('--distortion', default=False,  action='store_true')
-parser.add_argument('--style', default="photos", choices=['photos','synthetic'])
+parser.add_argument("--env-name", default=None)
+parser.add_argument("--map-name", default="udem1")
+parser.add_argument("--draw-curve", action="store_true", help="draw the lane following curve")
+parser.add_argument("--draw-bbox", action="store_true", help="draw collision detection bounding boxes")
+parser.add_argument("--domain-rand", action="store_true", help="enable domain randomization")
+parser.add_argument("--frame-skip", default=1, type=int, help="number of frames to skip")
+parser.add_argument("--distortion", default=False, action="store_true")
+parser.add_argument("--style", default="photos", choices=["photos", "synthetic"])
 args = parser.parse_args()
 
 if args.env_name is None:
@@ -34,7 +34,7 @@ if args.env_name is None:
         domain_rand=args.domain_rand,
         frame_skip=args.frame_skip,
         distortion=args.distortion,
-        style=args.style
+        style=args.style,
     )
 else:
     env = gym.make(args.env_name)
@@ -60,7 +60,7 @@ def on_key_press(symbol, modifiers):
         sys.exit(0)
 
     # Camera movement
-    env.unwrapped.cam_offset = env.unwrapped.cam_offset.astype('float64')
+    env.unwrapped.cam_offset = env.unwrapped.cam_offset.astype("float64")
     cam_offset, cam_angle = env.unwrapped.cam_offset, env.unwrapped.cam_angle
     if symbol == key.W:
         cam_angle[0] -= 5
@@ -77,15 +77,15 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.UP:
         cam_offset[0] = cam_offset[0] + 0.1
     elif symbol == key.DOWN:
-        cam_offset[0] = cam_offset[0] - .1
+        cam_offset[0] = cam_offset[0] - 0.1
     elif symbol == key.LEFT:
         cam_offset[2] -= 0.1
     elif symbol == key.RIGHT:
-        cam_offset[2] += .1
+        cam_offset[2] += 0.1
     elif symbol == key.O:
-        cam_offset[1] += .1
+        cam_offset[1] += 0.1
     elif symbol == key.P:
-        cam_offset[1] -= .1
+        cam_offset[1] -= 0.1
     elif symbol == key.T:
         cam_offset[0] = -0.8
         cam_offset[1] = 2.7
@@ -110,7 +110,7 @@ def on_key_press(symbol, modifiers):
 
 
 def update(dt):
-    env.render('free_cam')
+    env.render("free_cam")
 
 
 # Main event loop
