@@ -1,5 +1,3 @@
-
-
 class InteractiveImitationLearning:
     """
     A class used to contain main imitation learning algorithm
@@ -9,15 +7,16 @@ class InteractiveImitationLearning:
     train(samples, debug)
         start training imitation learning
     """
+
     def __init__(self, env, teacher, learner, horizon, episodes, test=False):
         """
         Parameters
         ----------
-        env : 
+        env :
             duckietown environment
-        teacher : 
+        teacher :
             expert used to train imitation learning
-        learner : 
+        learner :
             model used to learn
         horizon : int
             which is the number of observations to be collected during one episode
@@ -59,9 +58,9 @@ class InteractiveImitationLearning:
         """
         Parameters
         ----------
-        teacher : 
+        teacher :
             expert used to train imitation learning
-        learner : 
+        learner :
             model used to learn
         horizon : int
             which is the number of observations to be collected during one episode
@@ -81,7 +80,9 @@ class InteractiveImitationLearning:
             self._current_horizon = horizon
             action = self._act(observation)
             try:
-                next_observation, reward, done, info = self.environment.step([action[0], action[1]*self.gain])
+                next_observation, reward, done, info = self.environment.step(
+                    [action[0], action[1] * self.gain]
+                )
             except Exception as e:
                 print(e)
             if self._debug:
@@ -97,7 +98,7 @@ class InteractiveImitationLearning:
 
         control_action = control_policy.predict(observation)
 
-        self._query_expert(control_policy, control_action,observation)
+        self._query_expert(control_policy, control_action, observation)
 
         self.active_policy = control_policy == self.teacher
         if self.test:
@@ -128,15 +129,14 @@ class InteractiveImitationLearning:
         raise NotImplementedError()
 
     def _aggregate(self, observation, action):
-        if not(self.test):
+        if not (self.test):
             self._observations.append(observation)
             self._expert_actions.append(action)
 
     def _optimize(self):
-        if not(self.test):
-            self.learner.optimize(
-                self._observations, self._expert_actions, self._episode)
-            print('saving model')
+        if not (self.test):
+            self.learner.optimize(self._observations, self._expert_actions, self._episode)
+            print("saving model")
             self.learner.save()
 
     # TRAINING EVENTS

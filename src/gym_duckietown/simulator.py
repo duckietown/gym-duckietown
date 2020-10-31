@@ -1,13 +1,54 @@
 # coding=utf-8
 from __future__ import division
 
+import math
+import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import Tuple
-import geometry
+from enum import Enum
+from typing import cast, List, NewType, Optional, Sequence, Tuple
 
+import geometry
+import gym
+import numpy as np
+import pyglet
+import yaml
 from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
+from gym import spaces
+from gym.utils import seeding
+from numpy.random.mtrand import RandomState
+from pyglet import gl, image, window
+
+from . import logger
+from .check_hw import get_graphics_information
+from .collision import (
+    agent_boundbox,
+    find_candidate_tiles,
+    generate_norm,
+    intersects,
+    safety_circle_intersection,
+    safety_circle_overlap,
+    tile_corners,
+)
+from .distortion import Distortion
+from .graphics import (
+    bezier_closest,
+    bezier_draw,
+    bezier_point,
+    bezier_tangent,
+    create_frame_buffers,
+    gen_rot_matrix,
+    Texture,
+)
+from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj
+from .objmesh import ObjMesh
+from .randomization import Randomizer
+from .utils import get_file_path
+
+DIM = 0.5
+TileDict = NewType("TileDict", dict)
+
 
 @dataclass
 class DoneRewardInfo:
@@ -22,18 +63,6 @@ class DynamicsInfo:
     motor_left: float
     motor_right: float
 
-import gym
-import yaml
-from gym import spaces
-from gym.utils import seeding
-
-from .collision import *
-# Objects utility code
-from .objects import WorldObj, DuckieObj, TrafficLightObj, DuckiebotObj
-# Graphics utility code
-from .objmesh import *
-# Randomization code
-from .randomization import Randomizer
 
 # Rendering window size
 WINDOW_WIDTH = 800
@@ -49,8 +78,10 @@ BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
 # Color meant to approximate interior walls
 WALL_COLOR = np.array([0.64, 0.71, 0.28])
 
+# np.array([0.15, 0.15, 0.15])
+GREEN = (0.0, 1.0, 0.0)
 # Ground/floor color
-GROUND_COLOR = np.array([0.15, 0.15, 0.15])
+
 
 # Angle at which the camera is pitched downwards
 CAMERA_ANGLE = 19.15
@@ -103,7 +134,7 @@ DEFAULT_FRAMERATE = 30
 
 DEFAULT_MAX_STEPS = 1500
 
-DEFAULT_MAP_NAME = 'udem1'
+DEFAULT_MAP_NAME = "udem1"
 
 DEFAULT_FRAME_SKIP = 1
 
@@ -113,21 +144,24 @@ REWARD_INVALID_POSE = -1000
 
 MAX_SPAWN_ATTEMPTS = 5000
 
-LanePosition0 = namedtuple('LanePosition', 'dist dot_dir angle_deg angle_rad')
+LanePosition0 = namedtuple("LanePosition", "dist dot_dir angle_deg angle_rad")
+
+# List of available tile type
+TileStyle = Enum("TileStyle", "synthetic photos")
+
+# String that prepends the texture filename of the specified type
+STYLE_PREPEND_STRS = {TileStyle.synthetic: "synth_", TileStyle.photos: ""}
 
 
 class LanePosition(LanePosition0):
-
     def as_json_dict(self):
         """ Serialization-friendly format. """
-        return dict(dist=self.dist,
-                    dot_dir=self.dot_dir,
-                    angle_deg=self.angle_deg,
-                    angle_rad=self.angle_rad)
+        return dict(dist=self.dist, dot_dir=self.dot_dir, angle_deg=self.angle_deg, angle_rad=self.angle_rad)
 
 
 class NotInLane(Exception):
-    ''' Raised when the Duckiebot is not in a lane. '''
+    """ Raised when the Duckiebot is not in a lane. """
+
     pass
 
 
@@ -138,35 +172,41 @@ class Simulator(gym.Env):
     basic differential-drive dynamics.
     """
 
-    metadata = {
-        'render.modes': ['human', 'rgb_array', 'app'],
-        'video.frames_per_second': 30
-    }
+    metadata = {"render.modes": ["human", "rgb_array", "app"], "video.frames_per_second": 30}
 
     cur_pos: np.ndarray
     cam_offset: np.ndarray
     road_tile_size: float
+    grid_width: int
+    grid_height: int
+    step_count: int
+    timestamp: float
+    np_random: RandomState
+    grid: List[TileDict]
 
     def __init__(
-            self,
-            map_name=DEFAULT_MAP_NAME,
-            max_steps=DEFAULT_MAX_STEPS,
-            draw_curve=False,
-            draw_bbox=False,
-            domain_rand=True,
-            frame_rate=DEFAULT_FRAMERATE,
-            frame_skip=DEFAULT_FRAME_SKIP,
-            camera_width=DEFAULT_CAMERA_WIDTH,
-            camera_height=DEFAULT_CAMERA_HEIGHT,
-            robot_speed=DEFAULT_ROBOT_SPEED,
-            accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
-            full_transparency=False,
-            user_tile_start=None,
-            seed=None,
-            distortion=False,
-            dynamics_rand=False,
-            camera_rand=False,
-            randomize_maps_on_reset=False,
+        self,
+        map_name: str = DEFAULT_MAP_NAME,
+        max_steps: int = DEFAULT_MAX_STEPS,
+        draw_curve: bool = False,
+        draw_bbox: bool = False,
+        domain_rand: bool = True,
+        frame_rate: float = DEFAULT_FRAMERATE,
+        frame_skip: bool = DEFAULT_FRAME_SKIP,
+        camera_width=DEFAULT_CAMERA_WIDTH,
+        camera_height=DEFAULT_CAMERA_HEIGHT,
+        robot_speed=DEFAULT_ROBOT_SPEED,
+        accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
+        full_transparency: bool = False,
+        user_tile_start=None,
+        seed=None,
+        distortion: bool = False,
+        dynamics_rand: bool = False,
+        camera_rand: bool = False,
+        randomize_maps_on_reset: bool = False,
+        num_tris_distractors: int = 12,
+        color_ground: Sequence[int] = (0.15, 0.15, 0.15),
+        style: str = "photos",
     ):
         """
 
@@ -188,10 +228,17 @@ class Simulator(gym.Env):
         :param dynamics_rand: If true, perturbs the trim of the Duckiebot
         :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
+        :param style: String that represent which tiles will be loaded. One of ["photos", "synthetic"]
         """
+
+        information = get_graphics_information()
+        logger.info(f"Information about the graphics card: \n {information}")
+
         # first initialize the RNG
         self.seed_value = seed
         self.seed(seed=self.seed_value)
+        self.num_tris_distractors = num_tris_distractors
+        self.color_ground = color_ground
 
         # If true, then we publish all transparency information
         self.full_transparency = full_transparency
@@ -230,12 +277,7 @@ class Simulator(gym.Env):
         self.graphics = True
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
-        self.action_space = spaces.Box(
-                low=-1,
-                high=1,
-                shape=(2,),
-                dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
         self.camera_width = camera_width
         self.camera_height = camera_height
@@ -245,10 +287,7 @@ class Simulator(gym.Env):
         # Note: the pixels are in uint8 format because this is more compact
         # than float32 if sent over the network or stored in a dataset
         self.observation_space = spaces.Box(
-                low=0,
-                high=255,
-                shape=(self.camera_height, self.camera_width, 3),
-                dtype=np.uint8
+            low=0, high=255, shape=(self.camera_height, self.camera_width, 3), dtype=np.uint8
         )
 
         self.reward_range = (-1000, 1000)
@@ -256,41 +295,23 @@ class Simulator(gym.Env):
         # Window for displaying the environment to humans
         self.window = None
 
-        import pyglet
         # Invisible window to render into (shadow OpenGL context)
-        self.shadow_window = pyglet.window.Window(width=1,
-                                                  height=1,
-                                                  visible=False)
+        self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
 
         # For displaying text
-        self.text_label = pyglet.text.Label(
-                font_name="Arial",
-                font_size=14,
-                x=5,
-                y=WINDOW_HEIGHT - 19
-        )
+        self.text_label = pyglet.text.Label(font_name="Arial", font_size=14, x=5, y=WINDOW_HEIGHT - 19)
 
         # Create a frame buffer object for the observation
-        self.multi_fbo, self.final_fbo = create_frame_buffers(
-                self.camera_width,
-                self.camera_height,
-                4
-        )
+        self.multi_fbo, self.final_fbo = create_frame_buffers(self.camera_width, self.camera_height, 4)
 
         # Array to render the image into (for observation rendering)
-        self.img_array = np.zeros(shape=self.observation_space.shape,
-                                  dtype=np.uint8)
+        self.img_array = np.zeros(shape=self.observation_space.shape, dtype=np.uint8)
 
         # Create a frame buffer object for human rendering
-        self.multi_fbo_human, self.final_fbo_human = create_frame_buffers(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                4
-        )
+        self.multi_fbo_human, self.final_fbo_human = create_frame_buffers(WINDOW_WIDTH, WINDOW_HEIGHT, 4)
 
         # Array to render the image into (for human rendering)
-        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3),
-                                        dtype=np.uint8)
+        self.img_array_human = np.zeros(shape=(WINDOW_HEIGHT, WINDOW_WIDTH, 3), dtype=np.uint8)
 
         # allowed angle in lane for starting position
         self.accept_start_angle_deg = accept_start_angle_deg
@@ -304,7 +325,7 @@ class Simulator(gym.Env):
         if not draw_bbox and distortion:
             if distortion:
                 self.camera_rand = camera_rand
-                from .distortion import Distortion
+
                 self.camera_model = Distortion(camera_rand=self.camera_rand)
 
         # Used by the UndistortWrapper, always initialized to False
@@ -316,12 +337,17 @@ class Simulator(gym.Env):
         # Start tile
         self.user_tile_start = user_tile_start
 
+        # Define tile type
+        try:
+            self.style = TileStyle[style.lower()]
+        except KeyError:
+            self.style = TileStyle.photos
+
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
         if self.randomize_maps_on_reset:
-            import os
-            self.map_names = os.listdir('maps')
-            self.map_names = [mapfile.replace('.yaml', '') for mapfile in self.map_names]
+            self.map_names = os.listdir("maps")
+            self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
 
         # Initialize the state
         self.reset()
@@ -330,36 +356,33 @@ class Simulator(gym.Env):
         self.wheelVels = np.array([0, 0])
 
     def _init_vlists(self):
-        import pyglet
+
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
         # rotate the tiles about their center
         half_size = self.road_tile_size / 2
         verts = [
-            -half_size, 0.0, -half_size,
-            half_size, 0.0, -half_size,
-            half_size, 0.0, half_size,
-            -half_size, 0.0, half_size
+            -half_size,
+            0.0,
+            -half_size,
+            half_size,
+            0.0,
+            -half_size,
+            half_size,
+            0.0,
+            half_size,
+            -half_size,
+            0.0,
+            half_size,
         ]
-        texCoords = [
-            1.0, 0.0,
-            0.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0
-        ]
-        self.road_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts),
-                                                      ('t2f', texCoords))
+        texCoords = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
+        self.road_vlist = pyglet.graphics.vertex_list(4, ("v3f", verts), ("t2f", texCoords))
 
         # Create the vertex list for the ground quad
-        verts = [
-            -1, -0.8, 1,
-            -1, -0.8, -1,
-            1, -0.8, -1,
-            1, -0.8, 1
-        ]
-        self.ground_vlist = pyglet.graphics.vertex_list(4, ('v3f', verts))
+        verts = [-1, -0.8, 1, -1, -0.8, -1, 1, -0.8, -1, 1, -0.8, 1]
+        self.ground_vlist = pyglet.graphics.vertex_list(4, ("v3f", verts))
 
-    def reset(self):
+    def reset(self, segment=False):
         """
         Reset the simulation at the start of a new episode
         This also randomizes many environment parameters (domain randomization)
@@ -370,19 +393,19 @@ class Simulator(gym.Env):
         self.timestamp = 0.0
 
         # Robot's current speed
-        self.speed = 0
+        self.speed = 0.0
 
         if self.randomize_maps_on_reset:
-            map_name = np.random.choice(self.map_names)
+            map_name = self.np_random.choice(self.map_names)
             self._load_map(map_name)
 
-        self.randomization_settings = self.randomizer.randomize()
+        self.randomization_settings = self.randomizer.randomize(rng=self.np_random)
 
         # Horizon color
         # Note: we explicitly sample white and grey/black because
         # these colors are easily confused for road and lane markings
         if self.domain_rand:
-            horz_mode = self.randomization_settings['horz_mode']
+            horz_mode = self.randomization_settings["horz_mode"]
             if horz_mode == 0:
                 self.horizon_color = self._perturb(BLUE_SKY_COLOR)
             elif horz_mode == 1:
@@ -396,23 +419,24 @@ class Simulator(gym.Env):
 
         # Setup some basic lighting with a far away sun
         if self.domain_rand:
-            light_pos = self.randomization_settings['light_pos']
+            light_pos = self.randomization_settings["light_pos"]
         else:
             light_pos = [-40, 200, 100]
 
-        ambient = self._perturb([0.50, 0.50, 0.50], 0.3)
-        # XXX: diffuse is not used?
-        diffuse = self._perturb([0.70, 0.70, 0.70], 0.3)
-        from pyglet import gl
+        ambient = np.array([0.50, 0.50, 0.50]) * DIM
+        ambient = self._perturb(ambient, 0.3)
+        diffuse = np.array([0.70, 0.70, 0.70]) * DIM
+        diffuse = self._perturb(diffuse, 0.99)
+
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, (gl.GLfloat * 4)(*light_pos))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
-        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1.0))
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(*diffuse))
         gl.glEnable(gl.GL_LIGHT0)
         gl.glEnable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_COLOR_MATERIAL)
 
         # Ground color
-        self.ground_color = self._perturb(GROUND_COLOR, 0.3)
+        self.ground_color = self._perturb(np.array(self.color_ground), 0.3)
 
         # Distance between the robot's wheels
         self.wheel_dist = self._perturb(WHEEL_DIST)
@@ -430,16 +454,16 @@ class Simulator(gym.Env):
 
         # Perturb using randomization API (either if domain rand or only camera rand
         if self.domain_rand or self.camera_rand:
-            self.cam_height *= self.randomization_settings['camera_height']
-            self.cam_angle = [CAMERA_ANGLE * self.randomization_settings['camera_angle'], 0, 0]
-            self.cam_fov_y *= self.randomization_settings['camera_fov_y']
+            self.cam_height *= self.randomization_settings["camera_height"]
+            self.cam_angle = [CAMERA_ANGLE * self.randomization_settings["camera_angle"], 0, 0]
+            self.cam_fov_y *= self.randomization_settings["camera_fov_y"]
 
         # Camera offset for use in free camera mode
         self.cam_offset = np.array([0, 0, 0])
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
-        numTris = 12
+        numTris = self.num_tris_distractors
         verts = []
         colors = []
         for _ in range(0, 3 * numTris):
@@ -448,17 +472,24 @@ class Simulator(gym.Env):
             c = self._perturb([c, c, c], 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
-        import pyglet
-        self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors))
+
+        self.tri_vlist = pyglet.graphics.vertex_list(3 * numTris, ("v3f", verts), ("c3f", colors))
 
         # Randomize tile parameters
         for tile in self.grid:
             rng = self.np_random if self.domain_rand else None
             # Randomize the tile texture
-            tile['texture'] = Texture.get(tile['kind'], rng=rng)
+            texture_name = tile["kind"]
+
+            try:
+                # Get texture according to specified style
+                tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
+            except AssertionError as err:
+                # On loading error, fallback to default
+                tile["texture"] = Texture.get(texture_name, rng=rng)
 
             # Random tile color multiplier
-            tile['color'] = self._perturb([1, 1, 1], 0.2)
+            tile["color"] = self._perturb([1, 1, 1], 0.2)
 
         # Randomize object parameters
         for obj in self.objects:
@@ -473,13 +504,13 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting tile
         if self.user_tile_start:
-            logger.info('using user tile start: %s' % self.user_tile_start)
+            logger.info("using user tile start: %s" % self.user_tile_start)
             i, j = self.user_tile_start
             tile = self._get_tile(i, j)
             if tile is None:
-                msg = 'The tile specified does not exist.'
+                msg = "The tile specified does not exist."
                 raise Exception(msg)
-            logger.debug('tile: %s' % tile)
+            logger.debug("tile: %s" % tile)
         else:
             if self.start_tile is not None:
                 tile = self.start_tile
@@ -490,20 +521,20 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting pose
         if self.start_pose is not None:
-            logger.info('using map pose start: %s' % self.start_pose)
+            logger.info("using map pose start: %s" % self.start_pose)
 
-            i, j = tile['coords']
+            i, j = tile["coords"]
             x = i * self.road_tile_size + self.start_pose[0][0]
             z = j * self.road_tile_size + self.start_pose[0][2]
             propose_pos = np.array([x, 0, z])
             propose_angle = self.start_pose[1]
 
-            logger.info('Using map pose start. \n Pose: %s, Angle: %s' %(propose_pos, propose_angle) )
+            logger.info("Using map pose start. \n Pose: %s, Angle: %s" % (propose_pos, propose_angle))
 
         else:
             # Keep trying to find a valid spawn position on this tile
             for _ in range(MAX_SPAWN_ATTEMPTS):
-                i, j = tile['coords']
+                i, j = tile["coords"]
 
                 # Choose a random position on this tile
                 x = self.np_random.uniform(i, i + 1) * self.road_tile_size
@@ -543,7 +574,7 @@ class Simulator(gym.Env):
                 # Found a valid initial pose
                 break
             else:
-                msg = 'Could not find a valid starting pose after %s attempts' % MAX_SPAWN_ATTEMPTS
+                msg = "Could not find a valid starting pose after %s attempts" % MAX_SPAWN_ATTEMPTS
                 raise Exception(msg)
 
         self.cur_pos = propose_pos
@@ -553,7 +584,7 @@ class Simulator(gym.Env):
 
         # Initialize Dynamics model
         if self.dynamics_rand:
-            trim = 0 + self.randomization_settings['trim'][0]
+            trim = 0 + self.randomization_settings["trim"][0]
             p = get_DB18_uncalibrated(delay=0.15, trim=trim)
         else:
             p = get_DB18_nominal(delay=0.15)
@@ -563,10 +594,10 @@ class Simulator(gym.Env):
         c0 = q, v0
         self.state = p.initialize(c0=c0, t0=0)
 
-        logger.info('Starting at %s %s' % (self.cur_pos, self.cur_angle))
+        logger.info("Starting at %s %s" % (self.cur_pos, self.cur_angle))
 
         # Generate the first camera image
-        obs = self.render_obs()
+        obs = self.render_obs(segment=segment)
 
         # Return first observation
         return obs
@@ -580,29 +611,30 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path
-        self.map_file_path = get_file_path('maps', map_name, 'yaml')
+        self.map_file_path = get_file_path("maps", map_name, "yaml")
 
         logger.debug('loading map file "%s"' % self.map_file_path)
 
-        with open(self.map_file_path, 'r') as f:
+        with open(self.map_file_path, "r") as f:
             self.map_data = yaml.load(f, Loader=yaml.Loader)
 
         self._interpret_map(self.map_data)
 
     def _interpret_map(self, map_data: dict):
-        if not 'tile_size' in map_data:
-            msg = 'Must now include explicit tile_size in the map data.'
+        if not "tile_size" in map_data:
+            msg = "Must now include explicit tile_size in the map data."
             raise ValueError(msg)
-        self.road_tile_size = map_data['tile_size']
+        self.road_tile_size = map_data["tile_size"]
         self._init_vlists()
 
-        tiles = map_data['tiles']
+        tiles = map_data["tiles"]
         assert len(tiles) > 0
         assert len(tiles[0]) > 0
 
         # Create the grid
         self.grid_height = len(tiles)
         self.grid_width = len(tiles[0])
+        # noinspection PyTypeChecker
         self.grid = [None] * self.grid_width * self.grid_height
 
         # We keep a separate list of drivable tiles
@@ -618,17 +650,17 @@ class Simulator(gym.Env):
             for i, tile in enumerate(row):
                 tile = tile.strip()
 
-                if tile == 'empty':
+                if tile == "empty":
                     continue
 
-                if '/' in tile:
-                    kind, orient = tile.split('/')
-                    kind = kind.strip(' ')
-                    orient = orient.strip(' ')
-                    angle = ['S', 'E', 'N', 'W'].index(orient)
+                if "/" in tile:
+                    kind, orient = tile.split("/")
+                    kind = kind.strip(" ")
+                    orient = orient.strip(" ")
+                    angle = ["S", "E", "N", "W"].index(orient)
                     drivable = True
-                elif '4' in tile:
-                    kind = '4way'
+                elif "4" in tile:
+                    kind = "4way"
                     angle = 2
                     drivable = True
                 else:
@@ -636,32 +668,27 @@ class Simulator(gym.Env):
                     angle = 0
                     drivable = False
 
-                tile = {
-                    'coords': (i, j),
-                    'kind': kind,
-                    'angle': angle,
-                    'drivable': drivable
-                }
+                tile = cast(TileDict, {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable})
 
                 self._set_tile(i, j, tile)
 
                 if drivable:
-                    tile['curves'] = self._get_curve(i, j)
+                    tile["curves"] = self._get_curve(i, j)
                     self.drivable_tiles.append(tile)
 
-        self.mesh = ObjMesh.get('duckiebot')
+        self.mesh = ObjMesh.get("duckiebot")
         self._load_objects(map_data)
 
         # Get the starting tile from the map, if specified
         self.start_tile = None
-        if 'start_tile' in map_data:
-            coords = map_data['start_tile']
+        if "start_tile" in map_data:
+            coords = map_data["start_tile"]
             self.start_tile = self._get_tile(*coords)
 
         # Get the starting pose from the map, if specified
         self.start_pose = None
-        if 'start_pose' in map_data:
-            self.start_pose = map_data['start_pose']
+        if "start_pose" in map_data:
+            self.start_pose = map_data["start_pose"]
 
     def _load_objects(self, map_data):
         # Create the objects array
@@ -685,37 +712,39 @@ class Simulator(gym.Env):
         self.collidable_safety_radii = []
 
         # For each object
-        for obj_idx, desc in enumerate(map_data.get('objects', [])):
-            kind = desc['kind']
+        for obj_idx, desc in enumerate(map_data.get("objects", [])):
+            kind = desc["kind"]
 
-            pos = desc['pos']
+            pos = desc["pos"]
             x, z = pos[0:2]
             y = pos[2] if len(pos) == 3 else 0.0
 
-            rotate = desc['rotate']
-            optional = desc.get('optional', False)
+            rotate = desc["rotate"]
+            optional = desc.get("optional", False)
 
             pos = self.road_tile_size * np.array((x, y, z))
 
             # Load the mesh
             mesh = ObjMesh.get(kind)
 
-            if 'height' in desc:
-                scale = desc['height'] / mesh.max_coords[1]
+            if "height" in desc:
+                scale = desc["height"] / mesh.max_coords[1]
             else:
-                scale = desc['scale']
-            assert not ('height' in desc and 'scale' in desc), "cannot specify both height and scale"
+                scale = desc["scale"]
+            assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
 
-            static = desc.get('static', True)
+            static = desc.get("static", True)
+            # static = desc.get('static', False)
+            # print('static is now', static)
 
             obj_desc = {
-                'kind': kind,
-                'mesh': mesh,
-                'pos': pos,
-                'scale': scale,
-                'y_rot': rotate,
-                'optional': optional,
-                'static': static,
+                "kind": kind,
+                "mesh": mesh,
+                "pos": pos,
+                "scale": scale,
+                "y_rot": rotate,
+                "optional": optional,
+                "static": static,
             }
 
             # obj = None
@@ -726,12 +755,15 @@ class Simulator(gym.Env):
                     obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
             else:
                 if kind == "duckiebot":
-                    obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST,
-                                       ROBOT_WIDTH, ROBOT_LENGTH)
+                    obj = DuckiebotObj(
+                        obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH
+                    )
                 elif kind == "duckie":
                     obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
+                elif kind == "checkerboard":
+                    obj = CheckerboardObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
                 else:
-                    msg = 'I do not know what object this is: %s' % kind
+                    msg = "I do not know what object this is: %s" % kind
                     raise Exception(msg)
 
             self.objects.append(obj)
@@ -744,9 +776,11 @@ class Simulator(gym.Env):
             possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
 
             # If the object intersects with a drivable tile
-            if not static or (static and kind != "trafficlight" and self._collidable_object(
-                    obj.obj_corners, obj.obj_norm, possible_tiles
-            )):
+            if (
+                static
+                and kind != "trafficlight"
+                and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
+            ):
                 self.collidable_centers.append(pos)
                 self.collidable_corners.append(obj.obj_corners.T)
                 self.collidable_norms.append(obj.obj_norm)
@@ -773,12 +807,13 @@ class Simulator(gym.Env):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
 
-    def _set_tile(self, i, j, tile):
-        assert i >= 0 and i < self.grid_width
-        assert j >= 0 and j < self.grid_height
-        self.grid[j * self.grid_width + i] = tile
+    def _set_tile(self, i: int, j: int, tile: TileDict) -> None:
+        assert 0 <= i < self.grid_width
+        assert 0 <= j < self.grid_height
+        index: int = j * self.grid_width + i
+        self.grid[index] = tile
 
-    def _get_tile(self, i, j):
+    def _get_tile(self, i: int, j: int) -> Optional[TileDict]:
         """
             Returns None if the duckiebot is not in a tile.
         """
@@ -790,15 +825,13 @@ class Simulator(gym.Env):
             return None
         return self.grid[j * self.grid_width + i]
 
-    def _perturb(self, val, scale=0.1):
+    def _perturb(self, val: np.array, scale=0.1):
         """
         Add noise to a value. This is used for domain randomization.
         """
-        assert scale >= 0
-        assert scale < 1
+        assert 0 <= scale < 1
 
-        if isinstance(val, list):
-            val = np.array(val)
+        val = np.array(val)
 
         if not self.domain_rand:
             return val
@@ -823,7 +856,7 @@ class Simulator(gym.Env):
         drivable_tiles = []
         for c in possible_tiles:
             tile = self._get_tile(c[0], c[1])
-            if tile and tile['drivable']:
+            if tile and tile["drivable"]:
                 drivable_tiles.append((c[0], c[1]))
 
         if not drivable_tiles:
@@ -839,12 +872,12 @@ class Simulator(gym.Env):
             return False
 
         # Find the corners for each candidate tile
-        drivable_tiles = np.array([
-            tile_corners(
-                    self._get_tile(pt[0], pt[1])['coords'],
-                    self.road_tile_size
-            ).T for pt in drivable_tiles
-        ])
+        drivable_tiles = np.array(
+            [
+                tile_corners(self._get_tile(pt[0], pt[1])["coords"], self.road_tile_size).T
+                for pt in drivable_tiles
+            ]
+        )
 
         # Stack doesn't do anything if there's only one object,
         # So we add an extra dimension to avoid shape errors later
@@ -857,7 +890,7 @@ class Simulator(gym.Env):
         # Only add it if one of the vertices is on a drivable tile
         return intersects(obj_corners, drivable_tiles, obj_norm, tile_norms)
 
-    def get_grid_coords(self, abs_pos):
+    def get_grid_coords(self, abs_pos: np.array) -> Tuple[int, int]:
         """
         Compute the tile indices (i,j) for a given (x,_,z) world position
 
@@ -881,129 +914,78 @@ class Simulator(gym.Env):
         tile = self._get_tile(i, j)
         assert tile is not None
 
-        kind = tile['kind']
-        angle = tile['angle']
+        kind = tile["kind"]
+        angle = tile["angle"]
 
         # Each tile will have a unique set of control points,
         # Corresponding to each of its possible turns
 
-        if kind.startswith('straight'):
-            pts = np.array([
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, -0.25],
-                    [-0.20, 0, 0.25],
-                    [-0.20, 0, 0.50],
-                ],
-                [
-                    [0.20, 0, 0.50],
-                    [0.20, 0, 0.25],
-                    [0.20, 0, -0.25],
-                    [0.20, 0, -0.50],
-                ]
-            ]) * self.road_tile_size
+        if kind.startswith("straight"):
+            pts = (
+                np.array(
+                    [
+                        [[-0.20, 0, -0.50], [-0.20, 0, -0.25], [-0.20, 0, 0.25], [-0.20, 0, 0.50],],
+                        [[0.20, 0, 0.50], [0.20, 0, 0.25], [0.20, 0, -0.25], [0.20, 0, -0.50],],
+                    ]
+                )
+                * self.road_tile_size
+            )
 
-        elif kind == 'curve_left':
-            pts = np.array([
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, 0.00],
-                    [0.00, 0, 0.20],
-                    [0.50, 0, 0.20],
-                ],
-                [
-                    [0.50, 0, -0.20],
-                    [0.30, 0, -0.20],
-                    [0.20, 0, -0.30],
-                    [0.20, 0, -0.50],
-                ]
-            ]) * self.road_tile_size
+        elif kind == "curve_left":
+            pts = (
+                np.array(
+                    [
+                        [[-0.20, 0, -0.50], [-0.20, 0, 0.00], [0.00, 0, 0.20], [0.50, 0, 0.20],],
+                        [[0.50, 0, -0.20], [0.30, 0, -0.20], [0.20, 0, -0.30], [0.20, 0, -0.50],],
+                    ]
+                )
+                * self.road_tile_size
+            )
 
-        elif kind == 'curve_right':
-            pts = np.array([
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, -0.20],
-                    [-0.30, 0, -0.20],
-                    [-0.50, 0, -0.20],
-                ],
-
-                [
-                    [-0.50, 0, 0.20],
-                    [-0.30, 0, 0.20],
-                    [0.30, 0, 0.00],
-                    [0.20, 0, -0.50],
-                ]
-            ]) * self.road_tile_size
+        elif kind == "curve_right":
+            pts = (
+                np.array(
+                    [
+                        [[-0.20, 0, -0.50], [-0.20, 0, -0.20], [-0.30, 0, -0.20], [-0.50, 0, -0.20],],
+                        [[-0.50, 0, 0.20], [-0.30, 0, 0.20], [0.30, 0, 0.00], [0.20, 0, -0.50],],
+                    ]
+                )
+                * self.road_tile_size
+            )
 
         # Hardcoded all curves for 3way intersection
-        elif kind.startswith('3way'):
-            pts = np.array([
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, -0.25],
-                    [-0.20, 0, 0.25],
-                    [-0.20, 0, 0.50],
-                ],
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, 0.00],
-                    [0.00, 0, 0.20],
-                    [0.50, 0, 0.20],
-                ],
-                [
-                    [0.20, 0, 0.50],
-                    [0.20, 0, 0.25],
-                    [0.20, 0, -0.25],
-                    [0.20, 0, -0.50],
-                ],
-                [
-                    [0.50, 0, -0.20],
-                    [0.30, 0, -0.20],
-                    [0.20, 0, -0.20],
-                    [0.20, 0, -0.50],
-                ],
-                [
-                    [0.20, 0, 0.50],
-                    [0.20, 0, 0.20],
-                    [0.30, 0, 0.20],
-                    [0.50, 0, 0.20],
-                ],
-                [
-                    [0.50, 0, -0.20],
-                    [0.30, 0, -0.20],
-                    [-0.20, 0, 0.00],
-                    [-0.20, 0, 0.50],
-                ],
-            ]) * self.road_tile_size
+        elif kind.startswith("3way"):
+            pts = (
+                np.array(
+                    [
+                        [[-0.20, 0, -0.50], [-0.20, 0, -0.25], [-0.20, 0, 0.25], [-0.20, 0, 0.50],],
+                        [[-0.20, 0, -0.50], [-0.20, 0, 0.00], [0.00, 0, 0.20], [0.50, 0, 0.20],],
+                        [[0.20, 0, 0.50], [0.20, 0, 0.25], [0.20, 0, -0.25], [0.20, 0, -0.50],],
+                        [[0.50, 0, -0.20], [0.30, 0, -0.20], [0.20, 0, -0.20], [0.20, 0, -0.50],],
+                        [[0.20, 0, 0.50], [0.20, 0, 0.20], [0.30, 0, 0.20], [0.50, 0, 0.20],],
+                        [[0.50, 0, -0.20], [0.30, 0, -0.20], [-0.20, 0, 0.00], [-0.20, 0, 0.50],],
+                    ]
+                )
+                * self.road_tile_size
+            )
 
         # Template for each side of 4way intersection
-        elif kind.startswith('4way'):
-            pts = np.array([
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, 0.00],
-                    [0.00, 0, 0.20],
-                    [0.50, 0, 0.20],
-                ],
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, -0.25],
-                    [-0.20, 0, 0.25],
-                    [-0.20, 0, 0.50],
-                ],
-                [
-                    [-0.20, 0, -0.50],
-                    [-0.20, 0, -0.20],
-                    [-0.30, 0, -0.20],
-                    [-0.50, 0, -0.20],
-                ]
-            ]) * self.road_tile_size
+        elif kind.startswith("4way"):
+            pts = (
+                np.array(
+                    [
+                        [[-0.20, 0, -0.50], [-0.20, 0, 0.00], [0.00, 0, 0.20], [0.50, 0, 0.20],],
+                        [[-0.20, 0, -0.50], [-0.20, 0, -0.25], [-0.20, 0, 0.25], [-0.20, 0, 0.50],],
+                        [[-0.20, 0, -0.50], [-0.20, 0, -0.20], [-0.30, 0, -0.20], [-0.50, 0, -0.20],],
+                    ]
+                )
+                * self.road_tile_size
+            )
         else:
             assert False, kind
 
         # Rotate and align each curve with its place in global frame
-        if kind.startswith('4way'):
+        if kind.startswith("4way"):
             fourway_pts = []
             # Generate all four sides' curves,
             # with 3-points template above
@@ -1017,7 +999,7 @@ class Simulator(gym.Env):
             return fourway_pts
 
         # Hardcoded each curve; just rotate and shift
-        elif kind.startswith('3way'):
+        elif kind.startswith("3way"):
             threeway_pts = []
             mat = gen_rot_matrix(np.array([0, 1, 0]), angle * math.pi / 2)
             pts_new = np.matmul(pts, mat)
@@ -1035,29 +1017,9 @@ class Simulator(gym.Env):
 
         return pts
 
-    def get_dir_vec(self, angle=None):
-        """
-        Vector pointing in the direction the agent is looking
-        """
-        if angle == None:
-            angle = self.cur_angle
-
-        x = math.cos(angle)
-        z = -math.sin(angle)
-        return np.array([x, 0, z])
-
-    def get_right_vec(self, angle=None):
-        """
-        Vector pointing to the right of the agent
-        """
-        if angle == None:
-            angle = self.cur_angle
-
-        x = math.sin(angle)
-        z = math.cos(angle)
-        return np.array([x, 0, z])
-
-    def closest_curve_point(self, pos, angle=None):
+    def closest_curve_point(
+        self, pos: np.array, angle: float
+    ) -> Tuple[Optional[np.array], Optional[np.array]]:
         """
             Get the closest point on the curve to a given point
             Also returns the tangent at that point.
@@ -1068,11 +1030,11 @@ class Simulator(gym.Env):
         i, j = self.get_grid_coords(pos)
         tile = self._get_tile(i, j)
 
-        if tile is None or not tile['drivable']:
+        if tile is None or not tile["drivable"]:
             return None, None
 
         # Find curve with largest dotproduct with heading
-        curves = self._get_tile(i, j)['curves']
+        curves = self._get_tile(i, j)["curves"]
         curve_headings = curves[:, -1, :] - curves[:, 0, :]
         curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
         dir_vec = get_dir_vec(angle)
@@ -1099,11 +1061,11 @@ class Simulator(gym.Env):
         # Get the closest point along the right lane's Bezier curve,
         # and the tangent at that point
         point, tangent = self.closest_curve_point(pos, angle)
-        if point is None:
-            msg = 'Point not in lane: %s' % pos
+        if point is None or tangent is None:
+            msg = "Point not in lane: %s" % pos
             raise NotInLane(msg)
 
-        assert point is not None
+        assert point is not None and tangent is not None
 
         # Compute the alignment of the agent direction with the curve tangent
         dirVec = get_dir_vec(angle)
@@ -1127,10 +1089,9 @@ class Simulator(gym.Env):
         angle_deg = np.rad2deg(angle_rad)
         # return signedDist, dotDir, angle_deg
 
-        return LanePosition(dist=signedDist, dot_dir=dotDir, angle_deg=angle_deg,
-                            angle_rad=angle_rad)
+        return LanePosition(dist=signedDist, dot_dir=dotDir, angle_deg=angle_deg, angle_rad=angle_rad)
 
-    def _drivable_pos(self, pos):
+    def _drivable_pos(self, pos) -> bool:
         """
         Check that the given (x,y,z) position is on a drivable tile
         """
@@ -1138,12 +1099,12 @@ class Simulator(gym.Env):
         coords = self.get_grid_coords(pos)
         tile = self._get_tile(*coords)
         if tile is None:
-            msg = f'No tile found at {pos} {coords}'
+            msg = f"No tile found at {pos} {coords}"
             logger.debug(msg)
             return False
 
-        if not tile['drivable']:
-            msg = f'{pos} corresponds to tile at {coords} which is not drivable: {tile}'
+        if not tile["drivable"]:
+            msg = f"{pos} corresponds to tile at {coords} which is not drivable: {tile}"
             logger.debug(msg)
             return False
 
@@ -1185,34 +1146,25 @@ class Simulator(gym.Env):
         Check that agent spawn is not too close to any object
         """
 
-        results = [np.linalg.norm(x.pos - pos) <
-                   max(x.max_coords) * 0.5 * x.scale + MIN_SPAWN_OBJ_DIST
-                   for x in self.objects if x.visible
-                   ]
+        results = [
+            np.linalg.norm(x.pos - pos) < max(x.max_coords) * 0.5 * x.scale + MIN_SPAWN_OBJ_DIST
+            for x in self.objects
+            if x.visible
+        ]
         return np.any(results)
 
     def _collision(self, agent_corners):
         """
         Tensor-based OBB Collision detection
         """
-
-        # If there are no objects to collide against, stop
-        if len(self.collidable_corners) == 0:
-            return False
-
         # Generate the norms corresponding to each face of BB
         agent_norm = generate_norm(agent_corners)
 
-        # Check collisions with static objects
-        collision = intersects(
-                agent_corners,
-                self.collidable_corners,
-                agent_norm,
-                self.collidable_norms
-        )
-
-        if collision:
-            return True
+        # Check collisions with Static Objects
+        if len(self.collidable_corners) > 0:
+            collision = intersects(agent_corners, self.collidable_corners, agent_norm, self.collidable_norms)
+            if collision:
+                return True
 
         # Check collisions with Dynamic Objects
         for obj in self.objects:
@@ -1241,29 +1193,31 @@ class Simulator(gym.Env):
         # Check that the center position and
         # both wheels are on drivable tiles and no collisions
 
-        all_drivable = (self._drivable_pos(pos) and
-                        self._drivable_pos(l_pos) and
-                        self._drivable_pos(r_pos) and
-                        self._drivable_pos(f_pos))
-
+        all_drivable = (
+            self._drivable_pos(pos)
+            and self._drivable_pos(l_pos)
+            and self._drivable_pos(r_pos)
+            and self._drivable_pos(f_pos)
+        )
 
         # Recompute the bounding boxes (BB) for the agent
         agent_corners = get_agent_corners(pos, angle)
         no_collision = not self._collision(agent_corners)
 
-        res = (no_collision and all_drivable)
+        res = no_collision and all_drivable
 
         if not res:
-            logger.debug(f'Invalid pose. Collision free: {no_collision} On drivable area: {all_drivable}')
-            logger.debug(f'safety_factor: {safety_factor}')
-            logger.debug(f'pos: {pos}')
-            logger.debug(f'l_pos: {l_pos}')
-            logger.debug(f'r_pos: {r_pos}')
-            logger.debug(f'f_pos: {f_pos}')
+            logger.debug(f"Invalid pose. Collision free: {no_collision} On drivable area: {all_drivable}")
+            logger.debug(f"safety_factor: {safety_factor}")
+            logger.debug(f"pos: {pos}")
+            logger.debug(f"l_pos: {l_pos}")
+            logger.debug(f"r_pos: {r_pos}")
+            logger.debug(f"f_pos: {f_pos}")
 
         return res
 
-    def update_physics(self, action, delta_time=None):
+    def update_physics(self, action, delta_time: float = None):
+        # print("updating physics")
         if delta_time is None:
             delta_time = self.delta_time
         self.wheelVels = action * self.robot_speed * 1
@@ -1283,15 +1237,18 @@ class Simulator(gym.Env):
 
         # Update world objects
         for obj in self.objects:
-            if not obj.static and obj.kind == "duckiebot":
-                obj_i, obj_j = self.get_grid_coords(obj.pos)
-                same_tile_obj = [
-                    o for o in self.objects if
-                    tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
-                ]
+            if obj.kind == "duckiebot":
+                if not obj.static:
+                    obj_i, obj_j = self.get_grid_coords(obj.pos)
+                    same_tile_obj = [
+                        o
+                        for o in self.objects
+                        if tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
+                    ]
 
-                obj.step(delta_time, self.closest_curve_point, same_tile_obj)
+                    obj.step_duckiebot(delta_time, self.closest_curve_point, same_tile_obj)
             else:
+                # print("stepping all objects")
                 obj.step(delta_time)
 
     def get_agent_info(self):
@@ -1300,7 +1257,7 @@ class Simulator(gym.Env):
         angle = self.cur_angle
         # Get the position relative to the right lane tangent
 
-        info['action'] = list(self.last_action)
+        info["action"] = list(self.last_action)
         if self.full_transparency:
             #             info['desc'] = """
             #
@@ -1313,15 +1270,15 @@ class Simulator(gym.Env):
             # """
             try:
                 lp = self.get_lane_pos2(pos, angle)
-                info['lane_position'] = lp.as_json_dict()
+                info["lane_position"] = lp.as_json_dict()
             except NotInLane:
                 pass
 
-            info['robot_speed'] = self.speed
-            info['proximity_penalty'] = self.proximity_penalty2(pos, angle)
-            info['cur_pos'] = [float(pos[0]), float(pos[1]), float(pos[2])]
-            info['cur_angle'] = float(angle)
-            info['wheel_velocities'] = [self.wheelVels[0], self.wheelVels[1]]
+            info["robot_speed"] = self.speed
+            info["proximity_penalty"] = self.proximity_penalty2(pos, angle)
+            info["cur_pos"] = [float(pos[0]), float(pos[1]), float(pos[2])]
+            info["cur_angle"] = float(angle)
+            info["wheel_velocities"] = [self.wheelVels[0], self.wheelVels[1]]
 
             # put in cartesian coordinates
             # (0,0 is bottom left)
@@ -1330,11 +1287,11 @@ class Simulator(gym.Env):
             # info['egovehicle_pose_cartesian'] = {'~SE2Transform': {'p': [float(p[0]), float(p[1])],
             #                                                        'theta': angle}}
 
-            info['timestamp'] = self.timestamp
-            info['tile_coords'] = list(self.get_grid_coords(pos))
+            info["timestamp"] = self.timestamp
+            info["tile_coords"] = list(self.get_grid_coords(pos))
             # info['map_data'] = self.map_data
         misc = {}
-        misc['Simulator'] = info
+        misc["Simulator"] = info
         return misc
 
     def cartesian_from_weird(self, pos, angle) -> np.ndarray:
@@ -1374,11 +1331,7 @@ class Simulator(gym.Env):
         else:
 
             # Compute the reward
-            reward = (
-                    +1.0 * speed * lp.dot_dir +
-                    -10 * np.abs(lp.dist) +
-                    +40 * col_penalty
-            )
+            reward = +1.0 * speed * lp.dot_dir + -10 * np.abs(lp.dist) + +40 * col_penalty
         return reward
 
     def step(self, action: np.ndarray):
@@ -1393,34 +1346,33 @@ class Simulator(gym.Env):
         misc = self.get_agent_info()
 
         d = self._compute_done_reward()
-        misc['Simulator']['msg'] = d.done_why
+        misc["Simulator"]["msg"] = d.done_why
 
         return obs, d.reward, d.done, misc
 
     def _compute_done_reward(self) -> DoneRewardInfo:
         # If the agent is not in a valid pose (on drivable tiles)
         if not self._valid_pose(self.cur_pos, self.cur_angle):
-            msg = 'Stopping the simulator because we are at an invalid pose.'
-            logger.info(msg)
+            msg = "Stopping the simulator because we are at an invalid pose."
+            # logger.info(msg)
             reward = REWARD_INVALID_POSE
-            done_code = 'invalid-pose'
+            done_code = "invalid-pose"
             done = True
         # If the maximum time step count is reached
         elif self.step_count >= self.max_steps:
-            msg = 'Stopping the simulator because we reached max_steps = %s' % self.max_steps
-            logger.info(msg)
+            msg = "Stopping the simulator because we reached max_steps = %s" % self.max_steps
+            # logger.info(msg)
             done = True
             reward = 0
-            done_code = 'max-steps-reached'
+            done_code = "max-steps-reached"
         else:
             done = False
             reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
-            msg = ''
-            done_code = 'in-progress'
+            msg = ""
+            done_code = "in-progress"
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
-    def _render_img(self, width, height, multi_fbo,
-                    final_fbo, img_array, top_down=True):
+    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True, segment=False):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1434,7 +1386,15 @@ class Simulator(gym.Env):
         # pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
-        from pyglet import gl
+        if segment:
+            gl.glDisable(gl.GL_LIGHT0)
+            gl.glDisable(gl.GL_LIGHTING)
+            gl.glDisable(gl.GL_COLOR_MATERIAL)
+        else:
+            gl.glEnable(gl.GL_LIGHT0)
+            gl.glEnable(gl.GL_LIGHTING)
+            gl.glEnable(gl.GL_COLOR_MATERIAL)
+
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
@@ -1442,7 +1402,7 @@ class Simulator(gym.Env):
 
         # Clear the color and depth buffers
 
-        c0, c1, c2 = self.horizon_color
+        c0, c1, c2 = self.horizon_color if not segment else [255, 0, 255]
         gl.glClearColor(c0, c1, c2, 1.0)
         gl.glClearDepth(1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -1450,12 +1410,7 @@ class Simulator(gym.Env):
         # Set the projection matrix
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
-        gl.gluPerspective(
-                self.cam_fov_y,
-                width / float(height),
-                0.04,
-                100.0
-        )
+        gl.gluPerspective(self.cam_fov_y, width / float(height), 0.04, 100.0)
 
         # Set modelview matrix
         # Note: we add a bit of noise to the camera position for data augmentation
@@ -1463,7 +1418,7 @@ class Simulator(gym.Env):
         angle = self.cur_angle
         # logger.info('Pos: %s angle %s' % (self.cur_pos, self.cur_angle))
         if self.domain_rand:
-            pos = pos + self.randomization_settings['camera_noise']
+            pos = pos + self.randomization_settings["camera_noise"]
 
         x, y, z = pos + self.cam_offset
         dx, dy, dz = get_dir_vec(angle)
@@ -1478,45 +1433,51 @@ class Simulator(gym.Env):
             gl.glRotatef(self.cam_angle[0], 1, 0, 0)
             gl.glRotatef(self.cam_angle[1], 0, 1, 0)
             gl.glRotatef(self.cam_angle[2], 0, 0, 1)
-            gl.glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
+            gl.glTranslatef(0, 0, CAMERA_FORWARD_DIST)
 
         if top_down:
             gl.gluLookAt(
-                    # Eye position
-                    (self.grid_width * self.road_tile_size) / 2,
-                    5,
-                    (self.grid_height * self.road_tile_size) / 2,
-                    # Target
-                    (self.grid_width * self.road_tile_size) / 2,
-                    0,
-                    (self.grid_height * self.road_tile_size) / 2,
-                    # Up vector
-                    0, 0, -1.0
+                # Eye position
+                (self.grid_width * self.road_tile_size) / 2,
+                5,
+                (self.grid_height * self.road_tile_size) / 2,
+                # Target
+                (self.grid_width * self.road_tile_size) / 2,
+                0,
+                (self.grid_height * self.road_tile_size) / 2,
+                # Up vector
+                0,
+                0,
+                -1.0,
             )
         else:
             gl.gluLookAt(
-                    # Eye position
-                    x,
-                    y,
-                    z,
-                    # Target
-                    x + dx,
-                    y + dy,
-                    z + dz,
-                    # Up vector
-                    0, 1.0, 0.0
+                # Eye position
+                x,
+                y,
+                z,
+                # Target
+                x + dx,
+                y + dy,
+                z + dz,
+                # Up vector
+                0,
+                1.0,
+                0.0,
             )
 
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
-        gl.glColor3f(*self.ground_color)
+        # background is magenta when segmenting for easy isolation of main map image
+        gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])
         gl.glPushMatrix()
         gl.glScalef(50, 1, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
         gl.glPopMatrix()
 
         # Draw the ground/noise triangles
-        self.tri_vlist.draw(gl.GL_TRIANGLES)
+        if not segment:
+            self.tri_vlist.draw(gl.GL_TRIANGLES)
 
         # Draw the road quads
         gl.glEnable(gl.GL_TEXTURE_2D)
@@ -1533,9 +1494,9 @@ class Simulator(gym.Env):
                     continue
 
                 # kind = tile['kind']
-                angle = tile['angle']
-                color = tile['color']
-                texture = tile['texture']
+                angle = tile["angle"]
+                color = tile["color"]
+                texture = tile["texture"]
 
                 gl.glColor3f(*color)
 
@@ -1544,14 +1505,14 @@ class Simulator(gym.Env):
                 gl.glRotatef(angle * 90, 0, 1, 0)
 
                 # Bind the appropriate texture
-                texture.bind()
+                texture.bind(segment)
 
                 self.road_vlist.draw(gl.GL_QUADS)
                 gl.glPopMatrix()
 
-                if self.draw_curve and tile['drivable']:
+                if self.draw_curve and tile["drivable"]:
                     # Find curve with largest dotproduct with heading
-                    curves = self._get_tile(i, j)['curves']
+                    curves = self._get_tile(i, j)["curves"]
                     curve_headings = curves[:, -1, :] - curves[:, 0, :]
                     curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
                     dirVec = get_dir_vec(angle)
@@ -1570,7 +1531,7 @@ class Simulator(gym.Env):
 
         # For each object
         for idx, obj in enumerate(self.objects):
-            obj.render(self.draw_bbox)
+            obj.render(self.draw_bbox, segment)
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
@@ -1595,26 +1556,13 @@ class Simulator(gym.Env):
         # Resolve the multisampled frame buffer into the final frame buffer
         gl.glBindFramebuffer(gl.GL_READ_FRAMEBUFFER, multi_fbo)
         gl.glBindFramebuffer(gl.GL_DRAW_FRAMEBUFFER, final_fbo)
-        gl.glBlitFramebuffer(
-                0, 0,
-                width, height,
-                0, 0,
-                width, height,
-                gl.GL_COLOR_BUFFER_BIT,
-                gl.GL_LINEAR
-        )
+        gl.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.GL_COLOR_BUFFER_BIT, gl.GL_LINEAR)
 
         # Copy the frame buffer contents into a numpy array
         # Note: glReadPixels reads starting from the lower left corner
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, final_fbo)
         gl.glReadPixels(
-                0,
-                0,
-                width,
-                height,
-                gl.GL_RGB,
-                gl.GL_UNSIGNED_BYTE,
-                img_array.ctypes.data_as(POINTER(gl.GLubyte))
+            0, 0, width, height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, img_array.ctypes.data_as(POINTER(gl.GLubyte))
         )
 
         # Unbind the frame buffer
@@ -1627,18 +1575,19 @@ class Simulator(gym.Env):
 
         return img_array
 
-    def render_obs(self):
+    def render_obs(self, segment=False):
         """
         Render an observation from the point of view of the agent
         """
 
         observation = self._render_img(
-                self.camera_width,
-                self.camera_height,
-                self.multi_fbo,
-                self.final_fbo,
-                self.img_array,
-                top_down=False
+            self.camera_width,
+            self.camera_height,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array,
+            top_down=False,
+            segment=segment,
         )
 
         # self.undistort - for UndistortWrapper
@@ -1647,43 +1596,40 @@ class Simulator(gym.Env):
 
         return observation
 
-    def render(self, mode='human', close=False):
+    def render(self, mode="human", close=False, segment=False):
         """
         Render the environment for human viewing
         """
+        assert mode in ["human", "top_down", "free_cam", "rgb_array"]
 
         if close:
             if self.window:
                 self.window.close()
             return
 
-        top_down = mode == 'top_down'
+        top_down = mode == "top_down"
         # Render the image
         img = self._render_img(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                self.multi_fbo_human,
-                self.final_fbo_human,
-                self.img_array_human,
-                top_down=top_down
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            self.multi_fbo_human,
+            self.final_fbo_human,
+            self.img_array_human,
+            top_down=top_down,
+            segment=segment,
         )
 
         # self.undistort - for UndistortWrapper
         if self.distortion and not self.undistort and mode != "free_cam":
             img = self.camera_model.distort(img)
 
-        if mode == 'rgb_array':
+        if mode == "rgb_array":
             return img
-
-        from pyglet import gl, window, image
 
         if self.window is None:
             config = gl.Config(double_buffer=False)
             self.window = window.Window(
-                    width=WINDOW_WIDTH,
-                    height=WINDOW_HEIGHT,
-                    resizable=False,
-                    config=config
+                width=WINDOW_WIDTH, height=WINDOW_HEIGHT, resizable=False, config=config
             )
 
         self.window.clear()
@@ -1705,28 +1651,20 @@ class Simulator(gym.Env):
         height = img.shape[0]
         img = np.ascontiguousarray(np.flip(img, axis=0))
         img_data = image.ImageData(
-                width,
-                height,
-                'RGB',
-                img.ctypes.data_as(POINTER(gl.GLubyte)),
-                pitch=width * 3,
+            width, height, "RGB", img.ctypes.data_as(POINTER(gl.GLubyte)), pitch=width * 3,
         )
-        img_data.blit(
-                0,
-                0,
-                0,
-                width=WINDOW_WIDTH,
-                height=WINDOW_HEIGHT
-        )
+        img_data.blit(0, 0, 0, width=WINDOW_WIDTH, height=WINDOW_HEIGHT)
 
         # Display position/state information
         if mode != "free_cam":
             x, y, z = self.cur_pos
             self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
-                x, y, z,
+                x,
+                y,
+                z,
                 int(self.cur_angle * 180 / math.pi),
                 self.step_count,
-                self.speed
+                self.speed,
             )
             self.text_label.draw()
 
@@ -1781,10 +1719,6 @@ def _actual_center(pos, angle):
 
 def get_agent_corners(pos, angle):
     agent_corners = agent_boundbox(
-            _actual_center(pos, angle),
-            ROBOT_WIDTH,
-            ROBOT_LENGTH,
-            get_dir_vec(angle),
-            get_right_vec(angle)
+        _actual_center(pos, angle), ROBOT_WIDTH, ROBOT_LENGTH, get_dir_vec(angle), get_right_vec(angle)
     )
     return agent_corners

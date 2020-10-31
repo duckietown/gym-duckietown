@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from PIL import Image
 
+
 class NeuralNetworkPolicy:
     """
     A wrapper to train neural network model
@@ -18,7 +19,7 @@ class NeuralNetworkPolicy:
     -------
     optimize(observations, expert_actions, episode)
         train the model on the newly collected data from the simulator
-    
+
     predict(observation)
         takes images and predicts the action space using the model
 
@@ -30,9 +31,9 @@ class NeuralNetworkPolicy:
         """
         Parameters
         ----------
-        model : 
+        model :
             input pytorch model that will be trained
-        optimizer : 
+        optimizer :
             torch optimizer
         storage_location : string
             path of the model to be saved , the dataset and tensorboard logs
@@ -49,18 +50,18 @@ class NeuralNetworkPolicy:
         self.writer = SummaryWriter(self.storage_location)
 
         # Optional parameters
-        self.epochs = kwargs.get('epochs', 10)
-        self.batch_size = kwargs.get('batch_size', 32)
-        self.input_shape = kwargs.get('input_shape', (60, 80))
-        self.max_velocity = kwargs.get('max_velocity', 0.7)
+        self.epochs = kwargs.get("epochs", 10)
+        self.batch_size = kwargs.get("batch_size", 32)
+        self.input_shape = kwargs.get("input_shape", (60, 80))
+        self.max_velocity = kwargs.get("max_velocity", 0.7)
 
         self.episode = 0
 
         self.dataset = dataset
         # Load previous weights
-        if 'model_path' in kwargs:
-            self.model.load_state_dict(torch.load(kwargs.get('model_path'),map_location=self._device))
-            print('Loaded ')
+        if "model_path" in kwargs:
+            self.model.load_state_dict(torch.load(kwargs.get("model_path"), map_location=self._device))
+            print("Loaded ")
 
     def __del__(self):
         self.writer.close()
@@ -69,14 +70,14 @@ class NeuralNetworkPolicy:
         """
         Parameters
         ----------
-        observations : 
+        observations :
             input images collected from the simulator
-        expert_actions : 
+        expert_actions :
             list of actions each action [velocity, steering_angle] from expert
         episode : int
             current episode number
         """
-        print('Starting episode #',str(episode))
+        print("Starting episode #", str(episode))
         self.episode = episode
         self.model.episode = episode
         # Transform newly received data
@@ -113,7 +114,7 @@ class NeuralNetworkPolicy:
         """
         Parameters
         ----------
-        observations : 
+        observations :
             input image from the simulator
         Returns
         ----------
@@ -129,22 +130,32 @@ class NeuralNetworkPolicy:
         return prediction
 
     def save(self):
-        torch.save(self.model.state_dict(), os.path.join(self.storage_location , 'model.pt'))
+        torch.save(self.model.state_dict(), os.path.join(self.storage_location, "model.pt"))
 
     def _transform(self, observations, expert_actions):
         # Resize images
-        observations = [Image.fromarray(cv2.resize(observation, dsize=self.input_shape[::-1])) for observation in observations]
+        observations = [
+            Image.fromarray(cv2.resize(observation, dsize=self.input_shape[::-1]))
+            for observation in observations
+        ]
         # Transform to tensors
-        compose_obs = Compose([
-            ToTensor(),
-            Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # using imagenet normalization values
-        ])
-        
+        compose_obs = Compose(
+            [
+                ToTensor(),
+                Normalize(
+                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+                ),  # using imagenet normalization values
+            ]
+        )
+
         observations = [compose_obs(observation).numpy() for observation in observations]
         try:
             # scaling velocity to become in 0-1 range which is multiplied by max speed to get actual vel
             # also scaling steering angle to become in range -1 to 1 to make it easier to regress
-            expert_actions = [np.array([expert_action[0],  expert_action[1]  / (np.pi/2) ]) for expert_action in expert_actions]
+            expert_actions = [
+                np.array([expert_action[0], expert_action[1] / (np.pi / 2)])
+                for expert_action in expert_actions
+            ]
         except:
             pass
         expert_actions = [torch.tensor(expert_action).numpy() for expert_action in expert_actions]
@@ -158,9 +169,9 @@ class NeuralNetworkPolicy:
         return dataloader
 
     def _logging(self, **kwargs):
-        epoch = kwargs.get('epoch')
-        loss = kwargs.get('loss')
-        self.writer.add_scalar('Loss/train/{}'.format(self._train_iteration), loss, epoch)
+        epoch = kwargs.get("epoch")
+        loss = kwargs.get("loss")
+        self.writer.add_scalar("Loss/train/{}".format(self._train_iteration), loss, epoch)
 
     def _on_optimization_end(self):
         self._train_iteration += 1

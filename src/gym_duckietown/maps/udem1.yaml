@@ -96,4 +96,100 @@ objects:
   height: 0.2
   optional: true
 
+- kind: duckie
+  pos: [0.6,0.7]
+  rotate: -32
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [0.9,1.2]
+  rotate: 3
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [0.2,2.7]
+  rotate: 9
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [0.6, 4.2]
+  rotate: 41
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [0.4, 5.9]
+  rotate: 96
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [2.6,4.7]
+  rotate: 42
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [2.8, 0.8]
+  rotate: -42
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [5.1, 0.82]
+  rotate: -88
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [7.1, 0.7]
+  rotate: -100
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [6.2,5.3]
+  rotate: 76
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [4.6, 3.2]
+  rotate: 79
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [4.2, 4.6]
+  rotate: 3
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [2.3,6.2]
+  rotate: 42
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [3.4, 6.7]
+  rotate: 29
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [4.6, 6.4]
+  rotate: 55
+  height: 0.08
+  optional: true
+
+- kind: duckie
+  pos: [5.4, 6.3]
+  rotate: 98
+  height: 0.08
+  optional: true
+
 tile_size: 0.585

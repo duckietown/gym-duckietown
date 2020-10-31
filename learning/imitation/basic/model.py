@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+
 class Model(nn.Module):
     def __init__(self, action_dim, max_action):
         super(Model, self).__init__()
@@ -24,7 +25,7 @@ class Model(nn.Module):
         self.bn3 = nn.BatchNorm2d(32)
         self.bn4 = nn.BatchNorm2d(32)
 
-        self.dropout = nn.Dropout(.5)
+        self.dropout = nn.Dropout(0.5)
 
         self.lin1 = nn.Linear(flat_size, 512)
         self.lin2 = nn.Linear(512, action_dim)

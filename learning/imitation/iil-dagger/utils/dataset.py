@@ -7,6 +7,7 @@ from typing import Tuple, List
 
 class MemoryMapDataset(Dataset):
     """Dataset to store multiple arrays on disk to avoid saturating the RAM"""
+
     def __init__(self, size: int, data_size: tuple, target_size: tuple, path: str):
         """
         Parameters
@@ -26,12 +27,14 @@ class MemoryMapDataset(Dataset):
         self.path = path
 
         # Path for each array
-        self.data_path = os.path.join(path, 'data.dat')
-        self.target_path = os.path.join(path, 'target.dat')
+        self.data_path = os.path.join(path, "data.dat")
+        self.target_path = os.path.join(path, "target.dat")
 
         # Create arrays
-        self.data = np.memmap(self.data_path, dtype='float32', mode='w+', shape=(self.size, *self.data_size))
-        self.target = np.memmap(self.target_path, dtype='float32', mode='w+', shape=(self.size, *self.target_size))
+        self.data = np.memmap(self.data_path, dtype="float32", mode="w+", shape=(self.size, *self.data_size))
+        self.target = np.memmap(
+            self.target_path, dtype="float32", mode="w+", shape=(self.size, *self.target_size)
+        )
 
         # Initialize number of saved records to zero
         self.length = 0
@@ -84,10 +87,10 @@ class MemoryMapDataset(Dataset):
             current_data_indx = self.real_length + index
             if self.real_length + index >= self.size:
                 # it will be a circular by getting rid of old experiments
-                current_data_indx %= self.size 
+                current_data_indx %= self.size
             self.data[current_data_indx, ...] = observation.astype(np.float32)
             self.target[current_data_indx, ...] = action.astype(np.float32)
-        if self.real_length >= self.size:    
+        if self.real_length >= self.size:
             self.length = self.size - 1
         else:
             self.length += len(observations)

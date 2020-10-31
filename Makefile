@@ -1,7 +1,10 @@
+AIDO_REGISTRY ?= docker.io
+PIP_INDEX_URL ?= https://pypi.org/simple
 
 branch=$(shell git rev-parse --abbrev-ref HEAD)
+branch=daffy
 
-img3=duckietown/gym-duckietown-server-python3:$(branch)
+img3=$(AIDO_REGISTRY)/duckietown/gym-duckietown-server-python3:$(branch)
 
 all:
 	@echo ## Containerized Python 2 support
@@ -21,35 +24,58 @@ all:
 	@echo Inside, remember to start  launch-xvfb
 
 
-build:
+build: update-reqs
 	$(MAKE) build-docker-python3
 
-push:
+push: build
 	$(MAKE) push-docker-python3
 
+update-reqs:
+	pur --index-url $(PIP_INDEX_URL) -r requirements.txt -f -m '*' -o requirements.resolved
+	dt-update-reqs requirements.resolved
+
+build_options=\
+	--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL)\
+	--build-arg AIDO_REGISTRY=$(AIDO_REGISTRY)\
+	$(shell dt-labels)
 
 
 
+dockerfile=docker/server-python3/Dockerfile
+build-docker-python3: update-reqs
+	docker build --pull -t $(img3) -f $(dockerfile) $(build_options) .
 
-build-docker-python3:
-	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
-
-build-docker-python3-no-cache:
-	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
+build-docker-python3-no-cache: update-reqs
+	docker build --pull -t $(img3) -f $(dockerfile)  $(build_options) --no-cache .
 
 
 push-docker-python3:
 	docker push $(img3)
 
- 
+
 
 other_deps:
 	apt install x11-apps
 
 bump-upload:
+	$(MAKE) bump
+	$(MAKE) upload
+
+bump: # v2
 	bumpversion patch
 	git push --tags
-	git push --all
+	git push
+
+upload: # v3
+	dts build_utils check-not-dirty
+	dts build_utils check-tagged
+	dt-check-need-upload --package duckietown-gym-daffy make upload-do
+
+upload-do:
 	rm -f dist/*
-	python setup.py sdist
-	twine upload dist/*
+	rm -rf src/*.egg-info
+	python3 setup.py sdist
+	twine upload --skip-existing --verbose dist/*
+
+black:
+	black -l 110 src

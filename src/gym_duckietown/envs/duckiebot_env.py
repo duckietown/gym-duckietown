@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding=utf-8
+import pyglet
+from pyglet import gl
 
+import cv2
 import gym
 from gym import spaces
 from gym.utils import seeding
@@ -8,9 +11,11 @@ import math
 import numpy
 import zmq
 import numpy as np
+import pyglet
 
 # For Python 3 compatibility
 import sys
+
 if sys.version_info > (3,):
     buffer = memoryview
 
@@ -34,39 +39,22 @@ def recvArray(socket):
     md = socket.recv_json()
     msg = socket.recv(copy=True, track=False)
     buf = buffer(msg)
-    A = numpy.frombuffer(buf, dtype=md['dtype'])
-    A = A.reshape(md['shape'])
+    A = numpy.frombuffer(buf, dtype=md["dtype"])
+    A = A.reshape(md["shape"])
     return A
 
 
 class DuckiebotEnv(gym.Env):
     """An environment that is the actual real robot """
 
-    metadata = {
-        'render.modes': ['human', 'rgb_array', 'app'],
-        'video.frames_per_second': 30
-    }
+    metadata = {"render.modes": ["human", "rgb_array", "app"], "video.frames_per_second": 30}
 
-    def __init__(
-        self,
-        serverAddr="akira.local",
-        serverPort=SERVER_PORT
-    ):
+    def __init__(self, serverAddr="akira.local", serverPort=SERVER_PORT):
         # Two-tuple of wheel torques, each in the range [-1, 1]
-        self.action_space = spaces.Box(
-            low=-1,
-            high=1,
-            shape=(2,),
-            dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
         # We observe an RGB image with pixels in [0, 255]
-        self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=IMG_SHAPE,
-            dtype=np.uint8
-        )
+        self.observation_space = spaces.Box(low=0, high=255, shape=IMG_SHAPE, dtype=np.uint8)
 
         self.reward_range = (-10, 1000)
 
@@ -80,13 +68,8 @@ class DuckiebotEnv(gym.Env):
         self.latest_img = None
 
         # For displaying text
-        import pyglet
-        self.textLabel = pyglet.text.Label(
-            font_name="Arial",
-            font_size=14,
-            x=5,
-            y=WINDOW_HEIGHT - 19
-        )
+
+        self.textLabel = pyglet.text.Label(font_name="Arial", font_size=14, x=5, y=WINDOW_HEIGHT - 19)
 
         # Connect to the Gym bridge ROS node
         addr_str = "tcp://%s:%s" % (serverAddr, serverPort)
@@ -114,12 +97,7 @@ class DuckiebotEnv(gym.Env):
         #    self.img = self.img[:, d:(w-d), :]
 
         # Resize the image
-        import cv2
-        self.img = cv2.resize(
-            self.img,
-            (CAMERA_WIDTH, CAMERA_HEIGHT),
-            interpolation=cv2.INTER_AREA
-        )
+        self.img = cv2.resize(self.img, (CAMERA_WIDTH, CAMERA_HEIGHT), interpolation=cv2.INTER_AREA)
 
         # print(self.img.shape)
 
@@ -133,9 +111,7 @@ class DuckiebotEnv(gym.Env):
         # Step count since episode start
         self.step_count = 0
 
-        self.socket.send_json({
-            "command": "reset"
-        })
+        self.socket.send_json({"command": "reset"})
 
         # Receive a camera image from the server
         self._recvFrame()
@@ -155,33 +131,25 @@ class DuckiebotEnv(gym.Env):
         done = False
 
         # Send the action to the server
-        self.socket.send_json({
-            "command": "action",
-            "values": [float(action[0]), float(action[1])]
-        })
+        self.socket.send_json({"command": "action", "values": [float(action[0]), float(action[1])]})
 
         # Receive a camera image from the server
         self._recvFrame()
 
         return self.img, reward, done, {}
 
-    def render(self, mode='human', close=False):
+    def render(self, mode="human", close=False):
         if close:
             if self.window:
                 self.window.close()
             return
 
-        if mode == 'rgb_array':
+        if mode == "rgb_array":
             return self.img
 
-        import pyglet
-        from pyglet import gl
         if self.window is None:
             context = pyglet.gl.get_current_context()
-            self.window = pyglet.window.Window(
-                width=WINDOW_WIDTH,
-                height=WINDOW_HEIGHT
-            )
+            self.window = pyglet.window.Window(width=WINDOW_WIDTH, height=WINDOW_HEIGHT)
 
         self.window.switch_to()
         self.window.dispatch_events()
@@ -201,14 +169,8 @@ class DuckiebotEnv(gym.Env):
         # Draw the image to the rendering window
         width = self.img.shape[1]
         height = self.img.shape[0]
-        imgData = pyglet.image.ImageData(
-            width,
-            height,
-            'RGB',
-            self.img.tobytes(),
-            pitch=width * 3,
-        )
+        imgData = pyglet.image.ImageData(width, height, "RGB", self.img.tobytes(), pitch=width * 3,)
         imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
-        if mode == 'human':
+        if mode == "human":
             self.window.flip()

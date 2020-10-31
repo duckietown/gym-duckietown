@@ -8,11 +8,10 @@ import numpy as np
 # Duckietown Specific
 from reinforcement.pytorch.ddpg import DDPG
 from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, \
-    DtRewardWrapper, ActionWrapper, ResizeWrapper
+from utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 
-def _enjoy():          
+def _enjoy():
     # Launch the env with our helper function
     env = launch_env()
     print("Initialized environment")
@@ -20,7 +19,7 @@ def _enjoy():
     # Wrappers
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
-    env = ImgWrapper(env) # to make the images from 160x120x3 into 3x160x120
+    env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
@@ -31,7 +30,7 @@ def _enjoy():
 
     # Initialize policy
     policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    policy.load(filename='ddpg', directory='reinforcement/pytorch/models/')
+    policy.load(filename="ddpg", directory="reinforcement/pytorch/models/")
 
     obs = env.reset()
     done = False
@@ -43,7 +42,8 @@ def _enjoy():
             obs, reward, done, _ = env.step(action)
             env.render()
         done = False
-        obs = env.reset()        
+        obs = env.reset()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     _enjoy()
