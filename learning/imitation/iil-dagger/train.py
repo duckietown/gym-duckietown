@@ -25,7 +25,7 @@ def teacher(env, max_velocity):
 def process_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--episode", "-i", default=10, type=int)
-    parser.add_argument("--horizon", "-r", default=64, type=int)
+    parser.add_argument("--horizon", "-r", default=128, type=int)
     parser.add_argument("--learning-rate", "-l", default=2, type=int)
     parser.add_argument("--decay", "-d", default=2, type=int)
     parser.add_argument("--save-path", "-s", default="iil_baseline", type=str)
