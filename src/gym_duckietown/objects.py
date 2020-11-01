@@ -325,7 +325,7 @@ class DuckiebotObj(WorldObj):
 
 
 class DuckieObj(WorldObj):
-    def __init__(self, obj, domain_rand, safety_radius_mult, walk_distance):
+    def __init__(self, obj, domain_rand: bool, safety_radius_mult: float, walk_distance: float):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.walk_distance = walk_distance + 0.25

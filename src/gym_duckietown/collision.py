@@ -58,12 +58,12 @@ def is_between_ordered(val, lowerbound, upperbound):
     """
     Helper function to check projection intervals (SAT)
     """
-    return lowerbound <= val and val <= upperbound
+    return lowerbound <= val <= upperbound
 
 
 def generate_corners(
-    pos: np.array, min_coords: np.array, max_coords: np.array, theta: float, scale: float
-) -> np.array:
+    pos: np.ndarray, min_coords: np.ndarray, max_coords: np.ndarray, theta: float, scale: float
+) -> np.ndarray:
     """
     Generates corners given obj pos, extents, scale, and rotation
     """
@@ -79,7 +79,7 @@ def generate_corners(
     )
 
 
-def tile_corners(pos: np.array, width: float):
+def tile_corners(pos: np.ndarray, width: float):
     """
     Generates the absolute corner coord for a tile, given grid pos and tile width
     """

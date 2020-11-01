@@ -1,6 +1,9 @@
-ARG AIDO_REGISTRY
+#ARG AIDO_REGISTRY
 
-FROM ${AIDO_REGISTRY}/pytorch/pytorch
+# 1.7.0-cuda11.0-cudnn8-runtime
+# docker pull pytorch/pytorch:1.7.0-cuda11.0-cudnn8-runtime
+
+FROM pytorch/pytorch@sha256:9cffbe6c391a0dbfa2a305be24b9707f87595e832b444c2bde52f0ea183192f1
 
 
 # we need git for certain dependencies
