@@ -63,8 +63,8 @@ class WorldObj:
         self.static = obj["static"]
         self.safety_radius = safety_radius_mult * calculate_safety_radius(self.mesh, self.scale)
 
-    def render_mesh(self):
-        self.mesh.render()
+    def render_mesh(self, segment: bool):
+        self.mesh.render(segment=segment)
         if self.kind in ["duckiebot", "duckiebot-player"]:
 
             s_main = 0.01  # 1 cm sphere
@@ -108,7 +108,7 @@ class WorldObj:
 
                 gl.glPopMatrix()
 
-    def render(self, draw_bbox, segment=False):
+    def render(self, draw_bbox: bool, segment: bool = False):
         """
         Renders the object to screen
         """
@@ -132,7 +132,7 @@ class WorldObj:
         gl.glRotatef(self.y_rot, 0, 1, 0)
         gl.glRotatef(self.z_rot, 0, 0, 1)  # Niki-added
         gl.glColor3f(*self.color)
-        self.mesh.render(segment)
+        self.render_mesh(segment)
         gl.glPopMatrix()
 
     # Below are the functions that need to
@@ -204,7 +204,7 @@ class DuckiebotObj(WorldObj):
 
         self.max_iterations = 1000
         self.leds_color = {
-            "center": (0.0, 0.0, 0.0),
+            "center": (0.0, 0.0, 0.2),
             "front_left": (0.5, 0.5, 0.5),
             "front_right": (0.5, 0.5, 0.5),
             "back_left": (0.5, 0.0, 0.0),
@@ -328,7 +328,7 @@ class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand: bool, safety_radius_mult: float, walk_distance: float):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
-        self.walk_distance = walk_distance + 0.25
+        self.walk_distance = walk_distance
 
         # Dynamic duckie stuff
 
@@ -369,7 +369,7 @@ class DuckieObj(WorldObj):
 
         return min(0, score)
 
-    def step(self, delta_time):
+    def step(self, delta_time: float):
         """
         Use a motion model to move the object in the world
         """

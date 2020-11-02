@@ -594,7 +594,7 @@ class Simulator(gym.Env):
         c0 = q, v0
         self.state = p.initialize(c0=c0, t0=0)
 
-        logger.info("Starting at %s %s" % (self.cur_pos, self.cur_angle))
+        logger.info(f"Starting at {self.cur_pos} {self.cur_angle}")
 
         # Generate the first camera image
         obs = self.render_obs(segment=segment)
@@ -602,7 +602,7 @@ class Simulator(gym.Env):
         # Return first observation
         return obs
 
-    def _load_map(self, map_name):
+    def _load_map(self, map_name: str):
         """
         Load the map layout from a YAML file
         """
@@ -613,7 +613,7 @@ class Simulator(gym.Env):
         # Get the full map file path
         self.map_file_path = get_file_path("maps", map_name, "yaml")
 
-        logger.debug('loading map file "%s"' % self.map_file_path)
+        logger.debug(f'loading map file "{self.map_file_path}"')
 
         with open(self.map_file_path, "r") as f:
             self.map_data = yaml.load(f, Loader=yaml.Loader)
@@ -1530,7 +1530,7 @@ class Simulator(gym.Env):
                         bezier_draw(pt, n=20)
 
         # For each object
-        for idx, obj in enumerate(self.objects):
+        for obj in self.objects:
             obj.render(self.draw_bbox, segment)
 
         # Draw the agent's own bounding box
