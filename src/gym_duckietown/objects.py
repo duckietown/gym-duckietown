@@ -66,7 +66,8 @@ class WorldObj:
     def render_mesh(self, segment: bool):
         self.mesh.render(segment=segment)
         if self.kind in ["duckiebot", "duckiebot-player"]:
-
+            # attrs =
+            # gl.glPushAttrib(gl.GL_ALL_ATTRIB_BITS)
             s_main = 0.01  # 1 cm sphere
             LIGHT_MULT_MAIN = 10
             s_halo = 0.03
@@ -105,6 +106,7 @@ class WorldObj:
                 gl.glColor4f(*color2)
 
                 gluSphere(sphere, s_halo, 10, 10)
+                gl.glDisable(gl.GL_BLEND)
 
                 gl.glPopMatrix()
 

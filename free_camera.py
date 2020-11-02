@@ -25,7 +25,7 @@ parser.add_argument("--frame-skip", default=1, type=int, help="number of frames 
 parser.add_argument("--distortion", default=False, action="store_true")
 parser.add_argument("--style", default="photos", choices=["photos", "synthetic"])
 args = parser.parse_args()
-
+print(args)
 if args.env_name is None:
     env = DuckietownEnv(
         map_name=args.map_name,
