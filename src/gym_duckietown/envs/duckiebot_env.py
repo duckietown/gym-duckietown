@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 # coding=utf-8
-import pyglet
-from pyglet import gl
-
-import cv2
-import gym
-from gym import spaces
-from gym.utils import seeding
 import math
-import numpy
-import zmq
-import numpy as np
-import pyglet
 
 # For Python 3 compatibility
 import sys
+
+import cv2
+import gym
+import numpy
+import numpy as np
+import pyglet
+import zmq
+from gym import spaces
+from gym.utils import seeding
+from pyglet import gl
 
 if sys.version_info > (3,):
     buffer = memoryview

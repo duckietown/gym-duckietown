@@ -207,6 +207,7 @@ class Simulator(gym.Env):
         num_tris_distractors: int = 12,
         color_ground: Sequence[int] = (0.15, 0.15, 0.15),
         style: str = "photos",
+        enable_leds: bool = False,
     ):
         """
 
@@ -229,8 +230,9 @@ class Simulator(gym.Env):
         :param camera_rand: If true randomizes over camera miscalibration
         :param randomize_maps_on_reset: If true, randomizes the map on reset (Slows down training)
         :param style: String that represent which tiles will be loaded. One of ["photos", "synthetic"]
+        :param enable_leds: Enables LEDs drawing.
         """
-
+        self.enable_leds = enable_leds
         information = get_graphics_information()
         logger.info(f"Information about the graphics card: \n {information}")
 
@@ -1531,7 +1533,7 @@ class Simulator(gym.Env):
 
         # For each object
         for obj in self.objects:
-            obj.render(self.draw_bbox, segment)
+            obj.render(draw_bbox=self.draw_bbox, segment=segment, enable_leds=self.enable_leds)
 
         # Draw the agent's own bounding box
         if self.draw_bbox:

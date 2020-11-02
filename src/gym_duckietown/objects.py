@@ -63,9 +63,9 @@ class WorldObj:
         self.static = obj["static"]
         self.safety_radius = safety_radius_mult * calculate_safety_radius(self.mesh, self.scale)
 
-    def render_mesh(self, segment: bool):
+    def render_mesh(self, segment: bool, enable_leds: bool):
         self.mesh.render(segment=segment)
-        if self.kind in ["duckiebot", "duckiebot-player"]:
+        if enable_leds and self.kind in ["duckiebot", "duckiebot-player"]:
             # attrs =
             # gl.glPushAttrib(gl.GL_ALL_ATTRIB_BITS)
             s_main = 0.01  # 1 cm sphere
@@ -110,7 +110,7 @@ class WorldObj:
 
                 gl.glPopMatrix()
 
-    def render(self, draw_bbox: bool, segment: bool = False):
+    def render(self, draw_bbox: bool, enable_leds: bool, segment: bool = False):
         """
         Renders the object to screen
         """
@@ -134,7 +134,7 @@ class WorldObj:
         gl.glRotatef(self.y_rot, 0, 1, 0)
         gl.glRotatef(self.z_rot, 0, 0, 1)  # Niki-added
         gl.glColor3f(*self.color)
-        self.render_mesh(segment)
+        self.render_mesh(segment, enable_leds=enable_leds)
         gl.glPopMatrix()
 
     # Below are the functions that need to
