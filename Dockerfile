@@ -2,8 +2,8 @@
 
 # 1.7.0-cuda11.0-cudnn8-runtime
 # docker pull pytorch/pytorch:1.7.0-cuda11.0-cudnn8-runtime
-
-FROM pytorch/pytorch@sha256:9cffbe6c391a0dbfa2a305be24b9707f87595e832b444c2bde52f0ea183192f1
+# @sha256:9cffbe6c391a0dbfa2a305be24b9707f87595e832b444c2bde52f0ea183192f1
+FROM pytorch/pytorch
 
 
 # we need git for certain dependencies
@@ -17,13 +17,22 @@ RUN apt-get update -y &&\
 
 RUN conda install numpy pyyaml scipy ipython mkl mkl-include && conda clean -ya
 
+
 WORKDIR /gym-duckietown
 
 ARG PIP_INDEX_URL
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 
-COPY requirements* ./
-RUN pip install -r requirements.resolved
+RUN pip install -U "pip>=20.2"
+# first install the ones that do not change
+COPY requirements.pin.txt .
+RUN pip install --use-feature=2020-resolver -r requirements.pin.txt
+
+COPY requirements.* ./
+RUN cat requirements.* > .requirements.txt
+RUN cat .requirements.txt
+
+RUN pip install --use-feature=2020-resolver -r .requirements.txt
 RUN pipdeptree
 
 COPY . .

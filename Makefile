@@ -1,56 +1,12 @@
-AIDO_REGISTRY ?= docker.io
-PIP_INDEX_URL ?= https://pypi.org/simple
-
-branch=$(shell git rev-parse --abbrev-ref HEAD)
-branch=daffy
-
-img3=$(AIDO_REGISTRY)/duckietown/gym-duckietown-server-python3:$(branch)
-
 all:
-	@echo ## Containerized Python 2 support
-	@echo
-	@echo To build all containers:
-	@echo
-	@echo    make build-docker-python3
-	@echo
-	@echo To push to:
-	@echo
-	@echo  $(img3)
-	@echo
-	@echo To develop in the container (deps in container, code in this dir), use:
-	@echo
-	@echo    make shell-docker-python2-ros
-	@echo
-	@echo Inside, remember to start  launch-xvfb
 
+build:
+	dts build_utils aido-container-build
 
-build: update-reqs
-	$(MAKE) build-docker-python3
 
 push: build
-	$(MAKE) push-docker-python3
+	dts build_utils aido-container-push
 
-update-reqs:
-	pur --index-url $(PIP_INDEX_URL) -r requirements.txt -f -m '*' -o requirements.resolved
-	dt-update-reqs requirements.resolved
-
-build_options=\
-	--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL)\
-	--build-arg AIDO_REGISTRY=$(AIDO_REGISTRY)\
-	$(shell dt-labels)
-
-
-
-dockerfile=docker/server-python3/Dockerfile
-build-docker-python3: update-reqs
-	docker build --pull -t $(img3) -f $(dockerfile) $(build_options) .
-
-build-docker-python3-no-cache: update-reqs
-	docker build --pull -t $(img3) -f $(dockerfile)  $(build_options) --no-cache .
-
-
-push-docker-python3:
-	docker push $(img3)
 
 
 
