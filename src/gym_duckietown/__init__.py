@@ -7,7 +7,7 @@ logging.basicConfig()
 logger = logging.getLogger("gym-duckietown")
 logger.setLevel(logging.INFO)
 
-logger.info("gym-duckietown %s\n" % __version__)
+logger.info(f"gym-duckietown {__version__}\n")
 
 import os
 
@@ -19,7 +19,7 @@ from .utils import get_subdir_path
 def reg_map_env(map_file):
     _, map_name = os.path.split(map_file)
     map_name, _ = map_name.split(".")
-    gym_id = "Duckietown-%s-v0" % map_name
+    gym_id = f"Duckietown-{map_name}-v0"
 
     # logger.info('Registering gym environment id: %s' % gym_id)
 
