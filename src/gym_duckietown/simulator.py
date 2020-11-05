@@ -44,7 +44,7 @@ from .graphics import (
 from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj
 from .objmesh import ObjMesh
 from .randomization import Randomizer
-from .utils import get_file_path
+from .utils import get_file_path, get_subdir_path
 
 DIM = 0.5
 TileDict = NewType("TileDict", dict)
@@ -348,7 +348,7 @@ class Simulator(gym.Env):
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
         if self.randomize_maps_on_reset:
-            self.map_names = os.listdir("maps")
+            self.map_names = os.listdir(get_subdir_path("maps"))
             self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
 
         # Initialize the state
