@@ -113,6 +113,8 @@ class WorldObj:
                 gl.glDisable(gl.GL_BLEND)
 
                 gl.glPopMatrix()
+                # we should push/pop this
+                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
     def render(self, draw_bbox: bool, enable_leds: bool, segment: bool = False):
         """

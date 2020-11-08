@@ -118,7 +118,7 @@ class DuckietownNav(DuckietownEnv):
         # TODO: add term to reward based on distance to goal?
 
         cur_tile_coords = self.get_grid_coords(self.cur_pos)
-        cur_tile = self._get_tile(self.cur_tile_coords)
+        cur_tile = self._get_tile(cur_tile_coords)
 
         if cur_tile is self.goal_tile:
             done = True
