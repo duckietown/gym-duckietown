@@ -70,7 +70,7 @@ class WorldObj:
             # gl.glPushAttrib(gl.GL_ALL_ATTRIB_BITS)
             s_main = 0.01  # 1 cm sphere
             LIGHT_MULT_MAIN = 10
-            s_halo = 0.03
+            s_halo = 0.04
             height = 0.04
             positions = {
                 "front_left": [0.1, -0.05, height],
@@ -105,7 +105,10 @@ class WorldObj:
                 color2 = color[0], color[1], color[2], 0.2
                 gl.glColor4f(*color2)
 
-                gluSphere(sphere, s_halo, 10, 10)
+                intensity = float(np.mean(color))
+                s_halo_effective = intensity * s_halo
+
+                gluSphere(sphere, s_halo_effective, 10, 10)
                 gl.glDisable(gl.GL_BLEND)
 
                 gl.glPopMatrix()
