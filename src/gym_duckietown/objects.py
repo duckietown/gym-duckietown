@@ -69,7 +69,7 @@ class WorldObj:
             # attrs =
             # gl.glPushAttrib(gl.GL_ALL_ATTRIB_BITS)
             s_main = 0.01  # 1 cm sphere
-            LIGHT_MULT_MAIN = 10
+            # LIGHT_MULT_MAIN = 10
             s_halo = 0.04
             height = 0.04
             positions = {
@@ -91,23 +91,23 @@ class WorldObj:
                 }
             for light_name, (px, py, pz) in positions.items():
                 color = colors[light_name]
+                color_intensity = float(np.mean(color))
                 gl.glPushMatrix()
 
                 gl.glTranslatef(px, pz, py)
-                color = np.array(color) * LIGHT_MULT_MAIN
-                gl.glColor3f(*color)
-
-                sphere = gluNewQuadric()
-                gluSphere(sphere, s_main, 10, 10)
 
                 gl.glEnable(gl.GL_BLEND)
                 # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
                 gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
-                color2 = color[0], color[1], color[2], 0.2
-                gl.glColor4f(*color2)
 
-                intensity = float(np.mean(color))
-                s_halo_effective = intensity * s_halo
+                sphere = gluNewQuadric()
+
+                gl.glColor4f(color[0], color[1], color[2], 1.0)
+                gluSphere(sphere, s_main, 10, 10)
+
+                gl.glColor4f(color[0], color[1], color[2], 0.2)
+
+                s_halo_effective = color_intensity * s_halo
 
                 gluSphere(sphere, s_halo_effective, 10, 10)
                 gl.glDisable(gl.GL_BLEND)
