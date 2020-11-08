@@ -179,7 +179,7 @@ while True:
         action = list(policy.predict(np.array(obs)))
         action[1] *= 7
 
-        obs, rew, done, misc = environment.step(action)
+        obs, rew, done, misc = environment.step(np.array(action))
         rewards.append(rew)
         environment.render(segment=int(nb_of_steps / 50) % 2 == 0)
 
