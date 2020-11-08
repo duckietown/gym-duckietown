@@ -101,7 +101,8 @@ class WorldObj:
                 gluSphere(sphere, s_main, 10, 10)
 
                 gl.glEnable(gl.GL_BLEND)
-                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+                # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
                 color2 = color[0], color[1], color[2], 0.2
                 gl.glColor4f(*color2)
 
