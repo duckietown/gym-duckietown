@@ -1,13 +1,11 @@
 # coding=utf-8
 __version__ = "6.0.25"
 
-import logging
+from zuper_commons.logs import ZLogger
 
-logging.basicConfig()
-logger = logging.getLogger("gym-duckietown")
-logger.setLevel(logging.INFO)
+logger = ZLogger("gym-duckietown")
 
-logger.info(f"gym-duckietown {__version__}\n")
+logger.debug(f"gym-duckietown {__version__}\n")
 
 import os
 

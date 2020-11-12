@@ -1,25 +1,24 @@
-# coding=utf-8
-from __future__ import division
-
 import math
 import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
 from enum import Enum
-from typing import cast, List, NewType, Optional, Sequence, Tuple
+from typing import cast, List, NewType, Optional, Sequence, Tuple, TypedDict
 
 import geometry
 import gym
 import numpy as np
 import pyglet
 import yaml
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
 from pyglet import gl, image, window
 
+from duckietown_world import MapFormat1
+from duckietown_world.world_duckietown.old_map_format import MapFormat1Constants as MF1C, MapFormat1Object
+from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from . import logger
 from .check_hw import get_graphics_information
 from .collision import (
@@ -32,6 +31,7 @@ from .collision import (
     tile_corners,
 )
 from .distortion import Distortion
+from .exceptions import InvalidMapException, NotInLane
 from .graphics import (
     bezier_closest,
     bezier_draw,
@@ -47,7 +47,18 @@ from .randomization import Randomizer
 from .utils import get_file_path, get_subdir_path
 
 DIM = 0.5
-TileDict = NewType("TileDict", dict)
+
+TileKind = NewType("TileKind", str)
+
+
+class TileDict(TypedDict):
+    # {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable})
+    coords: Tuple[int, int]
+    kind: TileKind
+    angle: int
+    drivable: bool
+    texture: Texture
+    color: np.ndarray
 
 
 @dataclass
@@ -159,12 +170,6 @@ class LanePosition(LanePosition0):
         return dict(dist=self.dist, dot_dir=self.dot_dir, angle_deg=self.angle_deg, angle_rad=self.angle_rad)
 
 
-class NotInLane(Exception):
-    """ Raised when the Duckiebot is not in a lane. """
-
-    pass
-
-
 class Simulator(gym.Env):
     """
     Simple road simulator to test RL training.
@@ -234,7 +239,7 @@ class Simulator(gym.Env):
         """
         self.enable_leds = enable_leds
         information = get_graphics_information()
-        logger.info(f"Information about the graphics card: \n {information}")
+        logger.info(f"Information about the graphics card:", information=information)
 
         # first initialize the RNG
         self.seed_value = seed
@@ -349,7 +354,9 @@ class Simulator(gym.Env):
 
         if self.randomize_maps_on_reset:
             self.map_names = os.listdir(get_subdir_path("maps"))
-            self.map_names = [_map for _map in self.map_names if not _map.startswith(("calibration","regress"))]
+            self.map_names = [
+                _map for _map in self.map_names if not _map.startswith(("calibration", "regress"))
+            ]
             self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
 
         # Initialize the state
@@ -624,77 +631,84 @@ class Simulator(gym.Env):
 
         self._interpret_map(self.map_data)
 
-    def _interpret_map(self, map_data: dict):
-        if not "tile_size" in map_data:
-            msg = "Must now include explicit tile_size in the map data."
-            raise ValueError(msg)
-        self.road_tile_size = map_data["tile_size"]
-        self._init_vlists()
+    def _interpret_map(self, map_data: MapFormat1):
+        try:
+            if not "tile_size" in map_data:
+                msg = "Must now include explicit tile_size in the map data."
+                raise InvalidMapException(msg)
+            self.road_tile_size = map_data["tile_size"]
+            self._init_vlists()
 
-        tiles = map_data["tiles"]
-        assert len(tiles) > 0
-        assert len(tiles[0]) > 0
+            tiles = map_data["tiles"]
+            assert len(tiles) > 0
+            assert len(tiles[0]) > 0
 
-        # Create the grid
-        self.grid_height = len(tiles)
-        self.grid_width = len(tiles[0])
-        # noinspection PyTypeChecker
-        self.grid = [None] * self.grid_width * self.grid_height
+            # Create the grid
+            self.grid_height = len(tiles)
+            self.grid_width = len(tiles[0])
+            # noinspection PyTypeChecker
+            self.grid = [None] * self.grid_width * self.grid_height
 
-        # We keep a separate list of drivable tiles
-        self.drivable_tiles = []
+            # We keep a separate list of drivable tiles
+            self.drivable_tiles = []
 
-        # For each row in the grid
-        for j, row in enumerate(tiles):
-            msg = "each row of tiles must have the same length"
-            if len(row) != self.grid_width:
-                raise Exception(msg)
+            # For each row in the grid
+            for j, row in enumerate(tiles):
 
-            # For each tile in this row
-            for i, tile in enumerate(row):
-                tile = tile.strip()
+                if len(row) != self.grid_width:
+                    msg = "each row of tiles must have the same length"
+                    raise InvalidMapException(msg, row=row)
 
-                if tile == "empty":
-                    continue
+                # For each tile in this row
+                for i, tile in enumerate(row):
+                    tile = tile.strip()
 
-                if "/" in tile:
-                    kind, orient = tile.split("/")
-                    kind = kind.strip(" ")
-                    orient = orient.strip(" ")
-                    angle = ["S", "E", "N", "W"].index(orient)
-                    drivable = True
-                elif "4" in tile:
-                    kind = "4way"
-                    angle = 2
-                    drivable = True
-                else:
-                    kind = tile
-                    angle = 0
-                    drivable = False
+                    if tile == "empty":
+                        continue
 
-                tile = cast(TileDict, {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable})
+                    if "/" in tile:
+                        kind, orient = tile.split("/")
+                        kind = kind.strip(" ")
+                        orient = orient.strip(" ")
+                        angle = ["S", "E", "N", "W"].index(orient)
+                        drivable = True
+                    elif "4" in tile:
+                        kind = "4way"
+                        angle = 2
+                        drivable = True
+                    else:
+                        kind = tile
+                        angle = 0
+                        drivable = False
 
-                self._set_tile(i, j, tile)
+                    tile = cast(
+                        TileDict, {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable}
+                    )
 
-                if drivable:
-                    tile["curves"] = self._get_curve(i, j)
-                    self.drivable_tiles.append(tile)
+                    self._set_tile(i, j, tile)
 
-        self.mesh = ObjMesh.get("duckiebot")
-        self._load_objects(map_data)
+                    if drivable:
+                        tile["curves"] = self._get_curve(i, j)
+                        self.drivable_tiles.append(tile)
 
-        # Get the starting tile from the map, if specified
-        self.start_tile = None
-        if "start_tile" in map_data:
-            coords = map_data["start_tile"]
-            self.start_tile = self._get_tile(*coords)
+            self.mesh = ObjMesh.get("duckiebot")
+            self._load_objects(map_data)
 
-        # Get the starting pose from the map, if specified
-        self.start_pose = None
-        if "start_pose" in map_data:
-            self.start_pose = map_data["start_pose"]
+            # Get the starting tile from the map, if specified
+            self.start_tile = None
+            if "start_tile" in map_data:
+                coords = map_data["start_tile"]
+                self.start_tile = self._get_tile(*coords)
 
-    def _load_objects(self, map_data):
+            # Get the starting pose from the map, if specified
+            self.start_pose = None
+            if "start_pose" in map_data:
+                self.start_pose = map_data["start_pose"]
+        except Exception as e:
+            msg = "Cannot load map data"
+            raise InvalidMapException(msg, map_data=map_data)
+
+    def _load_objects(self, map_data: MapFormat1):
         # Create the objects array
         self.objects = []
 
@@ -716,79 +730,20 @@ class Simulator(gym.Env):
         self.collidable_safety_radii = []
 
         # For each object
-        for obj_idx, desc in enumerate(map_data.get("objects", [])):
-            kind = desc["kind"]
-
-            pos = desc["pos"]
-            x, z = pos[0:2]
-            y = pos[2] if len(pos) == 3 else 0.0
-
-            rotate = desc["rotate"]
-            optional = desc.get("optional", False)
-
-            pos = self.road_tile_size * np.array((x, y, z))
-
-            # Load the mesh
-            mesh = ObjMesh.get(kind)
-
-            if "height" in desc:
-                scale = desc["height"] / mesh.max_coords[1]
+        try:
+            objects = map_data["objects"]
+        except KeyError:
+            pass
+        else:
+            if isinstance(objects, dict):
+                logger.warning("Not implemented dictionary")
             else:
-                scale = desc["scale"]
-            assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
-
-            static = desc.get("static", True)
-            # static = desc.get('static', False)
-            # print('static is now', static)
-
-            obj_desc = {
-                "kind": kind,
-                "mesh": mesh,
-                "pos": pos,
-                "scale": scale,
-                "y_rot": rotate,
-                "optional": optional,
-                "static": static,
-            }
-
-            # obj = None
-            if static:
-                if kind == "trafficlight":
-                    obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
-                else:
-                    obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
-            else:
-                if kind == "duckiebot":
-                    obj = DuckiebotObj(
-                        obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH
-                    )
-                elif kind == "duckie":
-                    obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
-                elif kind == "checkerboard":
-                    obj = CheckerboardObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
-                else:
-                    msg = "I do not know what object this is: %s" % kind
-                    raise Exception(msg)
-
-            self.objects.append(obj)
-
-            # Compute collision detection information
-
-            # angle = rotate * (math.pi / 180)
-
-            # Find drivable tiles object could intersect with
-            possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
-
-            # If the object intersects with a drivable tile
-            if (
-                static
-                and kind != "trafficlight"
-                and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
-            ):
-                self.collidable_centers.append(pos)
-                self.collidable_corners.append(obj.obj_corners.T)
-                self.collidable_norms.append(obj.obj_norm)
-                self.collidable_safety_radii.append(obj.safety_radius)
+                for desc in objects:
+                    try:
+                        self.interpret_object(desc)
+                    except Exception as e:
+                        msg = "Cannot interpreted object"
+                        raise InvalidMapException(msg, object_desc=desc) from e
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -803,6 +758,79 @@ class Simulator(gym.Env):
 
         self.collidable_centers = np.array(self.collidable_centers)
         self.collidable_safety_radii = np.array(self.collidable_safety_radii)
+
+    def interpret_object(self, desc: MapFormat1Object):
+        kind = desc["kind"]
+
+        pos = desc["pos"]
+        x, z = pos[0:2]
+        y = pos[2] if len(pos) == 3 else 0.0
+
+        rotate = desc["rotate"]
+        optional = desc.get("optional", False)
+
+        pos = self.road_tile_size * np.array((x, y, z))
+
+        # Load the mesh
+        mesh = ObjMesh.get(kind)
+
+        if "height" in desc:
+            scale = desc["height"] / mesh.max_coords[1]
+        else:
+            scale = desc["scale"]
+        assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
+
+        static = desc.get("static", True)
+        # static = desc.get('static', False)
+        # print('static is now', static)
+
+        obj_desc = {
+            "kind": kind,
+            "mesh": mesh,
+            "pos": pos,
+            "scale": scale,
+            "y_rot": rotate,
+            "optional": optional,
+            "static": static,
+        }
+
+        if static:
+            if kind == MF1C.KIND_TRAFFICLIGHT:
+                obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+            else:
+                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+        else:
+            if kind == MF1C.KIND_DUCKIEBOT:
+                obj = DuckiebotObj(
+                    obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH
+                )
+            elif kind == MF1C.KIND_DUCKIE:
+                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
+            elif kind == MF1C.KIND_CHECKERBOARD:
+                obj = CheckerboardObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
+            else:
+                msg = "Object kind unknown."
+                raise InvalidMapException(msg, kind=kind)
+
+        self.objects.append(obj)
+
+        # Compute collision detection information
+
+        # angle = rotate * (math.pi / 180)
+
+        # Find drivable tiles object could intersect with
+        possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
+
+        # If the object intersects with a drivable tile
+        if (
+            static
+            and kind != MF1C.KIND_TRAFFICLIGHT
+            and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
+        ):
+            self.collidable_centers.append(pos)
+            self.collidable_corners.append(obj.obj_corners.T)
+            self.collidable_norms.append(obj.obj_norm)
+            self.collidable_safety_radii.append(obj.safety_radius)
 
     def close(self):
         pass
@@ -986,7 +1014,8 @@ class Simulator(gym.Env):
                 * self.road_tile_size
             )
         else:
-            assert False, kind
+            msg = "Cannot get bezier for kind"
+            raise InvalidMapException(msg, kind=kind)
 
         # Rotate and align each curve with its place in global frame
         if kind.startswith("4way"):
@@ -1600,9 +1629,12 @@ class Simulator(gym.Env):
 
         return observation
 
-    def render(self, mode="human", close=False, segment=False):
+    def render(self, mode: str = "human", close: bool = False, segment: bool = False):
         """
         Render the environment for human viewing
+
+        mode: "human", "top_down", "free_cam", "rgb_array"
+
         """
         assert mode in ["human", "top_down", "free_cam", "rgb_array"]
 
@@ -1674,6 +1706,8 @@ class Simulator(gym.Env):
 
         # Force execution of queued commands
         gl.glFlush()
+
+        return img
 
 
 def get_dir_vec(cur_angle):
