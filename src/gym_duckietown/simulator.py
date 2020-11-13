@@ -671,15 +671,26 @@ class Simulator(gym.Env):
                         kind = kind.strip(" ")
                         orient = orient.strip(" ")
                         angle = ["S", "E", "N", "W"].index(orient)
-                        drivable = True
+
                     elif "4" in tile:
                         kind = "4way"
                         angle = 2
-                        drivable = True
+
                     else:
                         kind = tile
                         angle = 0
-                        drivable = False
+
+                    DRIVABLE_TILES = [
+                        "straight",
+                        "curve_left",
+                        "curve_right",
+                        "3way_left",
+                        "3way_right",
+                        "4way",
+                    ]
+                    drivable = kind in DRIVABLE_TILES
+
+                    # logger.info(f'kind {kind} drivable {drivable} row = {row}')
 
                     tile = cast(
                         TileDict, {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable}
@@ -1469,15 +1480,21 @@ class Simulator(gym.Env):
             gl.glTranslatef(0, 0, CAMERA_FORWARD_DIST)
 
         if top_down:
+            a = (self.grid_width * self.road_tile_size) / 2
+            b = (self.grid_height * self.road_tile_size) / 2
+            fov_y_deg = self.cam_fov_y
+            fov_y_rad = np.deg2rad(fov_y_deg)
+            H_to_fit = max(a, b) + 0.1  # borders
+            # H_FROM_FLOOR * tan(fov_y_rad/2) = H_to_fit
+
+            H_FROM_FLOOR = H_to_fit / (np.tan(fov_y_rad / 2))
             gl.gluLookAt(
-                # Eye position
-                (self.grid_width * self.road_tile_size) / 2,
-                5,
-                (self.grid_height * self.road_tile_size) / 2,
-                # Target
-                (self.grid_width * self.road_tile_size) / 2,
+                a,
+                H_FROM_FLOOR,
+                b,
+                a,
                 0,
-                (self.grid_height * self.road_tile_size) / 2,
+                b,
                 # Up vector
                 0,
                 0,
