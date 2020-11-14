@@ -24,7 +24,7 @@ RUN pip install --use-feature=2020-resolver -r .requirements.txt
 
 COPY . .
 
-RUN pip install -v  --no-deps -e .
+RUN pip install -v  --no-deps .
 
 #   pip install -v -e .
 
