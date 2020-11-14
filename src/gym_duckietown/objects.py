@@ -97,8 +97,8 @@ class WorldObj:
                 gl.glTranslatef(px, pz, py)
 
                 gl.glEnable(gl.GL_BLEND)
-                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-                # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
+                # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
 
                 sphere = gluNewQuadric()
 
@@ -111,8 +111,8 @@ class WorldObj:
 
                 gluSphere(sphere, s_halo_effective, 10, 10)
 
-                # gl.glColor4f(1.0, 1.0, 1.0, 1.0)
-                # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+                gl.glColor4f(1.0, 1.0, 1.0, 1.0)
+                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
                 gl.glDisable(gl.GL_BLEND)
 
                 gl.glPopMatrix()
