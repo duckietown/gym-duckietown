@@ -1,5 +1,6 @@
 # coding=utf-8
 import itertools
+import time
 
 import carnivalmirror as cm
 import cv2
@@ -81,9 +82,11 @@ class Distortion:
 
         return calibration.get_K(self.H), calibration.get_D()
 
-    def distort(self, observation):
+    def distort(self, observation, interpolation=cv2.INTER_NEAREST):
         """
         Distort observation using parameters in constructor
+
+        cv2.INTER_NEAREST, INTER_LINEAR
         """
 
         if self.mapx is None:
@@ -103,6 +106,7 @@ class Distortion:
                 m1type=cv2.CV_32FC1,
             )
 
+            # print(self.mapx.dtype, self.mapy.dtype)
             # Invert the transformations for the distortion
             self.rmapx, self.rmapy = self._invert_map(self.mapx, self.mapy)
             # write_to_file(self.rmapx, 'rmapx.jpg')
@@ -111,7 +115,13 @@ class Distortion:
             # write_to_file(self.mapx, 'mapx.jpg')
             # write_to_file(self.mapy, 'mapy.jpg')
 
-        res = cv2.remap(observation, self.rmapx, self.rmapy, interpolation=cv2.INTER_NEAREST)
+        res = cv2.remap(
+            observation,
+            self.rmapx,
+            self.rmapy,
+            interpolation=interpolation,
+            # borderMode=cv2.BORDER_REPLICATE,
+        )
         return res
 
     def _undistort(self, observation: np.array) -> np.array:
@@ -138,19 +148,74 @@ class Distortion:
         rmapx.fill(np.nan)
         rmapy = np.empty_like(mapx)
         rmapy.fill(np.nan)
+        #
+        # closeness = np.zeros((H, W))
+        # closeness.fill(100)
 
-        for y, x in itertools.product(range(H), range(W)):
-            tx = mapx[y, x]
-            ty = mapy[y, x]
+        around_rmapx = np.zeros((H, W), "float32")
+        around_rmapy = np.zeros((H, W), "float32")
+        around = np.zeros((H, W), "float32")
 
-            tx = int(np.round(tx))
-            ty = int(np.round(ty))
+        # M = 1
+        t0 = time.time()
+        deltas = [
+            (-1, -1, 7),
+            (-1, 0, 10),
+            (-1, +1, 7),
+            (0, -1, 10),
+            (0, 0, 20),
+            (0, +1, 10),
+            (+1, -1, 7),
+            (+1, 0, 10),
+            (+1, +1, 7),
+        ]
 
-            if (0 <= tx < W) and (0 <= ty < H):
-                rmapx[ty, tx] = x
-                rmapy[ty, tx] = y
+        mapx_disc = np.clip(mapx.astype("int32"), 2, W - 2)
+        mapy_disc = np.clip(mapy.astype("int32"), 2, H - 2)
+        # Hs = [_ for _ in range(H) if _ % 2 == 0]
+        # Ws = [_ for _ in range(W) if (_ + 1) % 2 == 0]
+        #
+        xs = np.zeros((H, W), "int32")
+        ys = np.zeros((H, W), "int32")
+        for j in range(W):
+            xs[:, j] = j
+        for i in range(H):
+            ys[i, :] = i
 
+        for di, dj, w in deltas:
+            mapy_disc_d = mapy_disc + di
+            mapx_disc_d = mapx_disc + dj
+
+            around[mapy_disc_d, mapx_disc_d] += w
+            around_rmapx[mapy_disc_d, mapx_disc_d] += w * xs
+            around_rmapy[mapy_disc_d, mapx_disc_d] += w * ys
+            #
+            if False:
+                for y, x in itertools.product(range(H), range(W)):
+                    i = mapy_disc_d[y, x]
+                    j = mapx_disc_d[y, x]
+
+                    around_rmapx[i, j] += x * w
+                    around_rmapy[i, j] += y * w
+                    # around_rmapx[i, j] += xs[y, x] * w
+                    # around_rmapy[i, j] += ys[y, x] * w
+                    # around[i, j] += w
+
+        dt1 = time.time() - t0
+        t0 = time.time()
+
+        nonzero = around[i, j] > 0
+        rmapx[nonzero] = around_rmapx[nonzero] / around[nonzero]
+        rmapy[nonzero] = around_rmapy[nonzero] / around[nonzero]
+        for i, j in itertools.product(range(H), range(W)):
+            w = around[i, j]
+            if w > 0:
+                rmapx[i, j] = around_rmapx[i, j] / w
+                rmapy[i, j] = around_rmapy[i, j] / w
+        dt = time.time() - t0
+        # logger.info(f'rmap creation took {dt1:.3f} / {dt:.3f} seconds')
         self._fill_holes(rmapx, rmapy)
+
         return rmapx, rmapy
 
     def _fill_holes(self, rmapx, rmapy):
