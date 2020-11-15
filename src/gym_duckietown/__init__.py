@@ -5,7 +5,7 @@ from zuper_commons.logs import ZLogger
 
 logger = ZLogger("gym-duckietown")
 
-logger.debug(f"gym-duckietown version {__version__}\n")
+logger.debug(f"gym-duckietown version {__version__} path {__file__}\n")
 
 import os
 
