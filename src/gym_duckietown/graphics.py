@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import pyglet
 import pyglet.image
+from duckietown_world import get_texture_file
 from PIL import Image
 from pyglet import gl
 from pyglet.gl import GLubyte
@@ -28,17 +29,19 @@ class Texture:
 
     @classmethod
     def get(cls, tex_name, rng=None, segment=False):
-        paths = cls.tex_paths.get(tex_name, [])
 
-        # Get an inventory of the existing texture files
-        if len(paths) == 0:
-            for i in range(1, 10):
-                path = get_file_path("textures", "%s_%d" % (tex_name, i), "png")
-                if not os.path.exists(path):
-                    break
-                paths.append(path)
-
-        assert len(paths) > 0, 'failed to load textures for name "%s"' % tex_name
+        paths = get_texture_file(tex_name)
+        # paths = cls.tex_paths.get(tex_name, [])
+        #
+        # # Get an inventory of the existing texture files
+        # if len(paths) == 0:
+        #     for i in range(1, 10):
+        #         path = get_file_path("textures", "%s_%d" % (tex_name, i), "png")
+        #         if not os.path.exists(path):
+        #             break
+        #         paths.append(path)
+        #
+        # assert len(paths) > 0, 'failed to load textures for name "%s"' % tex_name
 
         if rng:
             path_idx = rng.randint(0, len(paths))
@@ -83,10 +86,10 @@ def should_segment_out(tex_path):
 # (for
 # example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of
 # things).
-def load_texture(tex_path, segment=False, segment_into_color=None):
+def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
     if segment_into_color is None:
         segment_into_color = [0, 0, 0]
-    logger.debug('loading texture "%s"' % os.path.basename(tex_path))
+    logger.debug(f"loading texture: {tex_path}")
     img = pyglet.image.load(tex_path)
 
     if segment:

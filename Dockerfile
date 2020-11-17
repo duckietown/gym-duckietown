@@ -4,7 +4,7 @@ FROM ${AIDO_REGISTRY}/duckietown/aido-base-python3:daffy-amd64
 
 
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends xvfb freeglut3-dev libglib2.0-dev libgtk2.0-dev git
+    apt-get install -y --no-install-recommends xvfb freeglut3-dev libglib2.0-dev libgtk2.0-dev git xauth
 
 WORKDIR /gym-duckietown
 

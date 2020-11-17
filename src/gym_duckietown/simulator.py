@@ -157,11 +157,12 @@ MAX_SPAWN_ATTEMPTS = 5000
 
 LanePosition0 = namedtuple("LanePosition", "dist dot_dir angle_deg angle_rad")
 
-# List of available tile type
-TileStyle = Enum("TileStyle", "synthetic photos")
-
-# String that prepends the texture filename of the specified type
-STYLE_PREPEND_STRS = {TileStyle.synthetic: "synth_", TileStyle.photos: ""}
+# # List of available tile type
+# TileStyle = Enum("TileStyle", "synthetic photos")
+#
+# # String that prepends the texture filename of the specified type
+# STYLE_PREPEND_STRS = {TileStyle.synthetic: "synth_", TileStyle.photos: ""}
+#
 
 
 class LanePosition(LanePosition0):
@@ -345,10 +346,12 @@ class Simulator(gym.Env):
         self.user_tile_start = user_tile_start
 
         # Define tile type
-        try:
-            self.style = TileStyle[style.lower()]
-        except KeyError:
-            self.style = TileStyle.photos
+        # try:
+        #     self.style = TileStyle[style.lower()]
+        # except KeyError:
+        #     self.style = TileStyle.photos
+        #
+        self.style = style
 
         self.randomize_maps_on_reset = randomize_maps_on_reset
 
@@ -492,12 +495,12 @@ class Simulator(gym.Env):
             # Randomize the tile texture
             texture_name = tile["kind"]
 
-            try:
-                # Get texture according to specified style
-                tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
-            except AssertionError as err:
-                # On loading error, fallback to default
-                tile["texture"] = Texture.get(texture_name, rng=rng)
+            # try:
+            #     # Get texture according to specified style
+            #     tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
+            # except AssertionError as err:
+            #     # On loading error, fallback to default
+            tile["texture"] = Texture.get(f"{self.style}/{texture_name}", rng=rng)
 
             # Random tile color multiplier
             tile["color"] = self._perturb([1, 1, 1], 0.2)
