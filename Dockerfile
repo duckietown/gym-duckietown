@@ -29,3 +29,5 @@ RUN pip install -v  --no-deps .
 #   pip install -v -e .
 
 RUN pipdeptree
+
+ENTRYPOINT [ "xvfb-run" ]
