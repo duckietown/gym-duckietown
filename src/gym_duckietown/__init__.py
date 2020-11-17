@@ -1,5 +1,5 @@
 # coding=utf-8
-__version__ = "6.0.34"
+__version__ = "6.0.35"
 
 from zuper_commons.logs import ZLogger
 
