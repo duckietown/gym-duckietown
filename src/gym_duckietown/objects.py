@@ -3,6 +3,8 @@ import math
 from typing import Tuple, Dict
 
 import numpy as np
+from duckietown_world import get_resource_path
+from gym_duckietown.objmesh import ObjMesh
 from pyglet import gl
 from pyglet.gl import gluNewQuadric, gluSphere
 
@@ -25,6 +27,7 @@ class WorldObj:
 
     obj_corners: np.array
     obj_norm: np.array
+    mesh: ObjMesh
 
     def __init__(self, obj, domain_rand: bool, safety_radius_mult: float):
         """
@@ -434,8 +437,8 @@ class TrafficLightObj(WorldObj):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.texs = [
-            load_texture(get_file_path("textures", "trafficlight_card0", "jpg")),
-            load_texture(get_file_path("textures", "trafficlight_card1", "jpg")),
+            load_texture(get_resource_path("trafficlight_card0.jpg")),
+            load_texture(get_resource_path("trafficlight_card1.jpg")),
         ]
         self.time = 0
 

@@ -1,6 +1,5 @@
 # coding=utf-8
 import math
-import os
 from ctypes import byref
 
 import cv2
@@ -13,7 +12,25 @@ from pyglet import gl
 from pyglet.gl import GLubyte
 
 from . import logger
-from .utils import get_file_path
+
+
+def get_texture(tex_name: str, rng=None, segment: bool = False) -> "Texture":
+    paths = get_texture_file(tex_name)
+
+    if rng:
+        path_idx = rng.randint(0, len(paths))
+        path = paths[path_idx]
+    else:
+        path = paths[0]
+
+    oldpath = path
+    if segment:
+        path += ".SEGMENTED"
+
+    if path not in Texture.tex_cache:
+        Texture.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
+
+    return Texture.tex_cache[path]
 
 
 class Texture:
@@ -21,42 +38,8 @@ class Texture:
     Manage the caching of textures, and texture randomization
     """
 
-    # List of textures available for a given path
-    tex_paths = {}
-
     # Cache of textures
     tex_cache = {}
-
-    @classmethod
-    def get(cls, tex_name, rng=None, segment=False):
-
-        paths = get_texture_file(tex_name)
-        # paths = cls.tex_paths.get(tex_name, [])
-        #
-        # # Get an inventory of the existing texture files
-        # if len(paths) == 0:
-        #     for i in range(1, 10):
-        #         path = get_file_path("textures", "%s_%d" % (tex_name, i), "png")
-        #         if not os.path.exists(path):
-        #             break
-        #         paths.append(path)
-        #
-        # assert len(paths) > 0, 'failed to load textures for name "%s"' % tex_name
-
-        if rng:
-            path_idx = rng.randint(0, len(paths))
-            path = paths[path_idx]
-        else:
-            path = paths[0]
-
-        oldpath = path
-        if segment:
-            path = path + ".SEGMENTED"
-
-        if path not in cls.tex_cache:
-            cls.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
-
-        return cls.tex_cache[path]
 
     def __init__(self, tex, tex_name, rng):
         assert not isinstance(tex, str)
@@ -66,7 +49,7 @@ class Texture:
 
     def bind(self, segment=False):
         if segment:
-            self = Texture.get(self.tex_name, self.rng, True)
+            self = get_texture(self.tex_name, self.rng, True)
 
         gl.glBindTexture(self.tex.target, self.tex.id)
 
@@ -139,7 +122,7 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
     gl.glTexImage2D(
         gl.GL_TEXTURE_2D,
         0,
-        gl.GL_RGB,
+        gl.GL_RGBA,
         img.width,
         img.height,
         0,

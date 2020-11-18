@@ -1,15 +1,39 @@
 # coding=utf-8
 import os
 
-from pyglet import gl
 import numpy as np
 import pyglet
+from duckietown_world import get_resource_path
+from pyglet import gl
 
 from . import logger
 from .graphics import load_texture
 from .utils import get_file_path
 
 __all__ = ["ObjMesh"]
+
+
+def get_mesh(mesh_name: str, segment: bool = False) -> "ObjMesh":
+    """
+            Load a mesh or used a cached version
+    """
+
+    # Assemble the absolute path to the mesh file
+    # file_path = get_file_path("meshes", mesh_name, "obj")
+
+    file_path = get_resource_path(f"{mesh_name}.obj")
+
+    # Save old file path because that's the actual "link" to the file. The cache will have a .SEGMENTED
+    # though.
+    old_file_path = file_path
+    if segment:
+        file_path += ".SEGMENTED"
+
+    if file_path not in ObjMesh.cache:
+        mesh = ObjMesh(old_file_path, mesh_name, segment)
+        ObjMesh.cache[file_path] = mesh
+
+    return ObjMesh.cache[file_path]
 
 
 class ObjMesh:
@@ -20,29 +44,9 @@ class ObjMesh:
     # Loaded mesh files, indexed by mesh file path
     cache = {}
 
-    @classmethod
-    def get(self, mesh_name, segment=False):
-        """
-        Load a mesh or used a cached version
-        """
+    mesh_name: str
 
-        # Assemble the absolute path to the mesh file
-        file_path = get_file_path("meshes", mesh_name, "obj")
-
-        # Save old file path because that's the actual "link" to the file. The cache will have a .SEGMENTED though.
-        old_file_path = file_path
-        if segment:
-            file_path += ".SEGMENTED"
-
-        if file_path in self.cache:
-            return self.cache[file_path]
-
-        mesh = ObjMesh(old_file_path, mesh_name, segment)
-        self.cache[file_path] = mesh
-
-        return mesh
-
-    def __init__(self, file_path, mesh_name, segment=False):
+    def __init__(self, file_path: str, mesh_name: str, segment: bool = False):
         """
         Load an OBJ model file
 
@@ -62,7 +66,7 @@ class ObjMesh:
         # usemtl mtl_name
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
-        logger.debug(f"loading mesh {file_path}")
+        logger.debug(f"loading mesh {mesh_name!r} from file_path {file_path!r}")
 
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)
@@ -212,16 +216,18 @@ class ObjMesh:
                 ("c3f", list_color[start_idx:end_idx, :, :].reshape(-1)),
             )
 
-            # If we want to control the colors of the objects, we'd need to replace this by a config file or something
-            # better than a bad hash function. This implementation, however, doesn't seem to have any collisions, and
+            # If we want to control the colors of the objects, we'd need to replace this by a config file
+            # or something
+            # better than a bad hash function. This implementation, however, doesn't seem to have any
+            # collisions, and
             # generates super well to new objects, so it'd be good to keep it in anyways for future-proofing.
             def gen_segmentation_color(
                 string,
             ):  # Dont care about having an awesome hash really, just want this to be deterministic
                 hashed = "".join([str(ord(char)) for char in string])
-                segment_into_color = [int(hashed[i : i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
-                assert len(segment_into_color) == 3
-                return segment_into_color
+                segment_into_color0 = [int(hashed[i : i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
+                assert len(segment_into_color0) == 3
+                return segment_into_color0
 
             mtl = chunk["mtl"]
             if "map_Kd" in mtl:
@@ -229,17 +235,23 @@ class ObjMesh:
                 if segment:
                     segment_into_color = gen_segmentation_color(mesh_name)
 
-                texture = load_texture(mtl["map_Kd"], segment=segment, segment_into_color=segment_into_color)
+                fn = mtl["map_Kd"]
+                fn2 = get_resource_path(os.path.basename(fn))
+                texture = load_texture(fn2, segment=segment, segment_into_color=segment_into_color)
             else:
                 texture = None
                 if segment:
-                    # nice little hack: load a tile that we know gets segmented into all-black, and then change it
+                    # nice little hack: load a tile that we know gets segmented into all-black,
+                    # and then change it
                     # to another, more useful color for a world obj
-                    # However, it seems like the objects that don't have a texture file actually pull their color
-                    # straight from their .obj or .mtl file? Because this hack only overlays the two colors, it doesn't
-                    # work very well. FIXME the objects that fall in this category need to have texture files too
+                    # However, it seems like the objects that don't have a texture file actually pull their
+                    # color
+                    # straight from their .obj or .mtl file? Because this hack only overlays the two
+                    # colors, it doesn't
+                    # work very well. FIXME the objects that fall in this category need to have texture
+                    #  files too
                     texture = load_texture(
-                        get_file_path("textures", "black_tile", "png"),
+                        get_resource_path("black_tile.png"),
                         segment=True,
                         segment_into_color=gen_segmentation_color(mesh_name),
                     )
@@ -247,7 +259,7 @@ class ObjMesh:
             self.vlists.append(vlist)
             self.textures.append(texture)
 
-    def _load_mtl(self, model_file):
+    def _load_mtl(self, model_file: str):
         model_dir, file_name = os.path.split(model_file)
 
         # Create a default material for the model
@@ -257,61 +269,63 @@ class ObjMesh:
 
         # Determine the default texture path for the default material
         tex_name = file_name.split(".")[0]
-        tex_path = get_file_path("textures", tex_name, "png")
-        if os.path.exists(tex_path):
+        try:
+            tex_path = get_resource_path(f"{tex_name}.png")
+        except KeyError:
+            logger.warning(f"Cannot find texture path {tex_name}.png")
+        else:
             default_mtl["map_Kd"] = tex_path
 
         materials = {"": default_mtl}
 
-        mtl_path = model_file.split(".")[0] + ".mtl"
-
-        if not os.path.exists(mtl_path):
+        try:
+            mtl_path = get_resource_path(f"{tex_name}.mtl")
+        except KeyError as e:
+            logger.warning(f"Cannot find material {tex_name}.mtl ")
             return materials
 
-        logger.debug(f"loading materials from { mtl_path}")
-
-        mtl_file = open(mtl_path, "r")
+        logger.debug(f"loading materials from {mtl_path}")
 
         cur_mtl = None
 
-        # For each line of the input file
-        for line in mtl_file:
-            line = line.rstrip(" \r\n")
+        with open(mtl_path, "r") as mtl_file:
 
-            # Skip comments
-            if line.startswith("#") or line == "":
-                continue
+            # For each line of the input file
+            for line in mtl_file:
+                line = line.rstrip(" \r\n")
 
-            tokens = line.split(" ")
-            tokens = map(lambda t: t.strip(" "), tokens)
-            tokens = list(filter(lambda t: t != "", tokens))
+                # Skip comments
+                if line.startswith("#") or line == "":
+                    continue
 
-            prefix = tokens[0]
-            tokens = tokens[1:]
+                tokens = line.split(" ")
+                tokens = map(lambda t: t.strip(" "), tokens)
+                tokens = list(filter(lambda t: t != "", tokens))
 
-            if prefix == "newmtl":
-                cur_mtl = {}
-                materials[tokens[0]] = cur_mtl
+                prefix = tokens[0]
+                tokens = tokens[1:]
 
-            # Diffuse color
-            if prefix == "Kd":
-                vals = list(map(lambda v: float(v), tokens))
-                vals = np.array(vals)
-                cur_mtl["Kd"] = vals
+                if prefix == "newmtl":
+                    cur_mtl = {}
+                    materials[tokens[0]] = cur_mtl
 
-            # Texture file name
-            if prefix == "map_Kd":
-                tex_file = tokens[-1]
-                tex_file = os.path.join(model_dir, tex_file)
-                cur_mtl["map_Kd"] = tex_file
+                # Diffuse color
+                if prefix == "Kd":
+                    vals = list(map(lambda v: float(v), tokens))
+                    vals = np.array(vals)
+                    cur_mtl["Kd"] = vals
 
-        mtl_file.close()
+                # Texture file name
+                if prefix == "map_Kd":
+                    tex_file = tokens[-1]
+                    tex_file = os.path.join(model_dir, tex_file)
+                    cur_mtl["map_Kd"] = tex_file
 
         return materials
 
     def render(self, segment=False):
         if segment:
-            self = ObjMesh.get(self.mesh_name, True)
+            self = get_mesh(self.mesh_name, True)
 
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]

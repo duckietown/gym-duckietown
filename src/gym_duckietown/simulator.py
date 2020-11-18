@@ -3,7 +3,6 @@ import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from enum import Enum
 from typing import cast, List, NewType, Optional, Sequence, Tuple, TypedDict
 
 import geometry
@@ -11,14 +10,14 @@ import gym
 import numpy as np
 import pyglet
 import yaml
+from duckietown_world import MapFormat1
+from duckietown_world.world_duckietown.old_map_format import MapFormat1Constants as MF1C, MapFormat1Object
+from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
 from pyglet import gl, image, window
 
-from duckietown_world import MapFormat1
-from duckietown_world.world_duckietown.old_map_format import MapFormat1Constants as MF1C, MapFormat1Object
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from . import logger
 from .check_hw import get_graphics_information
 from .collision import (
@@ -39,10 +38,11 @@ from .graphics import (
     bezier_tangent,
     create_frame_buffers,
     gen_rot_matrix,
+    get_texture,
     Texture,
 )
 from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj
-from .objmesh import ObjMesh
+from .objmesh import get_mesh
 from .randomization import Randomizer
 from .utils import get_file_path, get_subdir_path
 
@@ -156,13 +156,6 @@ REWARD_INVALID_POSE = -1000
 MAX_SPAWN_ATTEMPTS = 5000
 
 LanePosition0 = namedtuple("LanePosition", "dist dot_dir angle_deg angle_rad")
-
-# # List of available tile type
-# TileStyle = Enum("TileStyle", "synthetic photos")
-#
-# # String that prepends the texture filename of the specified type
-# STYLE_PREPEND_STRS = {TileStyle.synthetic: "synth_", TileStyle.photos: ""}
-#
 
 
 class LanePosition(LanePosition0):
@@ -500,7 +493,7 @@ class Simulator(gym.Env):
             #     tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
             # except AssertionError as err:
             #     # On loading error, fallback to default
-            tile["texture"] = Texture.get(f"{self.style}/{texture_name}", rng=rng)
+            tile["texture"] = get_texture(f"{self.style}/{texture_name}", rng=rng)
 
             # Random tile color multiplier
             tile["color"] = self._perturb([1, 1, 1], 0.2)
@@ -705,7 +698,7 @@ class Simulator(gym.Env):
                         tile["curves"] = self._get_curve(i, j)
                         self.drivable_tiles.append(tile)
 
-            self.mesh = ObjMesh.get("duckiebot")
+            self.mesh = get_mesh("duckiebot")
             self._load_objects(map_data)
 
             # Get the starting tile from the map, if specified
@@ -786,7 +779,7 @@ class Simulator(gym.Env):
         pos = self.road_tile_size * np.array((x, y, z))
 
         # Load the mesh
-        mesh = ObjMesh.get(kind)
+        mesh = get_mesh(kind)
 
         if "height" in desc:
             scale = desc["height"] / mesh.max_coords[1]
@@ -1557,10 +1550,15 @@ class Simulator(gym.Env):
                 gl.glTranslatef((i + 0.5) * self.road_tile_size, 0, (j + 0.5) * self.road_tile_size)
                 gl.glRotatef(angle * 90, 0, 1, 0)
 
+                gl.glEnable(gl.GL_BLEND)
+                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+
                 # Bind the appropriate texture
                 texture.bind(segment)
 
                 self.road_vlist.draw(gl.GL_QUADS)
+                gl.glDisable(gl.GL_BLEND)
+
                 gl.glPopMatrix()
 
                 if self.draw_curve and tile["drivable"]:

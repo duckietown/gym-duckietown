@@ -137,10 +137,7 @@ class Distortion:
 
     def _invert_map(self, mapx, mapy):
         """
-        Utility function for simulating distortion
-        Source: https://github.com/duckietown/Software/blob/master18/catkin_ws
-        ... /src/10-lane-control/ground_projection/include/ground_projection/
-        ... ground_projection_geometry.py
+        REWRITTEN Nov 2020
         """
 
         H, W = mapx.shape[0:2]
@@ -189,22 +186,22 @@ class Distortion:
             around[mapy_disc_d, mapx_disc_d] += w
             around_rmapx[mapy_disc_d, mapx_disc_d] += w * xs
             around_rmapy[mapy_disc_d, mapx_disc_d] += w * ys
+            # #
+            # if False:
+            #     for y, x in itertools.product(range(H), range(W)):
+            #         i = mapy_disc_d[y, x]
+            #         j = mapx_disc_d[y, x]
             #
-            if False:
-                for y, x in itertools.product(range(H), range(W)):
-                    i = mapy_disc_d[y, x]
-                    j = mapx_disc_d[y, x]
+            #         around_rmapx[i, j] += x * w
+            #         around_rmapy[i, j] += y * w
+            #         # around_rmapx[i, j] += xs[y, x] * w
+            #         # around_rmapy[i, j] += ys[y, x] * w
+            #         # around[i, j] += w
 
-                    around_rmapx[i, j] += x * w
-                    around_rmapy[i, j] += y * w
-                    # around_rmapx[i, j] += xs[y, x] * w
-                    # around_rmapy[i, j] += ys[y, x] * w
-                    # around[i, j] += w
+        # dt1 = time.time() - t0
+        # t0 = time.time()
 
-        dt1 = time.time() - t0
-        t0 = time.time()
-
-        nonzero = around[i, j] > 0
+        nonzero = around > 0
         rmapx[nonzero] = around_rmapx[nonzero] / around[nonzero]
         rmapy[nonzero] = around_rmapy[nonzero] / around[nonzero]
         for i, j in itertools.product(range(H), range(W)):
@@ -212,7 +209,7 @@ class Distortion:
             if w > 0:
                 rmapx[i, j] = around_rmapx[i, j] / w
                 rmapy[i, j] = around_rmapy[i, j] / w
-        dt = time.time() - t0
+        # dt = time.time() - t0
         # logger.info(f'rmap creation took {dt1:.3f} / {dt:.3f} seconds')
         self._fill_holes(rmapx, rmapy)
 
