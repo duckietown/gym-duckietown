@@ -6,11 +6,11 @@ import cv2
 import numpy as np
 import pyglet
 import pyglet.image
-from duckietown_world import get_texture_file
 from PIL import Image
 from pyglet import gl
 from pyglet.gl import GLubyte
 
+from duckietown_world import get_texture_file
 from . import logger
 
 

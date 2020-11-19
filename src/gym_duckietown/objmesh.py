@@ -3,14 +3,13 @@ import os
 
 import numpy as np
 import pyglet
-from duckietown_world import get_resource_path
 from pyglet import gl
 
+from duckietown_world import get_resource_path
 from . import logger
 from .graphics import load_texture
-from .utils import get_file_path
 
-__all__ = ["ObjMesh"]
+__all__ = ["ObjMesh", "get_mesh"]
 
 
 def get_mesh(mesh_name: str, segment: bool = False) -> "ObjMesh":
