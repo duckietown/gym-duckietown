@@ -1,6 +1,7 @@
 # coding=utf-8
 import math
 from ctypes import byref
+from typing import Tuple
 
 import cv2
 import numpy as np
@@ -134,7 +135,7 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
     return tex
 
 
-def create_frame_buffers(width, height, num_samples):
+def create_frame_buffers(width: int, height: int, num_samples: int) -> Tuple[int, int]:
     """Create the frame buffer objects"""
 
     # Create a frame buffer (rendering target)
@@ -145,6 +146,7 @@ def create_frame_buffers(width, height, num_samples):
     # The try block here is because some OpenGL drivers
     # (Intel GPU drivers on macbooks in particular) do not
     # support multisampling on frame buffer objects
+    # noinspection PyBroadException
     try:
         # Create a multisampled texture to render into
         fbTex = gl.GLuint(0)
@@ -166,7 +168,8 @@ def create_frame_buffers(width, height, num_samples):
         )
         gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, depth_rb)
 
-    except:
+    except BaseException as e:
+        # logger.warning(e=traceback.format_exc())
         logger.debug("Falling back to non-multisampled frame buffer")
 
         # Create a plain texture texture to render into
@@ -228,7 +231,7 @@ def rotate_point(px, py, cx, cy, theta):
     return cx + new_dx, cy + new_dy
 
 
-def gen_rot_matrix(axis, angle):
+def gen_rot_matrix(axis: np.ndarray, angle: float) -> np.ndarray:
     """
     Rotation matrix for a counterclockwise rotation around the given axis
     """

@@ -10,14 +10,19 @@ import gym
 import numpy as np
 import pyglet
 import yaml
-from duckietown_world import MapFormat1
-from duckietown_world.world_duckietown.old_map_format import MapFormat1Constants as MF1C, MapFormat1Object
-from duckietown_world.world_duckietown.pwm_dynamics import get_DB18_nominal, get_DB18_uncalibrated
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
 from pyglet import gl, image, window
 
+from duckietown_world import (
+    get_DB18_nominal,
+    get_DB18_uncalibrated,
+    MapFormat1,
+    MapFormat1Constants as MF1C,
+    MapFormat1Object,
+)
+from duckietown_world.world_duckietown.tile import get_fancy_textures
 from . import logger
 from .check_hw import get_graphics_information
 from .collision import (
@@ -39,6 +44,7 @@ from .graphics import (
     create_frame_buffers,
     gen_rot_matrix,
     get_texture,
+    load_texture,
     Texture,
 )
 from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj
@@ -338,12 +344,6 @@ class Simulator(gym.Env):
         # Start tile
         self.user_tile_start = user_tile_start
 
-        # Define tile type
-        # try:
-        #     self.style = TileStyle[style.lower()]
-        # except KeyError:
-        #     self.style = TileStyle.photos
-        #
         self.style = style
 
         self.randomize_maps_on_reset = randomize_maps_on_reset
@@ -371,24 +371,47 @@ class Simulator(gym.Env):
             -half_size,
             0.0,
             -half_size,
+            #
             half_size,
             0.0,
             -half_size,
+            #
             half_size,
             0.0,
             half_size,
+            #
             -half_size,
             0.0,
             half_size,
         ]
-        texCoords = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
+        # texCoords = [1.0, 0.0,
+        #              0.0, 0.0,
+        #              0.0, 1.0,
+        #              1.0, 1.0]
+        # These are needed to not perturb the texture's orientation
+        texCoords = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
         self.road_vlist = pyglet.graphics.vertex_list(4, ("v3f", verts), ("t2f", texCoords))
 
         # Create the vertex list for the ground quad
-        verts = [-1, -0.8, 1, -1, -0.8, -1, 1, -0.8, -1, 1, -0.8, 1]
+        verts = [
+            -1,
+            -0.8,
+            1,
+            #
+            -1,
+            -0.8,
+            -1,
+            #
+            1,
+            -0.8,
+            -1,  #
+            1,
+            -0.8,
+            1,
+        ]
         self.ground_vlist = pyglet.graphics.vertex_list(4, ("v3f", verts))
 
-    def reset(self, segment=False):
+    def reset(self, segment: bool = False):
         """
         Reset the simulation at the start of a new episode
         This also randomizes many environment parameters (domain randomization)
@@ -493,7 +516,10 @@ class Simulator(gym.Env):
             #     tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
             # except AssertionError as err:
             #     # On loading error, fallback to default
-            tile["texture"] = get_texture(f"{self.style}/{texture_name}", rng=rng)
+            ft = get_fancy_textures(self.style, texture_name)
+            t = load_texture(ft.fn_texture, segment=False, segment_into_color=False)
+            tt = Texture(t, tex_name=texture_name, rng=rng)
+            tile["texture"] = tt  # get_texture(f"{self.style}/{texture_name}", rng=rng)
 
             # Random tile color multiplier
             tile["color"] = self._perturb([1, 1, 1], 0.2)
@@ -1102,7 +1128,7 @@ class Simulator(gym.Env):
         # and the tangent at that point
         point, tangent = self.closest_curve_point(pos, angle)
         if point is None or tangent is None:
-            msg = "Point not in lane: %s" % pos
+            msg = f"Point not in lane: {pos}"
             raise NotInLane(msg)
 
         assert point is not None and tangent is not None
@@ -1255,6 +1281,10 @@ class Simulator(gym.Env):
             logger.debug(f"f_pos: {f_pos}")
 
         return res
+
+    cur_pose: np.ndarray
+    cur_angle: float
+    speed: float
 
     def update_physics(self, action, delta_time: float = None):
         # print("updating physics")
@@ -1412,7 +1442,9 @@ class Simulator(gym.Env):
             done_code = "in-progress"
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
-    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True, segment=False):
+    def _render_img(
+        self, width, height, multi_fbo, final_fbo, img_array, top_down=True, segment=False
+    ) -> np.ndarray:
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1484,33 +1516,18 @@ class Simulator(gym.Env):
             # H_FROM_FLOOR * tan(fov_y_rad/2) = H_to_fit
 
             H_FROM_FLOOR = H_to_fit / (np.tan(fov_y_rad / 2))
-            gl.gluLookAt(
-                a,
-                H_FROM_FLOOR,
-                b,
-                a,
-                0,
-                b,
-                # Up vector
-                0,
-                0,
-                -1.0,
-            )
+
+            look_from = a, H_FROM_FLOOR, b
+            # look_from = a, H_FROM_FLOOR, 0
+            look_at = a + 0.01, 0.0, b
+            # up_vector = 0.0, 0.0, -1.0
+            up_vector = 0.0, 1.0, 0
+            gl.gluLookAt(*look_from, *look_at, *up_vector)
         else:
-            gl.gluLookAt(
-                # Eye position
-                x,
-                y,
-                z,
-                # Target
-                x + dx,
-                y + dy,
-                z + dz,
-                # Up vector
-                0,
-                1.0,
-                0.0,
-            )
+            look_from = x, y, z
+            look_at = x + dx, y + dy, z + dz
+            up_vector = 0.0, 1.0, 0.0
+            gl.gluLookAt(*look_from, *look_at, *up_vector)
 
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
@@ -1548,7 +1565,7 @@ class Simulator(gym.Env):
 
                 gl.glPushMatrix()
                 gl.glTranslatef((i + 0.5) * self.road_tile_size, 0, (j + 0.5) * self.road_tile_size)
-                gl.glRotatef(angle * 90, 0, 1, 0)
+                gl.glRotatef(angle * 90 + 180, 0, 1, 0)
 
                 gl.glEnable(gl.GL_BLEND)
                 gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -1626,7 +1643,7 @@ class Simulator(gym.Env):
 
         return img_array
 
-    def render_obs(self, segment=False):
+    def render_obs(self, segment: bool = False) -> np.ndarray:
         """
         Render an observation from the point of view of the agent
         """
@@ -1778,3 +1795,21 @@ def get_agent_corners(pos, angle):
         _actual_center(pos, angle), ROBOT_WIDTH, ROBOT_LENGTH, get_dir_vec(angle), get_right_vec(angle)
     )
     return agent_corners
+
+
+class FrameBufferMemory:
+    multi_fbo: int
+    final_fbo: int
+    img_array: np.ndarray
+    width: int
+
+    height: int
+
+    def __init__(self, *, width: int, height: int):
+        """ H, W """
+        self.width = width
+        self.height = height
+
+        # that's right, it's inverted
+        self.multi_fbo, self.final_fbo = create_frame_buffers(width, height, 4)
+        self.img_array = np.zeros(shape=(height, width, 3), dtype=np.uint8)
