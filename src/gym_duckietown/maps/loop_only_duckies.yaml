@@ -1,0 +1,71 @@
+# This is a closed loop (no intersections) with a few obstacles directly
+# on the road, which have to be avoided.
+
+tiles:
+- [grass, grass, grass, grass, grass, grass, grass, grass]
+- [grass, curve_left/W, straight/E, straight/E, straight/E, straight/E, curve_left/N, grass]
+- [grass, straight/S, grass, grass, grass, grass, straight/S, grass]
+- [grass, straight/S, grass, grass, grass, grass, straight/S, grass]
+- [grass, straight/S, grass, grass, curve_left/W, straight/E, curve_left/E, grass]
+- [grass, curve_left/S, straight/E, straight/E, curve_left/E, grass, grass, grass]
+- [grass, grass, grass, grass, grass, grass, grass, grass]
+
+objects:
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [4.75, 1.25]
+  rotate: 60
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [3.25, 1.75]
+  rotate: 210
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [1.25, 2.9]
+  rotate: 300
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [1.75, 4.1]
+  rotate: 270
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [3.25, 5.8]
+  rotate: 60
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [2.75, 5.2]
+  rotate: 240
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [6.2, 2.75]
+  rotate: 310
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [6.8, 3.25]
+  rotate: 50
+  static: true
+
+tile_size: 0.585
