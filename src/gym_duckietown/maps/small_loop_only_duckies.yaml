@@ -1,0 +1,39 @@
+# 3x3 tiles with left turns at the corners going in a counter-clockwise loop
+tiles:
+- [grass, grass, grass, grass, grass]
+- [grass, curve_right/N, straight/E, curve_right/E, grass]
+- [grass, straight/S, grass, straight/S, grass]
+- [grass, curve_right/W, straight/E, curve_right/S, grass]
+- [grass, grass, grass, grass, grass]
+
+objects:
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [2.5, 1.25]
+  rotate: 30
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [1.75, 2.5]
+  rotate: 60
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [2.5, 3.6]
+  rotate: 120
+  static: true
+
+- height: 0.06
+  kind: duckie
+  optional: false
+  pos: [3.4, 2.5]
+  rotate: 170
+  static: true
+
+tile_size: 0.585
