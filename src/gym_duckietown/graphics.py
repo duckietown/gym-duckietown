@@ -1,6 +1,7 @@
 # coding=utf-8
 import math
 from ctypes import byref
+from functools import lru_cache
 from typing import Tuple
 
 import cv2
@@ -65,12 +66,15 @@ def should_segment_out(tex_path):
     return True
 
 
-# segment_into_black controls what type of segmentation we apply: for tiles and all ground textures, replacing
-# unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too
-# (for
-# example, we don't want black traffic lights, because they go over the roads, and they'd cut our view of
-# things).
+@lru_cache(maxsize=None)
 def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
+    """ segment_into_black controls what type of segmentation we apply: for tiles and all ground textures,
+    replacing
+    unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too
+    (for example, we don't want black traffic lights, because they go over the roads, and they'd cut our
+    view of
+    things).
+    """
     if segment_into_color is None:
         segment_into_color = [0, 0, 0]
     logger.debug(f"loading texture: {tex_path}")
@@ -231,12 +235,12 @@ def rotate_point(px, py, cx, cy, theta):
     return cx + new_dx, cy + new_dy
 
 
-def gen_rot_matrix(axis: np.ndarray, angle: float) -> np.ndarray:
+def gen_rot_matrix(axis0: np.ndarray, angle: float) -> np.ndarray:
     """
     Rotation matrix for a counterclockwise rotation around the given axis
     """
 
-    axis = axis / math.sqrt(np.dot(axis, axis))
+    axis = axis0 / math.sqrt(np.dot(axis0, axis0))
     a = math.cos(angle / 2.0)
     b, c, d = -axis * math.sin(angle / 2.0)
 
@@ -292,8 +296,10 @@ def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
     d_top = np.linalg.norm(p_top - p)
 
     if d_bot < d_top:
+        # noinspection PyTypeChecker
         return bezier_closest(cps, p, t_bot, mid, n - 1)
 
+    # noinspection PyTypeChecker
     return bezier_closest(cps, p, mid, t_top, n - 1)
 
 

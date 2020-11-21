@@ -3,7 +3,7 @@ import math
 from typing import Tuple, Dict
 
 import numpy as np
-from duckietown_world import get_resource_path
+from duckietown_world import get_resource_path, MapFormat1Constants
 from gym_duckietown.objmesh import ObjMesh
 from pyglet import gl
 from pyglet.gl import gluNewQuadric, gluSphere
@@ -28,6 +28,7 @@ class WorldObj:
     obj_corners: np.array
     obj_norm: np.array
     mesh: ObjMesh
+    kind: MapFormat1Constants.ObjectKind
 
     def __init__(self, obj, domain_rand: bool, safety_radius_mult: float):
         """

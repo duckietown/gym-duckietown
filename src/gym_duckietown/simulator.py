@@ -1,9 +1,10 @@
+import itertools
 import math
 import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import cast, List, NewType, Optional, Sequence, Tuple, TypedDict
+from typing import cast, Dict, List, NewType, Optional, Sequence, Tuple, TypedDict
 
 import geometry
 import gym
@@ -20,8 +21,10 @@ from duckietown_world import (
     get_DB18_uncalibrated,
     MapFormat1,
     MapFormat1Constants as MF1C,
+    MapFormat1Constants,
     MapFormat1Object,
 )
+from duckietown_world.gltf.export import get_duckiebot_color_from_colorname
 from duckietown_world.world_duckietown.tile import get_fancy_textures
 from . import logger
 from .check_hw import get_graphics_information
@@ -43,12 +46,11 @@ from .graphics import (
     bezier_tangent,
     create_frame_buffers,
     gen_rot_matrix,
-    get_texture,
     load_texture,
     Texture,
 )
 from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj
-from .objmesh import get_mesh
+from .objmesh import get_mesh, MatInfo, ObjMesh
 from .randomization import Randomizer
 from .utils import get_file_path, get_subdir_path
 
@@ -724,7 +726,9 @@ class Simulator(gym.Env):
                         tile["curves"] = self._get_curve(i, j)
                         self.drivable_tiles.append(tile)
 
-            self.mesh = get_mesh("duckiebot")
+            default_color = "red"
+
+            self.mesh = get_duckiebot_mesh(default_color)
             self._load_objects(map_data)
 
             # Get the starting tile from the map, if specified
@@ -805,7 +809,15 @@ class Simulator(gym.Env):
         pos = self.road_tile_size * np.array((x, y, z))
 
         # Load the mesh
-        mesh = get_mesh(kind)
+        change_materials: Dict[str, MatInfo]
+        if kind == "duckiebot":
+            use_color = desc.get("color", "red")
+
+            mesh = get_duckiebot_mesh(use_color)
+
+        else:
+
+            mesh = get_mesh(kind)
 
         if "height" in desc:
             scale = desc["height"] / mesh.max_coords[1]
@@ -1307,7 +1319,7 @@ class Simulator(gym.Env):
 
         # Update world objects
         for obj in self.objects:
-            if obj.kind == "duckiebot":
+            if obj.kind == MapFormat1Constants.KIND_DUCKIEBOT:
                 if not obj.static:
                     obj_i, obj_j = self.get_grid_coords(obj.pos)
                     same_tile_obj = [
@@ -1548,54 +1560,54 @@ class Simulator(gym.Env):
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 
         # For each grid tile
-        for j in range(self.grid_height):
-            for i in range(self.grid_width):
-                # Get the tile type and angle
-                tile = self._get_tile(i, j)
+        for i, j in itertools.product(range(self.grid_width), range(self.grid_height)):
 
-                if tile is None:
-                    continue
+            # Get the tile type and angle
+            tile = self._get_tile(i, j)
 
-                # kind = tile['kind']
-                angle = tile["angle"]
-                color = tile["color"]
-                texture = tile["texture"]
+            if tile is None:
+                continue
 
-                gl.glColor3f(*color)
+            # kind = tile['kind']
+            angle = tile["angle"]
+            color = tile["color"]
+            texture = tile["texture"]
 
-                gl.glPushMatrix()
-                gl.glTranslatef((i + 0.5) * self.road_tile_size, 0, (j + 0.5) * self.road_tile_size)
-                gl.glRotatef(angle * 90 + 180, 0, 1, 0)
+            gl.glColor3f(*color)
 
-                gl.glEnable(gl.GL_BLEND)
-                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+            gl.glPushMatrix()
+            gl.glTranslatef((i + 0.5) * self.road_tile_size, 0, (j + 0.5) * self.road_tile_size)
+            gl.glRotatef(angle * 90 + 180, 0, 1, 0)
 
-                # Bind the appropriate texture
-                texture.bind(segment)
+            gl.glEnable(gl.GL_BLEND)
+            gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
-                self.road_vlist.draw(gl.GL_QUADS)
-                gl.glDisable(gl.GL_BLEND)
+            # Bind the appropriate texture
+            texture.bind(segment)
 
-                gl.glPopMatrix()
+            self.road_vlist.draw(gl.GL_QUADS)
+            gl.glDisable(gl.GL_BLEND)
 
-                if self.draw_curve and tile["drivable"]:
-                    # Find curve with largest dotproduct with heading
-                    curves = self._get_tile(i, j)["curves"]
-                    curve_headings = curves[:, -1, :] - curves[:, 0, :]
-                    curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
-                    dirVec = get_dir_vec(angle)
-                    dot_prods = np.dot(curve_headings, dirVec)
+            gl.glPopMatrix()
 
-                    # Current ("closest") curve drawn in Red
-                    pts = curves[np.argmax(dot_prods)]
-                    bezier_draw(pts, n=20, red=True)
+            if self.draw_curve and tile["drivable"]:
+                # Find curve with largest dotproduct with heading
+                curves = self._get_tile(i, j)["curves"]
+                curve_headings = curves[:, -1, :] - curves[:, 0, :]
+                curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+                dirVec = get_dir_vec(angle)
+                dot_prods = np.dot(curve_headings, dirVec)
 
-                    pts = self._get_curve(i, j)
-                    for idx, pt in enumerate(pts):
-                        # Don't draw current curve in blue
-                        if idx == np.argmax(dot_prods):
-                            continue
-                        bezier_draw(pt, n=20)
+                # Current ("closest") curve drawn in Red
+                pts = curves[np.argmax(dot_prods)]
+                bezier_draw(pts, n=20, red=True)
+
+                pts = self._get_curve(i, j)
+                for idx, pt in enumerate(pts):
+                    # Don't draw current curve in blue
+                    if idx == np.argmax(dot_prods):
+                        continue
+                    bezier_draw(pt, n=20)
 
         # For each object
         for obj in self.objects:
@@ -1778,6 +1790,17 @@ def _update_pos(self, action):
     pos, angle = self.weird_from_cartesian(q)
     pos = np.asarray(pos)
     return pos, angle
+
+
+def get_duckiebot_mesh(color: str) -> ObjMesh:
+    change_materials: Dict[str, MatInfo]
+
+    color = np.array(get_duckiebot_color_from_colorname(color))[:3]
+    change_materials = {
+        "gkmodel0_chassis_geom0_mat_001-material": {"Kd": color},
+        "gkmodel0_chassis_geom0_mat_001-material.001": {"Kd": color},
+    }
+    return get_mesh("duckiebot", change_materials=change_materials)
 
 
 def _actual_center(pos, angle):

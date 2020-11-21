@@ -1,5 +1,6 @@
 # coding=utf-8
 import os
+from typing import Dict, List, TypedDict
 
 import numpy as np
 import pyglet
@@ -12,10 +13,15 @@ from .graphics import load_texture
 __all__ = ["ObjMesh", "get_mesh"]
 
 
-def get_mesh(mesh_name: str, segment: bool = False) -> "ObjMesh":
+class MatInfo(TypedDict):
+    Kd: np.ndarray
+
+
+def get_mesh(mesh_name: str, segment: bool = False, change_materials: Dict[str, MatInfo] = None) -> "ObjMesh":
     """
             Load a mesh or used a cached version
     """
+    change_materials = change_materials or {}
 
     # Assemble the absolute path to the mesh file
     # file_path = get_file_path("meshes", mesh_name, "obj")
@@ -28,11 +34,13 @@ def get_mesh(mesh_name: str, segment: bool = False) -> "ObjMesh":
     if segment:
         file_path += ".SEGMENTED"
 
-    if file_path not in ObjMesh.cache:
-        mesh = ObjMesh(old_file_path, mesh_name, segment)
-        ObjMesh.cache[file_path] = mesh
+    key = str((file_path, change_materials))
 
-    return ObjMesh.cache[file_path]
+    if key not in ObjMesh.cache:
+        mesh = ObjMesh(old_file_path, mesh_name, segment, change_materials)
+        ObjMesh.cache[key] = mesh
+
+    return ObjMesh.cache[key]
 
 
 class ObjMesh:
@@ -44,8 +52,15 @@ class ObjMesh:
     cache = {}
 
     mesh_name: str
+    change_materials: Dict[str, MatInfo]
 
-    def __init__(self, file_path: str, mesh_name: str, segment: bool = False):
+    def __init__(
+        self,
+        file_path: str,
+        mesh_name: str,
+        segment: bool = False,
+        change_materials: Dict[str, MatInfo] = None,
+    ):
         """
         Load an OBJ model file
 
@@ -53,6 +68,7 @@ class ObjMesh:
         - only one object/group
         - only triangle faces
         """
+        self.change_materials = change_materials or {}
 
         self.mesh_name = mesh_name
 
@@ -69,6 +85,14 @@ class ObjMesh:
 
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)
+
+        for k, v in self.change_materials.items():
+            if k in materials:
+                old = dict(materials[k])
+                materials[k].update(v)
+                logger.info("updated", old=old, n=materials[k])
+            else:
+                logger.warning(f"could not find material {k!r} in {list(materials)}")
         mesh_file = open(file_path, "r")
 
         verts = []
@@ -94,15 +118,15 @@ class ObjMesh:
             tokens = tokens[1:]
 
             if prefix == "v":
-                vert = list(map(lambda v: float(v), tokens))
+                vert = list(map(float, tokens))
                 verts.append(vert)
 
             if prefix == "vt":
-                tc = list(map(lambda v: float(v), tokens))
+                tc = list(map(float, tokens))
                 texs.append(tc)
 
             if prefix == "vn":
-                normal = list(map(lambda v: float(v), tokens))
+                normal = list(map(float, tokens))
                 normals.append(normal)
 
             if prefix == "usemtl":
@@ -241,14 +265,11 @@ class ObjMesh:
                 texture = None
                 if segment:
                     # nice little hack: load a tile that we know gets segmented into all-black,
-                    # and then change it
-                    # to another, more useful color for a world obj
+                    # and then change it to another, more useful color for a world obj
                     # However, it seems like the objects that don't have a texture file actually pull their
-                    # color
-                    # straight from their .obj or .mtl file? Because this hack only overlays the two
-                    # colors, it doesn't
-                    # work very well. FIXME the objects that fall in this category need to have texture
-                    #  files too
+                    # color  straight from their .obj or .mtl file? Because this hack only overlays the two
+                    # colors, it doesn't work very well.
+                    # FIXME the objects that fall in this category need to have texture  files too
                     texture = load_texture(
                         get_resource_path("black_tile.png"),
                         segment=True,
@@ -258,7 +279,7 @@ class ObjMesh:
             self.vlists.append(vlist)
             self.textures.append(texture)
 
-    def _load_mtl(self, model_file: str):
+    def _load_mtl(self, model_file: str) -> Dict[str, MatInfo]:
         model_dir, file_name = os.path.split(model_file)
 
         # Create a default material for the model
@@ -275,7 +296,7 @@ class ObjMesh:
         else:
             default_mtl["map_Kd"] = tex_path
 
-        materials = {"": default_mtl}
+        materials: Dict[str, MatInfo] = {"": default_mtl}
 
         try:
             mtl_path = get_resource_path(f"{tex_name}.mtl")
@@ -322,7 +343,7 @@ class ObjMesh:
 
         return materials
 
-    def render(self, segment=False):
+    def render(self, segment: bool = False):
         if segment:
             self = get_mesh(self.mesh_name, True)
 
