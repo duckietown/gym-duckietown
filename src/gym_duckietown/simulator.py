@@ -4,7 +4,7 @@ import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import cast, Dict, List, NewType, Optional, Sequence, Tuple, TypedDict
+from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, TypedDict, Union
 
 import geometry
 import gym
@@ -19,13 +19,13 @@ from pyglet import gl, image, window
 from duckietown_world import (
     get_DB18_nominal,
     get_DB18_uncalibrated,
+    get_resource_path,
     MapFormat1,
-    MapFormat1Constants as MF1C,
     MapFormat1Constants,
+    MapFormat1Constants as MF1C,
     MapFormat1Object,
 )
 from duckietown_world.gltf.export import get_duckiebot_color_from_colorname
-from duckietown_world.world_duckietown.tile import get_fancy_textures
 from . import logger
 from .check_hw import get_graphics_information
 from .collision import (
@@ -67,6 +67,7 @@ class TileDict(TypedDict):
     drivable: bool
     texture: Texture
     color: np.ndarray
+    curves: Any
 
 
 @dataclass
@@ -200,13 +201,13 @@ class Simulator(gym.Env):
         domain_rand: bool = True,
         frame_rate: float = DEFAULT_FRAMERATE,
         frame_skip: bool = DEFAULT_FRAME_SKIP,
-        camera_width=DEFAULT_CAMERA_WIDTH,
-        camera_height=DEFAULT_CAMERA_HEIGHT,
-        robot_speed=DEFAULT_ROBOT_SPEED,
+        camera_width: int = DEFAULT_CAMERA_WIDTH,
+        camera_height: int = DEFAULT_CAMERA_HEIGHT,
+        robot_speed: float = DEFAULT_ROBOT_SPEED,
         accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
         full_transparency: bool = False,
         user_tile_start=None,
-        seed=None,
+        seed: int = None,
         distortion: bool = False,
         dynamics_rand: bool = False,
         camera_rand: bool = False,
@@ -365,35 +366,120 @@ class Simulator(gym.Env):
 
     def _init_vlists(self):
 
+        ns = 8
+        assert ns >= 2
+
+        # half_size = self.road_tile_size / 2
+        TS = self.road_tile_size
+
+        def get_point(u, v):
+            pu = u / (ns - 1)
+            pv = v / (ns - 1)
+            x = -TS / 2 + pu * TS
+            z = -TS / 2 + pv * TS
+            tu = pu
+            tv = 1 - pv
+            return (x, 0.0, z), (tu, tv)
+
+        vertices = []
+        textures = []
+        normals = []
+        for i, j in itertools.product(range(ns - 1), range(ns - 1)):
+            tl_p, tl_t = get_point(i, j)
+            tr_p, tr_t = get_point(i + 1, j)
+            br_p, br_t = get_point(i, j + 1)
+            bl_p, bl_t = get_point(i + 1, j + 1)
+            normal = [0.0, 1.0, 0.0]
+            vertices.extend(tl_p)
+            textures.extend(tl_t)
+            normals.extend(normal)
+
+            vertices.extend(tr_p)
+            textures.extend(tr_t)
+            normals.extend(normal)
+
+            vertices.extend(bl_p)
+            textures.extend(bl_t)
+            normals.extend(normal)
+
+            vertices.extend(br_p)
+            textures.extend(br_t)
+            normals.extend(normal)
+
+            #
+            # normals.extend([0.0, 1.0, 0.0] * 4)
+
+        # def get_quad_vertices(cx, cz, hs) -> Tuple[List[float], List[float], List[float]]:
+        #     v = [
+        #         -hs + cx,
+        #         0.0,
+        #         -hs + cz,
+        #         #
+        #         hs + cx,
+        #         0.0,
+        #         -hs + cz,
+        #         #
+        #         hs + cx,
+        #         0.0,
+        #         hs + cz,
+        #         #
+        #         -hs + cx,
+        #         0.0,
+        #         hs + cz,
+        #     ]
+        #     n = [0.0, 1.0, 0.0] * 4
+        #     t = [0.0, 1.0,
+        #          #
+        #          1.0, 1.0,
+        #          #
+        #          1.0, 0.0,
+        #          #
+        #          0.0, 0.0]
+        #     return v, n, t
+
         # Create the vertex list for our road quad
         # Note: the vertices are centered around the origin so we can easily
         # rotate the tiles about their center
-        half_size = self.road_tile_size / 2
-        verts = [
-            -half_size,
-            0.0,
-            -half_size,
-            #
-            half_size,
-            0.0,
-            -half_size,
-            #
-            half_size,
-            0.0,
-            half_size,
-            #
-            -half_size,
-            0.0,
-            half_size,
-        ]
+
+        # verts = []
+        # texCoords = []
+        # normals = []
+        #
+        # v, n, t = get_quad_vertices(cx=0, cz=0, hs=half_size)
+        # verts.extend(v)
+        # normals.extend(n)
+        # texCoords.extend(t)
+
+        # verts = [
+        #     -half_size,
+        #     0.0,
+        #     -half_size,
+        #     #
+        #     half_size,
+        #     0.0,
+        #     -half_size,
+        #     #
+        #     half_size,
+        #     0.0,
+        #     half_size,
+        #     #
+        #     -half_size,
+        #     0.0,
+        #     half_size,
+        # ]
         # texCoords = [1.0, 0.0,
         #              0.0, 0.0,
         #              0.0, 1.0,
         #              1.0, 1.0]
-        # These are needed to not perturb the texture's orientation
-        texCoords = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-        self.road_vlist = pyglet.graphics.vertex_list(4, ("v3f", verts), ("t2f", texCoords))
-
+        # Previous choice would reflect the texture
+        # logger.info(nv=len(vertices), nt=len(textures), nn=len(normals), vertices=vertices,
+        # textures=textures,
+        #             normals=normals)
+        total = len(vertices) // 3
+        self.road_vlist = pyglet.graphics.vertex_list(
+            total, ("v3f", vertices), ("t2f", textures), ("n3f", normals)
+        )
+        logger.info("done")
         # Create the vertex list for the ground quad
         verts = [
             -1,
@@ -453,17 +539,28 @@ class Simulator(gym.Env):
         if self.domain_rand:
             light_pos = self.randomization_settings["light_pos"]
         else:
-            light_pos = [-40, 200, 100]
+            # light_pos = [-40, 200, 100, 0.0]
 
-        ambient = np.array([0.50, 0.50, 0.50]) * DIM
+            light_pos = [0.0, 3.0, 0.0, 1.0]
+
+        # DIM = 0.0
+        ambient = np.array([0.50 * DIM, 0.50 * DIM, 0.50 * DIM, 1])
         ambient = self._perturb(ambient, 0.3)
-        diffuse = np.array([0.70, 0.70, 0.70]) * DIM
+        diffuse = np.array([0.70 * DIM, 0.70 * DIM, 0.70 * DIM, 1])
         diffuse = self._perturb(diffuse, 0.99)
+        specular = np.array([0.3, 0.3, 0.3, 1])
+        specular = np.array([0.0, 0.0, 0.0, 1])
 
+        logger.info(light_pos=light_pos, ambient=ambient, diffuse=diffuse, specular=specular)
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, (gl.GLfloat * 4)(*light_pos))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(*diffuse))
-        gl.glEnable(gl.GL_LIGHT0)
+        gl.glLightfv(gl.GL_LIGHT0, gl.GL_SPECULAR, (gl.GLfloat * 4)(*specular))
+
+        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_CONSTANT_ATTENUATION, (gl.GLfloat * 1)(0.4))
+        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_LINEAR_ATTENUATION, (gl.GLfloat * 1)(0.3))
+        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_QUADRATIC_ATTENUATION, (gl.GLfloat * 1)(0.1))
+
         gl.glEnable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_COLOR_MATERIAL)
 
@@ -510,18 +607,13 @@ class Simulator(gym.Env):
         # Randomize tile parameters
         for tile in self.grid:
             rng = self.np_random if self.domain_rand else None
-            # Randomize the tile texture
-            texture_name = tile["kind"]
 
-            # try:
-            #     # Get texture according to specified style
-            #     tile["texture"] = Texture.get(STYLE_PREPEND_STRS[self.style] + texture_name, rng=rng)
-            # except AssertionError as err:
-            #     # On loading error, fallback to default
-            ft = get_fancy_textures(self.style, texture_name)
-            t = load_texture(ft.fn_texture, segment=False, segment_into_color=False)
-            tt = Texture(t, tex_name=texture_name, rng=rng)
-            tile["texture"] = tt  # get_texture(f"{self.style}/{texture_name}", rng=rng)
+            kind = tile["kind"]
+            fn = get_resource_path(f"tiles-processed/{self.style}/{kind}/texture.jpg")
+            # ft = get_fancy_textures(self.style, texture_name)
+            t = load_texture(fn, segment=False, segment_into_color=False)
+            tt = Texture(t, tex_name=kind, rng=rng)
+            tile["texture"] = tt
 
             # Random tile color multiplier
             tile["color"] = self._perturb([1, 1, 1], 0.2)
@@ -539,13 +631,13 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting tile
         if self.user_tile_start:
-            logger.info("using user tile start: %s" % self.user_tile_start)
+            logger.info(f"using user tile start: {self.user_tile_start}")
             i, j = self.user_tile_start
             tile = self._get_tile(i, j)
             if tile is None:
                 msg = "The tile specified does not exist."
                 raise Exception(msg)
-            logger.debug("tile: %s" % tile)
+            logger.debug(f"tile: {tile}")
         else:
             if self.start_tile is not None:
                 tile = self.start_tile
@@ -556,7 +648,7 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting pose
         if self.start_pose is not None:
-            logger.info("using map pose start: %s" % self.start_pose)
+            logger.info(f"using map pose start: {self.start_pose}")
 
             i, j = tile["coords"]
             x = i * self.road_tile_size + self.start_pose[0][0]
@@ -564,7 +656,7 @@ class Simulator(gym.Env):
             propose_pos = np.array([x, 0, z])
             propose_angle = self.start_pose[1]
 
-            logger.info("Using map pose start. \n Pose: %s, Angle: %s" % (propose_pos, propose_angle))
+            logger.info(f"Using map pose start. \n Pose: {propose_pos}, Angle: {propose_angle}")
 
         else:
             # Keep trying to find a valid spawn position on this tile
@@ -902,7 +994,7 @@ class Simulator(gym.Env):
             return None
         return self.grid[j * self.grid_width + i]
 
-    def _perturb(self, val: np.array, scale=0.1):
+    def _perturb(self, val: Union[float, np.ndarray, List[float]], scale: float = 0.1) -> np.ndarray:
         """
         Add noise to a value. This is used for domain randomization.
         """
@@ -1385,7 +1477,7 @@ class Simulator(gym.Env):
         # cp = [gx, (grid_height - 1) * tile_size - gz]
         cp = [gx, grid_height * tile_size - gz]
 
-        return geometry.SE2_from_translation_angle(cp, angle)
+        return geometry.SE2_from_translation_angle(np.array(cp), angle)
 
     def weird_from_cartesian(self, q: np.ndarray) -> Tuple[list, float]:
 
@@ -1463,7 +1555,7 @@ class Simulator(gym.Env):
         """
 
         if not self.graphics:
-            return
+            return np.zeros((height, width, 3), np.uint8)
 
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
@@ -1479,6 +1571,9 @@ class Simulator(gym.Env):
             gl.glEnable(gl.GL_LIGHTING)
             gl.glEnable(gl.GL_COLOR_MATERIAL)
 
+        # note by default the ambient light is 0.2,0.2,0.2
+        ambient = [0.03, 0.03, 0.03, 1.0]
+        gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT, (gl.GLfloat * 4)(*ambient))
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, multi_fbo)
@@ -1531,7 +1626,7 @@ class Simulator(gym.Env):
 
             look_from = a, H_FROM_FLOOR, b
             # look_from = a, H_FROM_FLOOR, 0
-            look_at = a + 0.01, 0.0, b
+            look_at = a, 0.0, b + 0.01
             # up_vector = 0.0, 0.0, -1.0
             up_vector = 0.0, 1.0, 0
             gl.gluLookAt(*look_from, *look_at, *up_vector)
@@ -1559,6 +1654,32 @@ class Simulator(gym.Env):
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 
+        if False:
+            for i in range(1):
+                li = gl.GL_LIGHT0 + 1 + i
+                # li_pos = [i + 1, 1, i + 1, 1]
+
+                li_pos = [0.0, 0.2, 3.0, 1.0]
+                diffuse = [0.0, 0.0, 1.0, 1.0] if i % 2 == 0 else [1.0, 0.0, 0.0, 1.0]
+                ambient = [0.0, 0.0, 0.0, 1.0]
+                specular = [0.0, 0.0, 0.0, 1.0]
+                spot_direction = [0.0, -1.0, 0.0]
+                logger.debug(
+                    li=li, li_pos=li_pos, ambient=ambient, diffuse=diffuse, spot_direction=spot_direction
+                )
+                gl.glLightfv(li, gl.GL_POSITION, (gl.GLfloat * 4)(*li_pos))
+                gl.glLightfv(li, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
+                gl.glLightfv(li, gl.GL_DIFFUSE, (gl.GLfloat * 4)(*diffuse))
+                gl.glLightfv(li, gl.GL_SPECULAR, (gl.GLfloat * 4)(*specular))
+                gl.glLightfv(li, gl.GL_SPOT_DIRECTION, (gl.GLfloat * 3)(*spot_direction))
+                # gl.glLightfv(li, gl.GL_SPOT_EXPONENT, (gl.GLfloat * 1)(64.0))
+                gl.glLightf(li, gl.GL_SPOT_CUTOFF, 60)
+
+                gl.glLightfv(li, gl.GL_CONSTANT_ATTENUATION, (gl.GLfloat * 1)(1.0))
+                # gl.glLightfv(li, gl.GL_LINEAR_ATTENUATION, (gl.GLfloat * 1)(0.1))
+                gl.glLightfv(li, gl.GL_QUADRATIC_ATTENUATION, (gl.GLfloat * 1)(0.2))
+                gl.glEnable(li)
+
         # For each grid tile
         for i, j in itertools.product(range(self.grid_width), range(self.grid_height)):
 
@@ -1573,10 +1694,13 @@ class Simulator(gym.Env):
             color = tile["color"]
             texture = tile["texture"]
 
+            # logger.info('drawing', tile=tile)
+
             gl.glColor3f(*color)
 
             gl.glPushMatrix()
-            gl.glTranslatef((i + 0.5) * self.road_tile_size, 0, (j + 0.5) * self.road_tile_size)
+            TS = self.road_tile_size
+            gl.glTranslatef((i + 0.5) * TS, 0, (j + 0.5) * TS)
             gl.glRotatef(angle * 90 + 180, 0, 1, 0)
 
             gl.glEnable(gl.GL_BLEND)
@@ -1592,7 +1716,7 @@ class Simulator(gym.Env):
 
             if self.draw_curve and tile["drivable"]:
                 # Find curve with largest dotproduct with heading
-                curves = self._get_tile(i, j)["curves"]
+                curves = tile["curves"]
                 curve_headings = curves[:, -1, :] - curves[:, 0, :]
                 curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
                 dirVec = get_dir_vec(angle)
@@ -1741,13 +1865,10 @@ class Simulator(gym.Env):
         # Display position/state information
         if mode != "free_cam":
             x, y, z = self.cur_pos
-            self.text_label.text = "pos: (%.2f, %.2f, %.2f), angle: %d, steps: %d, speed: %.2f m/s" % (
-                x,
-                y,
-                z,
-                int(self.cur_angle * 180 / math.pi),
-                self.step_count,
-                self.speed,
+            self.text_label.text = (
+                f"pos: ({x:.2f}, {y:.2f}, {z:.2f}), angle: "
+                f"{np.rad2deg(self.cur_angle):.1f} deg, steps: {self.step_count}, "
+                f"speed: {self.speed:.2f} m/s"
             )
             self.text_label.draw()
 
@@ -1757,7 +1878,7 @@ class Simulator(gym.Env):
         return img
 
 
-def get_dir_vec(cur_angle):
+def get_dir_vec(cur_angle: float) -> np.ndarray:
     """
     Vector pointing in the direction the agent is looking
     """
@@ -1767,7 +1888,7 @@ def get_dir_vec(cur_angle):
     return np.array([x, 0, z])
 
 
-def get_right_vec(cur_angle):
+def get_right_vec(cur_angle: float) -> np.ndarray:
     """
     Vector pointing to the right of the agent
     """

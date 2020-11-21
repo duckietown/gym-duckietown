@@ -90,7 +90,7 @@ class ObjMesh:
             if k in materials:
                 old = dict(materials[k])
                 materials[k].update(v)
-                logger.info("updated", old=old, n=materials[k])
+                # logger.info("updated", old=old, n=materials[k])
             else:
                 logger.warning(f"could not find material {k!r} in {list(materials)}")
         mesh_file = open(file_path, "r")
@@ -292,7 +292,8 @@ class ObjMesh:
         try:
             tex_path = get_resource_path(f"{tex_name}.png")
         except KeyError:
-            logger.warning(f"Cannot find texture path {tex_name}.png")
+            # logger.warning(f"Cannot find texture path {tex_name}.png")
+            pass
         else:
             default_mtl["map_Kd"] = tex_path
 
@@ -301,7 +302,7 @@ class ObjMesh:
         try:
             mtl_path = get_resource_path(f"{tex_name}.mtl")
         except KeyError as e:
-            logger.warning(f"Cannot find material {tex_name}.mtl ")
+            # logger.warning(f"Cannot find material {tex_name}.mtl ")
             return materials
 
         logger.debug(f"loading materials from {mtl_path}")
