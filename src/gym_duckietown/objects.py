@@ -145,7 +145,7 @@ class WorldObj:
         gl.glRotatef(self.x_rot, 1, 0, 0)  # Niki-added
         gl.glRotatef(self.y_rot, 0, 1, 0)
         gl.glRotatef(self.z_rot, 0, 0, 1)  # Niki-added
-        gl.glColor3f(*self.color)
+        gl.glColor4f(*self.color)
         self.render_mesh(segment, enable_leds=enable_leds)
         gl.glPopMatrix()
 

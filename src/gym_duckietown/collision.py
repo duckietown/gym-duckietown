@@ -134,11 +134,15 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     of each projection pair. The variables are named as:
     {x's norm + projected on + min/max}.
     """
+    from . import logger
+
     duckduck_min, duckduck_max = tensor_sat_test(duckie_norm, duckie.T)
     objduck_min, objduck_max = tensor_sat_test(duckie_norm, objs_stacked)
     duckobj_min, duckobj_max = tensor_sat_test(norms_stacked, duckie.T)
     objobj_min, objobj_max = tensor_sat_test(norms_stacked, objs_stacked)
 
+    # logger.info(duckobj_min=duckobj_min, duckobj_max=duckobj_max)
+    # logger.info(objobj_min=objobj_min, objobj_max=objobj_max)
     # Iterate through each object we are checking against
     for idx in range(objduck_min.shape[0]):
         # If any interval doesn't overlap, immediately know objects don't intersect

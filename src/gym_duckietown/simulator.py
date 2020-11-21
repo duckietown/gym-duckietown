@@ -20,6 +20,7 @@ from duckietown_world import (
     get_DB18_nominal,
     get_DB18_uncalibrated,
     get_resource_path,
+    get_texture_file,
     MapFormat1,
     MapFormat1Constants,
     MapFormat1Constants as MF1C,
@@ -213,7 +214,7 @@ class Simulator(gym.Env):
         camera_rand: bool = False,
         randomize_maps_on_reset: bool = False,
         num_tris_distractors: int = 12,
-        color_ground: Sequence[int] = (0.15, 0.15, 0.15),
+        color_ground: Sequence[float] = (0.15, 0.15, 0.15),
         style: str = "photos",
         enable_leds: bool = False,
     ):
@@ -384,27 +385,34 @@ class Simulator(gym.Env):
         vertices = []
         textures = []
         normals = []
+        colors = []
         for i, j in itertools.product(range(ns - 1), range(ns - 1)):
             tl_p, tl_t = get_point(i, j)
             tr_p, tr_t = get_point(i + 1, j)
             br_p, br_t = get_point(i, j + 1)
             bl_p, bl_t = get_point(i + 1, j + 1)
             normal = [0.0, 1.0, 0.0]
+
+            color = (255, 255, 255, 255)
             vertices.extend(tl_p)
             textures.extend(tl_t)
             normals.extend(normal)
+            colors.extend(color)
 
             vertices.extend(tr_p)
             textures.extend(tr_t)
             normals.extend(normal)
+            colors.extend(color)
 
             vertices.extend(bl_p)
             textures.extend(bl_t)
             normals.extend(normal)
+            colors.extend(color)
 
             vertices.extend(br_p)
             textures.extend(br_t)
             normals.extend(normal)
+            colors.extend(color)
 
             #
             # normals.extend([0.0, 1.0, 0.0] * 4)
@@ -477,7 +485,7 @@ class Simulator(gym.Env):
         #             normals=normals)
         total = len(vertices) // 3
         self.road_vlist = pyglet.graphics.vertex_list(
-            total, ("v3f", vertices), ("t2f", textures), ("n3f", normals)
+            total, ("v3f", vertices), ("t2f", textures), ("n3f", normals), ("c4B", colors)
         )
         logger.info("done")
         # Create the vertex list for the ground quad
@@ -609,19 +617,19 @@ class Simulator(gym.Env):
             rng = self.np_random if self.domain_rand else None
 
             kind = tile["kind"]
-            fn = get_resource_path(f"tiles-processed/{self.style}/{kind}/texture.jpg")
+            fn = get_texture_file(f"tiles-processed/{self.style}/{kind}/texture")[0]
             # ft = get_fancy_textures(self.style, texture_name)
             t = load_texture(fn, segment=False, segment_into_color=False)
             tt = Texture(t, tex_name=kind, rng=rng)
             tile["texture"] = tt
 
             # Random tile color multiplier
-            tile["color"] = self._perturb([1, 1, 1], 0.2)
+            tile["color"] = self._perturb([1, 1, 1, 1], 0.2)
 
         # Randomize object parameters
         for obj in self.objects:
             # Randomize the object color
-            obj.color = self._perturb([1, 1, 1], 0.3)
+            obj.color = self._perturb([1, 1, 1, 1], 0.3)
 
             # Randomize whether the object is visible or not
             if obj.optional and self.domain_rand:
@@ -1007,10 +1015,14 @@ class Simulator(gym.Env):
 
         if isinstance(val, np.ndarray):
             noise = self.np_random.uniform(low=1 - scale, high=1 + scale, size=val.shape)
+            if val.size == 4:
+                noise[3] = 1
         else:
             noise = self.np_random.uniform(low=1 - scale, high=1 + scale)
 
-        return val * noise
+        res = val * noise
+
+        return res
 
     def _collidable_object(self, obj_corners, obj_norm, possible_tiles):
         """
@@ -1639,7 +1651,7 @@ class Simulator(gym.Env):
         # Draw the ground quad
         gl.glDisable(gl.GL_TEXTURE_2D)
         # background is magenta when segmenting for easy isolation of main map image
-        gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])
+        gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])  # XXX
         gl.glPushMatrix()
         gl.glScalef(50, 1, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
@@ -1680,6 +1692,7 @@ class Simulator(gym.Env):
                 gl.glLightfv(li, gl.GL_QUADRATIC_ATTENUATION, (gl.GLfloat * 1)(0.2))
                 gl.glEnable(li)
 
+        # gl.glDisable(gl.GL_COLOR_MATERIAL) # XXX
         # For each grid tile
         for i, j in itertools.product(range(self.grid_width), range(self.grid_height)):
 
@@ -1694,9 +1707,9 @@ class Simulator(gym.Env):
             color = tile["color"]
             texture = tile["texture"]
 
-            # logger.info('drawing', tile=tile)
+            # logger.info('drawing', tile_color=color)
 
-            gl.glColor3f(*color)
+            gl.glColor4f(*color)
 
             gl.glPushMatrix()
             TS = self.road_tile_size
