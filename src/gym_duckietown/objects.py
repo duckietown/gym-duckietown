@@ -68,7 +68,7 @@ class WorldObj:
 
     def render_mesh(self, segment: bool, enable_leds: bool):
         self.mesh.render(segment=segment)
-        if enable_leds and self.kind in ["duckiebot", "duckiebot-player"]:
+        if enable_leds and self.kind == MapFormat1Constants.KIND_DUCKIEBOT:
             # attrs =
             # gl.glPushAttrib(gl.GL_ALL_ATTRIB_BITS)
             s_main = 0.01  # 1 cm sphere

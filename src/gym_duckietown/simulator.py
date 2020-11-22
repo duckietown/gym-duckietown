@@ -555,7 +555,7 @@ class Simulator(gym.Env):
         ambient = self._perturb(ambient, 0.3)
         diffuse = np.array([0.70 * DIM, 0.70 * DIM, 0.70 * DIM, 1])
         diffuse = self._perturb(diffuse, 0.99)
-        specular = np.array([0.3, 0.3, 0.3, 1])
+        # specular = np.array([0.3, 0.3, 0.3, 1])
         specular = np.array([0.0, 0.0, 0.0, 1])
 
         logger.info(light_pos=light_pos, ambient=ambient, diffuse=diffuse, specular=specular)
@@ -1645,7 +1645,7 @@ class Simulator(gym.Env):
 
             look_from = a, H_FROM_FLOOR, b
             # look_from = a, H_FROM_FLOOR, 0
-            look_at = a, 0.0, b + 0.01
+            look_at = a, 0.0, b - 0.01
             # up_vector = 0.0, 0.0, -1.0
             up_vector = 0.0, 1.0, 0
             gl.gluLookAt(*look_from, *look_at, *up_vector)
@@ -1781,6 +1781,8 @@ class Simulator(gym.Env):
             self.mesh.render()
             gl.glPopMatrix()
 
+        if False:
+            draw_axes()
         # Resolve the multisampled frame buffer into the final frame buffer
         gl.glBindFramebuffer(gl.GL_READ_FRAMEBUFFER, multi_fbo)
         gl.glBindFramebuffer(gl.GL_DRAW_FRAMEBUFFER, final_fbo)
@@ -1981,3 +1983,26 @@ class FrameBufferMemory:
         # that's right, it's inverted
         self.multi_fbo, self.final_fbo = create_frame_buffers(width, height, 4)
         self.img_array = np.zeros(shape=(height, width, 3), dtype=np.uint8)
+
+
+def draw_axes():
+    gl.glPushMatrix()
+    gl.glLineWidth(4.0)
+    gl.glTranslatef(0.0, 0.0, 0.0)
+
+    gl.glBegin(gl.GL_LINES)
+    L = 0.3
+    gl.glColor3f(1.0, 0.0, 0.0)
+    gl.glVertex3f(0.0, 0.0, 0.0)
+    gl.glVertex3f(L, 0.0, 0.0)
+
+    gl.glColor3f(0.0, 1.0, 0.0)
+    gl.glVertex3f(0.0, 0.0, 0.0)
+    gl.glVertex3f(0.0, L, 0.0)
+
+    gl.glColor3f(0.0, 0.0, 1.0)
+    gl.glVertex3f(0.0, 0.0, 0.0)
+    gl.glVertex3f(0.0, 0.0, L)
+    gl.glEnd()
+
+    gl.glPopMatrix()

@@ -4,6 +4,7 @@ import random
 
 import numpy as np
 
+from duckietown_world import MapFormat1Constants
 from gym_duckietown.envs import DuckietownEnv
 from gym_duckietown.simulator import AGENT_SAFETY_RAD
 
@@ -71,7 +72,7 @@ class PurePursuitPolicy:
         # in case of training LFV baseline
         velocity_slow_down = 1
         for obj in current_world_objects:
-            if not obj.static and obj.kind == "duckiebot":
+            if not obj.static and obj.kind == MapFormat1Constants.KIND_DUCKIEBOT:
                 if True:
                     collision_penalty = abs(
                         obj.proximity(self.env.cur_pos, AGENT_SAFETY_RAD * AGENT_SAFETY_GAIN)
@@ -152,7 +153,6 @@ from PIL import Image
 
 
 def to_image(np_array):
-
     img = Image.fromarray(np_array, "RGB")
     img.show()
     i = 0
