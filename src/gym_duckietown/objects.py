@@ -1,13 +1,12 @@
 # coding=utf-8
 import math
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy as np
-from duckietown_world import get_resource_path, MapFormat1Constants
-from gym_duckietown.objmesh import ObjMesh
 from pyglet import gl
 from pyglet.gl import gluNewQuadric, gluSphere
 
+from duckietown_world import get_resource_path, MapFormat1Constants
 from .collision import (
     agent_boundbox,
     calculate_safety_radius,
@@ -17,12 +16,12 @@ from .collision import (
     intersects_single_obj,
 )
 from .graphics import load_texture, rotate_point
-from .utils import get_file_path
+from .objmesh import ObjMesh
 
 
 class WorldObj:
     visible: bool
-    color: Tuple[float, float, float]
+    color: Tuple[float, float, float, float]
     safety_radius_mult: float
 
     obj_corners: np.array
@@ -38,7 +37,7 @@ class WorldObj:
         # (Static analysis complains)
         self.visible = True
         # same
-        self.color = (0, 0, 0)
+        self.color = (0, 0, 0, 1)
         # maybe have an abstract method is_visible, get_color()
 
         self.process_obj_dict(obj, safety_radius_mult)
