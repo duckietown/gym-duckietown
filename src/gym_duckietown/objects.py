@@ -74,7 +74,7 @@ class WorldObj:
             s_main = 0.01  # 1 cm sphere
             # LIGHT_MULT_MAIN = 10
             s_halo = 0.04
-            height = 0.04
+            height = 0.05
             positions = {
                 "front_left": [0.1, -0.05, height],
                 "front_right": [0.1, +0.05, height],

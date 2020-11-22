@@ -79,6 +79,14 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
         segment_into_color = [0, 0, 0]
     logger.debug(f"loading texture: {tex_path}")
     img = pyglet.image.load(tex_path)
+    # img_format = 'RGBA'
+    # pitch = img.width * len(img_format)
+    # pixels = img.get_data(img_format, pitch)
+    #
+    #
+    # for i in range(x, width):
+    #     for j in range(y, height):
+    #         pixels[i, j] = (0, 0, 0, 0)
 
     if segment:
         if should_segment_out(tex_path):  # replace all by 'segment_into_color'
@@ -122,19 +130,41 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
             )
 
     tex = img.get_texture()
+    # if img.width == img.height:
+    #     tex = tex.get_mipmapped_texture()
     gl.glEnable(tex.target)
     gl.glBindTexture(tex.target, tex.id)
-    gl.glTexImage2D(
-        gl.GL_TEXTURE_2D,
-        0,
-        gl.GL_RGBA,
-        img.width,
-        img.height,
-        0,
-        gl.GL_RGBA,
-        gl.GL_UNSIGNED_BYTE,
-        img.get_image_data().get_data("RGBA", img.width * 4),
-    )
+    rawimage = img.get_image_data()
+
+    if tex_path.endswith("jpg"):
+        image_data = rawimage.get_data("RGB", img.width * 3)
+
+        gl.glTexImage2D(
+            gl.GL_TEXTURE_2D,
+            0,
+            gl.GL_RGBA,
+            img.width,
+            img.height,
+            0,
+            gl.GL_RGB,
+            gl.GL_UNSIGNED_BYTE,
+            image_data,
+        )
+
+    else:
+        image_data = rawimage.get_data("RGBA", img.width * 4)
+
+        gl.glTexImage2D(
+            gl.GL_TEXTURE_2D,
+            0,
+            gl.GL_RGBA,
+            img.width,
+            img.height,
+            0,
+            gl.GL_RGBA,
+            gl.GL_UNSIGNED_BYTE,
+            image_data,
+        )
 
     return tex
 

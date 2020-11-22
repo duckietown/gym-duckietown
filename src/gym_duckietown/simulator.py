@@ -19,7 +19,6 @@ from pyglet import gl, image, window
 from duckietown_world import (
     get_DB18_nominal,
     get_DB18_uncalibrated,
-    get_resource_path,
     get_texture_file,
     MapFormat1,
     MapFormat1Constants,
@@ -909,14 +908,19 @@ class Simulator(gym.Env):
         pos = self.road_tile_size * np.array((x, y, z))
 
         # Load the mesh
-        change_materials: Dict[str, MatInfo]
-        if kind == "duckiebot":
+
+        if kind == MapFormat1Constants.KIND_DUCKIEBOT:
             use_color = desc.get("color", "red")
 
             mesh = get_duckiebot_mesh(use_color)
 
+        elif kind.startswith("sign"):
+            change_materials: Dict[str, MatInfo]
+            logger.info(kind=kind, desc=desc)
+            minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
+            change_materials = {"April_Tag": minfo}
+            mesh = get_mesh("sign_generic", change_materials=change_materials)
         else:
-
             mesh = get_mesh(kind)
 
         if "height" in desc:
@@ -1586,6 +1590,7 @@ class Simulator(gym.Env):
         # note by default the ambient light is 0.2,0.2,0.2
         ambient = [0.03, 0.03, 0.03, 1.0]
         ambient = [0.3, 0.3, 0.3, 1.0]
+        gl.glEnable(gl.GL_POLYGON_SMOOTH)
 
         gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT, (gl.GLfloat * 4)(*ambient))
         # Bind the multisampled frame buffer
@@ -1655,13 +1660,17 @@ class Simulator(gym.Env):
         # background is magenta when segmenting for easy isolation of main map image
         gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])  # XXX
         gl.glPushMatrix()
-        gl.glScalef(50, 1, 50)
+        # gl.glTranslatef(0.0, 0.1, 0.0)
+        gl.glScalef(50, 0.01, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
         gl.glPopMatrix()
 
         # Draw the ground/noise triangles
         if not segment:
+            gl.glPushMatrix()
+            gl.glTranslatef(0.0, 0.1, 0.0)
             self.tri_vlist.draw(gl.GL_TRIANGLES)
+            gl.glPopMatrix()
 
         # Draw the road quads
         gl.glEnable(gl.GL_TEXTURE_2D)
@@ -1718,14 +1727,14 @@ class Simulator(gym.Env):
             gl.glTranslatef((i + 0.5) * TS, 0, (j + 0.5) * TS)
             gl.glRotatef(angle * 90 + 180, 0, 1, 0)
 
-            gl.glEnable(gl.GL_BLEND)
-            gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+            # gl.glEnable(gl.GL_BLEND)
+            # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
             # Bind the appropriate texture
             texture.bind(segment)
 
             self.road_vlist.draw(gl.GL_QUADS)
-            gl.glDisable(gl.GL_BLEND)
+            # gl.glDisable(gl.GL_BLEND)
 
             gl.glPopMatrix()
 
