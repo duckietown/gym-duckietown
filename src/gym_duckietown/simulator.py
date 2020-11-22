@@ -1585,6 +1585,8 @@ class Simulator(gym.Env):
 
         # note by default the ambient light is 0.2,0.2,0.2
         ambient = [0.03, 0.03, 0.03, 1.0]
+        ambient = [0.3, 0.3, 0.3, 1.0]
+
         gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT, (gl.GLfloat * 4)(*ambient))
         # Bind the multisampled frame buffer
         gl.glEnable(gl.GL_MULTISAMPLE)
