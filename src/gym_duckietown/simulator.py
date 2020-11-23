@@ -1412,7 +1412,7 @@ class Simulator(gym.Env):
     def _check_intersection_static_obstacles(self, pos: g.T3value, angle: float) -> bool:
         agent_corners = get_agent_corners(pos, angle)
         agent_norm = generate_norm(agent_corners)
-        logger.debug(agent_corners=agent_corners, agent_norm=agent_norm)
+        # logger.debug(agent_corners=agent_corners, agent_norm=agent_norm)
         # Check collisions with Static Objects
         if len(self.collidable_corners) > 0:
             collision = intersects(agent_corners, self.collidable_corners, agent_norm, self.collidable_norms)
