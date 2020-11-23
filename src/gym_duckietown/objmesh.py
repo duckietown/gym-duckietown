@@ -6,7 +6,7 @@ import numpy as np
 import pyglet
 from pyglet import gl
 
-from duckietown_world import get_resource_path
+from duckietown_world.resources import get_resource_path
 from . import logger
 from .graphics import load_texture
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, TypedDict, Union
 
 import geometry
+import geometry as g
 import gym
 import numpy as np
 import pyglet
@@ -26,11 +27,11 @@ from duckietown_world import (
     MapFormat1Object,
 )
 from duckietown_world.gltf.export import get_duckiebot_color_from_colorname
+from duckietown_world.resources import get_resource_path
 from . import logger
 from .check_hw import get_graphics_information
 from .collision import (
     agent_boundbox,
-    find_candidate_tiles,
     generate_norm,
     intersects,
     safety_circle_intersection,
@@ -52,7 +53,7 @@ from .graphics import (
 from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, WorldObj
 from .objmesh import get_mesh, MatInfo, ObjMesh
 from .randomization import Randomizer
-from .utils import get_file_path, get_subdir_path
+from .utils import get_subdir_path
 
 DIM = 0.5
 
@@ -745,7 +746,7 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path
-        self.map_file_path = get_file_path("maps", map_name, "yaml")
+        self.map_file_path = get_resource_path(f"{map_name}.yaml")
 
         logger.debug(f'loading map file "{self.map_file_path}"')
 
@@ -789,19 +790,22 @@ class Simulator(gym.Env):
                     if tile == "empty":
                         continue
 
+                    directions = ["S", "E", "N", "W"]
+                    default_orient = "E"
+
                     if "/" in tile:
                         kind, orient = tile.split("/")
                         kind = kind.strip(" ")
                         orient = orient.strip(" ")
-                        angle = ["S", "E", "N", "W"].index(orient)
+                        angle = directions.index(orient)
 
                     elif "4" in tile:
                         kind = "4way"
-                        angle = 2
+                        angle = directions.index(default_orient)
 
                     else:
                         kind = tile
-                        angle = 0
+                        angle = directions.index(default_orient)
 
                     DRIVABLE_TILES = [
                         "straight",
@@ -967,19 +971,22 @@ class Simulator(gym.Env):
 
         # angle = rotate * (math.pi / 180)
 
-        # Find drivable tiles object could intersect with
-        possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
+        # # Find drivable tiles object could intersect with
+        # # possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
 
         # If the object intersects with a drivable tile
         if (
             static
             and kind != MF1C.KIND_TRAFFICLIGHT
-            and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
+            # We want collision checking also for things outside the lanes
+            # # and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
         ):
-            self.collidable_centers.append(pos)
+            # noinspection PyUnresolvedReferences
+            self.collidable_centers.append(pos)  # XXX: changes types during initialization
             self.collidable_corners.append(obj.obj_corners.T)
             self.collidable_norms.append(obj.obj_norm)
-            self.collidable_safety_radii.append(obj.safety_radius)
+            # noinspection PyUnresolvedReferences
+            self.collidable_safety_radii.append(obj.safety_radius)  # XXX: changes types during initialization
 
     def close(self):
         pass
@@ -1296,7 +1303,7 @@ class Simulator(gym.Env):
 
         return True
 
-    def proximity_penalty2(self, pos, angle):
+    def proximity_penalty2(self, pos: g.T3value, angle: float) -> float:
         """
         Calculates a 'safe driving penalty' (used as negative rew.)
         as described in Issue #24
@@ -1316,7 +1323,7 @@ class Simulator(gym.Env):
             d = np.linalg.norm(self.collidable_centers - pos, axis=1)
 
             if not safety_circle_intersection(d, AGENT_SAFETY_RAD, self.collidable_safety_radii):
-                static_dist = 0
+                static_dist = 0.0
             else:
                 static_dist = safety_circle_overlap(d, AGENT_SAFETY_RAD, self.collidable_safety_radii)
 
@@ -1360,7 +1367,7 @@ class Simulator(gym.Env):
         # No collision with any object
         return False
 
-    def _valid_pose(self, pos, angle, safety_factor=1.0):
+    def _valid_pose(self, pos: g.T3value, angle: float, safety_factor: float = 1.0) -> bool:
         """
             Check that the agent is in a valid pose
 
@@ -1401,6 +1408,17 @@ class Simulator(gym.Env):
             logger.debug(f"f_pos: {f_pos}")
 
         return res
+
+    def _check_intersection_static_obstacles(self, pos: g.T3value, angle: float) -> bool:
+        agent_corners = get_agent_corners(pos, angle)
+        agent_norm = generate_norm(agent_corners)
+        logger.debug(agent_corners=agent_corners, agent_norm=agent_norm)
+        # Check collisions with Static Objects
+        if len(self.collidable_corners) > 0:
+            collision = intersects(agent_corners, self.collidable_corners, agent_norm, self.collidable_norms)
+            if collision:
+                return True
+        return False
 
     cur_pose: np.ndarray
     cur_angle: float

@@ -1,7 +1,0 @@
-# 3x3 tiles with right turns at the corners going in a clockwise loop
-tiles:
-- [curve_right/N, straight/E, curve_right/E]
-- [straight/N   , asphalt   , straight/S]
-- [curve_right/W, straight/W, curve_right/S]
-
-tile_size: 0.585

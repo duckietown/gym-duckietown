@@ -134,7 +134,6 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     of each projection pair. The variables are named as:
     {x's norm + projected on + min/max}.
     """
-    from . import logger
 
     duckduck_min, duckduck_max = tensor_sat_test(duckie_norm, duckie.T)
     objduck_min, objduck_max = tensor_sat_test(duckie_norm, objs_stacked)

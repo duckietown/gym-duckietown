@@ -6,7 +6,8 @@ import numpy as np
 from pyglet import gl
 from pyglet.gl import gluNewQuadric, gluSphere
 
-from duckietown_world import get_resource_path, MapFormat1Constants
+from duckietown_world import MapFormat1Constants
+from duckietown_world.resources import get_resource_path
 from .collision import (
     agent_boundbox,
     calculate_safety_radius,
