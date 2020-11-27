@@ -204,7 +204,9 @@ class ObjMesh:
 
         # Re-center the object so that the base is at y=0
         # and the object is centered in x and z
+        # noinspection PyArgumentList
         min_coords = list_verts.min(axis=0).min(axis=0)
+        # noinspection PyArgumentList
         max_coords = list_verts.max(axis=0).min(axis=0)
         mean_coords = (min_coords + max_coords) / 2
         min_y = min_coords[1]
@@ -215,7 +217,9 @@ class ObjMesh:
         list_verts[:, :, 2] -= mean_z
 
         # Recompute the object extents after centering
+        # noinspection PyArgumentList
         self.min_coords = list_verts.min(axis=0).min(axis=0)
+        # noinspection PyArgumentList
         self.max_coords = list_verts.max(axis=0).max(axis=0)
 
         # Vertex lists, one per chunk

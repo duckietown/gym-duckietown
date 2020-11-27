@@ -141,10 +141,10 @@ class PurePursuitPolicy:
             return np.dot(curve_angle, closest_tangent), closest_point, curve_point
 
 
-def seed(seed):
+def seed(s: int):
     # torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
+    np.random.seed(s)
+    random.seed(s)
 
 
 seed(random.randint(0, 9999999))
