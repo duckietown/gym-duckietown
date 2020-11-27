@@ -709,7 +709,7 @@ class Simulator(gym.Env):
                 # Found a valid initial pose
                 break
             else:
-                msg = "Could not find a valid starting pose after %s attempts" % MAX_SPAWN_ATTEMPTS
+                msg = f"Could not find a valid starting pose after {MAX_SPAWN_ATTEMPTS} attempts"
                 raise Exception(msg)
 
         self.cur_pos = propose_pos
@@ -1581,7 +1581,14 @@ class Simulator(gym.Env):
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)
 
     def _render_img(
-        self, width, height, multi_fbo, final_fbo, img_array, top_down=True, segment=False
+        self,
+        width: int,
+        height: int,
+        multi_fbo,
+        final_fbo,
+        img_array,
+        top_down: bool = True,
+        segment: bool = False,
     ) -> np.ndarray:
         """
         Render an image of the environment into a frame buffer
@@ -1606,8 +1613,9 @@ class Simulator(gym.Env):
             gl.glEnable(gl.GL_COLOR_MATERIAL)
 
         # note by default the ambient light is 0.2,0.2,0.2
-        ambient = [0.03, 0.03, 0.03, 1.0]
+        # ambient = [0.03, 0.03, 0.03, 1.0]
         ambient = [0.3, 0.3, 0.3, 1.0]
+
         gl.glEnable(gl.GL_POLYGON_SMOOTH)
 
         gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT, (gl.GLfloat * 4)(*ambient))
@@ -1657,14 +1665,11 @@ class Simulator(gym.Env):
             fov_y_deg = self.cam_fov_y
             fov_y_rad = np.deg2rad(fov_y_deg)
             H_to_fit = max(a, b) + 0.1  # borders
-            # H_FROM_FLOOR * tan(fov_y_rad/2) = H_to_fit
 
             H_FROM_FLOOR = H_to_fit / (np.tan(fov_y_rad / 2))
 
             look_from = a, H_FROM_FLOOR, b
-            # look_from = a, H_FROM_FLOOR, 0
             look_at = a, 0.0, b - 0.01
-            # up_vector = 0.0, 0.0, -1.0
             up_vector = 0.0, 1.0, 0
             gl.gluLookAt(*look_from, *look_at, *up_vector)
         else:
@@ -1678,7 +1683,6 @@ class Simulator(gym.Env):
         # background is magenta when segmenting for easy isolation of main map image
         gl.glColor3f(*self.ground_color if not segment else [255, 0, 255])  # XXX
         gl.glPushMatrix()
-        # gl.glTranslatef(0.0, 0.1, 0.0)
         gl.glScalef(50, 0.01, 50)
         self.ground_vlist.draw(gl.GL_QUADS)
         gl.glPopMatrix()
@@ -1721,7 +1725,6 @@ class Simulator(gym.Env):
                 gl.glLightfv(li, gl.GL_QUADRATIC_ATTENUATION, (gl.GLfloat * 1)(0.2))
                 gl.glEnable(li)
 
-        # gl.glDisable(gl.GL_COLOR_MATERIAL) # XXX
         # For each grid tile
         for i, j in itertools.product(range(self.grid_width), range(self.grid_height)):
 
