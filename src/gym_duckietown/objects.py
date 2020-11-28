@@ -41,10 +41,20 @@ class WorldObj:
         self.color = (0, 0, 0, 1)
         # maybe have an abstract method is_visible, get_color()
 
-        self.process_obj_dict(obj, safety_radius_mult)
+        self.kind = obj["kind"]
+        self.mesh = obj["mesh"]
+        self.pos = obj["pos"]
+        self.scale = obj["scale"]
+        # self.y_rot =
+        self.optional = obj["optional"]
+        self.min_coords = obj["mesh"].min_coords
+        self.max_coords = obj["mesh"].max_coords
+        self.static = obj["static"]
+        self.safety_radius = safety_radius_mult * calculate_safety_radius(self.mesh, self.scale)
 
         self.domain_rand = domain_rand
-        self.angle = self.y_rot * (math.pi / 180)
+        self.angle = obj["angle"]
+        self.y_rot = np.rad2deg(self.angle)
 
         #  Find corners and normal vectors assoc w. object
         self.obj_corners = generate_corners(
@@ -54,18 +64,6 @@ class WorldObj:
 
         self.x_rot = 0  # Niki-added
         self.z_rot = 0  # Niki-added
-
-    def process_obj_dict(self, obj, safety_radius_mult):
-        self.kind = obj["kind"]
-        self.mesh = obj["mesh"]
-        self.pos = obj["pos"]
-        self.scale = obj["scale"]
-        self.y_rot = obj["y_rot"]
-        self.optional = obj["optional"]
-        self.min_coords = obj["mesh"].min_coords
-        self.max_coords = obj["mesh"].max_coords
-        self.static = obj["static"]
-        self.safety_radius = safety_radius_mult * calculate_safety_radius(self.mesh, self.scale)
 
     def render_mesh(self, segment: bool, enable_leds: bool):
         self.mesh.render(segment=segment)

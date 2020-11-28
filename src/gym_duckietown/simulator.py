@@ -25,9 +25,11 @@ from duckietown_world import (
     MapFormat1Constants,
     MapFormat1Constants as MF1C,
     MapFormat1Object,
+    SE2Transform,
 )
 from duckietown_world.gltf.export import get_duckiebot_color_from_colorname
 from duckietown_world.resources import get_resource_path
+from duckietown_world.world_duckietown.map_loading import get_transform
 from . import logger
 from .check_hw import get_graphics_information
 from .collision import (
@@ -875,15 +877,17 @@ class Simulator(gym.Env):
         except KeyError:
             pass
         else:
-            if isinstance(objects, dict):
-                logger.warning("Not implemented dictionary")
+            if isinstance(objects, list):
+                for obj_idx, desc in enumerate(objects):
+                    kind = desc["kind"]
+                    obj_name = f"ob{obj_idx:02d}-{kind}"
+                    self.interpret_object(obj_name, desc)
+            elif isinstance(objects, dict):
+                for obj_name, desc in objects.items():
+
+                    self.interpret_object(obj_name, desc)
             else:
-                for desc in objects:
-                    try:
-                        self.interpret_object(desc)
-                    except Exception as e:
-                        msg = "Cannot interpreted object"
-                        raise InvalidMapException(msg, object_desc=desc) from e
+                raise ValueError(objects)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -899,17 +903,26 @@ class Simulator(gym.Env):
         self.collidable_centers = np.array(self.collidable_centers)
         self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
-    def interpret_object(self, desc: MapFormat1Object):
+    def interpret_object(self, objname: str, desc: MapFormat1Object):
         kind = desc["kind"]
 
-        pos = desc["pos"]
-        x, z = pos[0:2]
-        y = pos[2] if len(pos) == 3 else 0.0
+        W = self.grid_width
+        tile_size = self.road_tile_size
+        transform: SE2Transform = get_transform(desc, W, tile_size)
+        logger.info(desc=desc, transform=transform)
 
-        rotate = desc["rotate"]
+        pose = transform.as_SE2()
+
+        pos, angle_rad = self.weird_from_cartesian(pose)
+
+        # pos = desc["pos"]
+        # x, z = pos[0:2]
+        # y = pos[2] if len(pos) == 3 else 0.0
+
+        # rotate = desc.get("rotate", 0.0)
         optional = desc.get("optional", False)
 
-        pos = self.road_tile_size * np.array((x, y, z))
+        # pos = self.road_tile_size * np.array((x, y, z))
 
         # Load the mesh
 
@@ -924,6 +937,8 @@ class Simulator(gym.Env):
             minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
             change_materials = {"April_Tag": minfo}
             mesh = get_mesh("sign_generic", change_materials=change_materials)
+        elif kind == "floor_tag":
+            return
         else:
             mesh = get_mesh(kind)
 
@@ -941,8 +956,8 @@ class Simulator(gym.Env):
             "kind": kind,
             "mesh": mesh,
             "pos": pos,
+            "angle": angle_rad,
             "scale": scale,
-            "y_rot": rotate,
             "optional": optional,
             "static": static,
         }
