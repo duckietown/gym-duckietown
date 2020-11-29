@@ -41,12 +41,13 @@ class MultiMapEnv(gym.Env):
         self.cur_reward_sum = 0
         self.cur_num_steps = 0
 
-    def seed(self, seed):
+    def seed(self, seed=None):
         for env in self.env_list:
             env.seed(seed)
+        from gym.utils import seeding
 
         # Seed the random number generator
-        self.np_random, _ = gym.utils.seeding.np_random(seed)
+        self.np_random, _ = seeding.np_random(seed)
 
         return [seed]
 

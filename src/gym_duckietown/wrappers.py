@@ -29,6 +29,9 @@ class DiscreteWrapper(gym.ActionWrapper):
             assert False, "unknown action"
         return np.array(vels)
 
+    def reverse_action(self, action):
+        raise NotImplementedError()
+
 
 class SteeringToWheelVelWrapper(gym.ActionWrapper):
     """
@@ -81,6 +84,9 @@ class SteeringToWheelVelWrapper(gym.ActionWrapper):
 
         vels = np.array([u_l_limited, u_r_limited])
         return vels
+
+    def reverse_action(self, action):
+        raise NotImplementedError()
 
 
 class PyTorchObsWrapper(gym.ObservationWrapper):

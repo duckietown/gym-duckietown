@@ -1,6 +1,6 @@
 # coding=utf-8
 import os
-from typing import Dict, List, TypedDict
+from typing import cast, Dict, TypedDict
 
 import numpy as np
 import pyglet
@@ -13,8 +13,9 @@ from .graphics import load_texture
 __all__ = ["ObjMesh", "get_mesh"]
 
 
-class MatInfo(TypedDict):
+class MatInfo(TypedDict, total=False):
     Kd: np.ndarray
+    map_Kd: str
 
 
 def get_mesh(mesh_name: str, segment: bool = False, change_materials: Dict[str, MatInfo] = None) -> "ObjMesh":
@@ -88,7 +89,8 @@ class ObjMesh:
 
         for k, v in self.change_materials.items():
             if k in materials:
-                old = dict(materials[k])
+                # old = dict(materials[k])
+                # noinspection PyTypeChecker
                 materials[k].update(v)
                 # logger.info("updated", old=old, n=materials[k])
             else:
@@ -256,13 +258,13 @@ class ObjMesh:
                 assert len(segment_into_color0) == 3
                 return segment_into_color0
 
-            mtl = chunk["mtl"]
+            mtl = cast(MatInfo, chunk["mtl"])
             if "map_Kd" in mtl:
                 segment_into_color = 0
                 if segment:
                     segment_into_color = gen_segmentation_color(mesh_name)
 
-                fn = mtl["map_Kd"]
+                fn = cast(str, mtl["map_Kd"])
                 fn2 = get_resource_path(os.path.basename(fn))
                 texture = load_texture(fn2, segment=segment, segment_into_color=segment_into_color)
             else:

@@ -3,8 +3,10 @@
 
 import pathlib
 
+# noinspection PyUnresolvedReferences
 import bpy
-from mathutils import Vector
+import numpy as np
+
 
 debug = False
 standard_size = 1
@@ -61,7 +63,7 @@ for obj_fname in sorted(obj_root.glob("*.obj")):
     for obj in bpy.context.selected_objects:
         # Get bounding box vertices in world frame
         for corner in obj.bound_box:
-            xval, yval, zval = obj.matrix_world * Vector(corner)
+            xval, yval, zval = obj.matrix_world * np.array(corner)
             xmin = xval if xval < xmin else xmin
             xmax = xval if xval > xmax else xmax
             ymin = yval if yval < ymin else ymin

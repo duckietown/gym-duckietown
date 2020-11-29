@@ -95,7 +95,7 @@ class DuckietownNav(DuckietownEnv):
         self.goal_tile = None
         DuckietownEnv.__init__(self, **kwargs)
 
-    def reset(self):
+    def reset(self, segment=False):
         DuckietownNav.reset(self)
 
         # Find the tile the agent starts on

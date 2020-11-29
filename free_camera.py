@@ -77,9 +77,9 @@ def on_key_press(symbol, modifiers):
     elif symbol == key.E:
         cam_angle[2] += 5
     elif symbol == key.UP:
-        cam_offset[0] = cam_offset[0] + 0.1
+        cam_offset[0] += 0.1
     elif symbol == key.DOWN:
-        cam_offset[0] = cam_offset[0] - 0.1
+        cam_offset[0] -= 0.1
     elif symbol == key.LEFT:
         cam_offset[2] -= 0.1
     elif symbol == key.RIGHT:

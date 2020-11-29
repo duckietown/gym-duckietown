@@ -1278,7 +1278,7 @@ class Simulator(gym.Env):
         # Compute the alignment of the agent direction with the curve tangent
         dirVec = get_dir_vec(angle)
         dotDir = np.dot(dirVec, tangent)
-        dotDir = max(-1, min(1, dotDir))
+        dotDir = np.clip(dotDir, -1.0, +1.0)
 
         # Compute the signed distance to the curve
         # Right of the curve is negative, left is positive
@@ -1474,7 +1474,7 @@ class Simulator(gym.Env):
                 # print("stepping all objects")
                 obj.step(delta_time)
 
-    def get_agent_info(self):
+    def get_agent_info(self) -> dict:
         info = {}
         pos = self.cur_pos
         angle = self.cur_angle
@@ -1713,8 +1713,8 @@ class Simulator(gym.Env):
         gl.glEnable(gl.GL_TEXTURE_2D)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-
-        if False:
+        add_lights = False
+        if add_lights:
             for i in range(1):
                 li = gl.GL_LIGHT0 + 1 + i
                 # li_pos = [i + 1, 1, i + 1, 1]
@@ -1816,8 +1816,8 @@ class Simulator(gym.Env):
             # glColor3f(*self.color)
             self.mesh.render()
             gl.glPopMatrix()
-
-        if False:
+        draw_xyz_axes = False
+        if draw_xyz_axes:
             draw_axes()
         # Resolve the multisampled frame buffer into the final frame buffer
         gl.glBindFramebuffer(gl.GL_READ_FRAMEBUFFER, multi_fbo)
