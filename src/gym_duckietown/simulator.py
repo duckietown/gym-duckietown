@@ -712,7 +712,10 @@ class Simulator(gym.Env):
                 break
             else:
                 msg = f"Could not find a valid starting pose after {MAX_SPAWN_ATTEMPTS} attempts"
-                raise Exception(msg)
+                self.cur_pos = [1, 0, 1]
+                self.cur_angle = 1
+
+                # raise Exception(msg)
 
         self.cur_pos = propose_pos
         self.cur_angle = propose_angle
