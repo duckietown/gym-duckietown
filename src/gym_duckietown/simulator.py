@@ -914,7 +914,7 @@ class Simulator(gym.Env):
         W = self.grid_width
         tile_size = self.road_tile_size
         transform: SE2Transform = get_transform(desc, W, tile_size)
-        logger.info(desc=desc, transform=transform)
+        # logger.info(desc=desc, transform=transform)
 
         pose = transform.as_SE2()
 

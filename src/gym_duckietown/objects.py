@@ -92,7 +92,7 @@ class WorldObj:
                     "back_right": (0, 0, 1),
                 }
             for light_name, (px, py, pz) in positions.items():
-                color = colors[light_name]
+                color = np.clip(colors[light_name], 0, +1)
                 color_intensity = float(np.mean(color))
                 gl.glPushMatrix()
 
