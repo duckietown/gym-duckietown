@@ -12,6 +12,7 @@ import gym
 import numpy as np
 import pyglet
 import yaml
+from geometry import SE2value
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
@@ -919,6 +920,9 @@ class Simulator(gym.Env):
 
         pos, angle_rad = self.weird_from_cartesian(pose)
 
+        # c = self.cartesian_from_weird(pos, angle_rad)
+        # logger.debug(desc=desc, pose=geometry.SE2.friendly(pose), weird=(pos, angle_rad), c=geometry.SE2.friendly(c))
+
         # pos = desc["pos"]
         # x, z = pos[0:2]
         # y = pos[2] if len(pos) == 3 else 0.0
@@ -937,7 +941,7 @@ class Simulator(gym.Env):
 
         elif kind.startswith("sign"):
             change_materials: Dict[str, MatInfo]
-            logger.info(kind=kind, desc=desc)
+            # logger.info(kind=kind, desc=desc)
             minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
             change_materials = {"April_Tag": minfo}
             mesh = get_mesh("sign_generic", change_materials=change_materials)
@@ -949,7 +953,10 @@ class Simulator(gym.Env):
         if "height" in desc:
             scale = desc["height"] / mesh.max_coords[1]
         else:
-            scale = desc["scale"]
+            if "scale" in desc:
+                scale = desc["scale"]
+            else:
+                scale = 1.0
         assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
 
         static = desc.get("static", True)
@@ -1532,18 +1539,18 @@ class Simulator(gym.Env):
 
         return geometry.SE2_from_translation_angle(np.array(cp), angle)
 
-    def weird_from_cartesian(self, q: np.ndarray) -> Tuple[list, float]:
+    def weird_from_cartesian(self, q: SE2value) -> Tuple[list, float]:
 
         cp, angle = geometry.translation_angle_from_SE2(q)
 
         gx = cp[0]
         gy = 0
         # cp[1] = (grid_height - 1) * tile_size - gz
-        grid_height = self.grid_height
+        GH = self.grid_height
         tile_size = self.road_tile_size
         # this was before but obviously doesn't work for grid_height = 1
         # gz = (grid_height - 1) * tile_size - cp[1]
-        gz = grid_height * tile_size - cp[1]
+        gz = GH * tile_size - cp[1]
         return [gx, gy, gz], angle
 
     def compute_reward(self, pos, angle, speed):
