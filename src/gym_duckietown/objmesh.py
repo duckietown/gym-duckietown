@@ -276,11 +276,10 @@ class ObjMesh:
                     # color  straight from their .obj or .mtl file? Because this hack only overlays the two
                     # colors, it doesn't work very well.
                     # FIXME the objects that fall in this category need to have texture  files too
-                    c = gen_segmentation_color(mesh_name)
                     texture = load_texture(
                         get_resource_path("black_tile.png"),
                         segment=True,
-                        segment_into_color=c
+                        segment_into_color=gen_segmentation_color(mesh_name)
                     )
 
             self.vlists.append(vlist)
