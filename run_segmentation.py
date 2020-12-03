@@ -182,7 +182,7 @@ while True:
 
         obs, rew, done, misc = environment.step(np.array(action))
         rewards.append(rew)
-        environment.render(segment=True)
+        environment.render(segment=int(nb_of_steps / 50) % 2 == 0)
 
         nb_of_steps += 1
 
