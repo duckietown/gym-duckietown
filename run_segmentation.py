@@ -1,6 +1,7 @@
 import math
 import os
 import random
+from time import sleep
 
 import numpy as np
 
@@ -161,7 +162,7 @@ def to_image(np_array):
 os.chdir("./src/gym_duckietown")
 
 environment = DuckietownEnv(
-    domain_rand=False, max_steps=math.inf, randomize_maps_on_reset=False, map_name="loop_obstacles"
+    domain_rand=False, max_steps=math.inf, randomize_maps_on_reset=False
 )
 
 policy = PurePursuitPolicy(environment)
@@ -170,7 +171,10 @@ MAX_STEPS = 500
 
 while True:
     obs = environment.reset()
-    environment.render(segment=True)
+    environment.render()
+    print("BBBB")
+    sleep(10)
+
     rewards = []
 
     nb_of_steps = 0
@@ -181,13 +185,14 @@ while True:
 
         obs, rew, done, misc = environment.step(np.array(action))
         rewards.append(rew)
-        environment.render(segment=int(nb_of_steps / 50) % 2 == 0)
-
-        # to_image(obs)
+        environment.render()
 
         nb_of_steps += 1
 
         if done or nb_of_steps > MAX_STEPS:
+            environment.render()
+            print("AAAAA")
+            sleep(10)
             break
     print("mean episode reward:", np.mean(rewards))
 

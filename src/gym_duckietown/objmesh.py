@@ -249,14 +249,14 @@ class ObjMesh:
             # or something
             # better than a bad hash function. This implementation, however, doesn't seem to have any
             # collisions, and
-            # generates super well to new objects, so it'd be good to keep it in anyways for future-proofing.
+            # generalizes super well to new objects, so it'd be good to keep it in anyways for future-proofing.
             def gen_segmentation_color(
                 string,
             ):  # Dont care about having an awesome hash really, just want this to be deterministic
                 hashed = "".join([str(ord(char)) for char in string])
                 segment_into_color0 = [int(hashed[i : i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
                 assert len(segment_into_color0) == 3
-                return segment_into_color0
+                return tuple(segment_into_color0)
 
             mtl = cast(MatInfo, chunk["mtl"])
             if "map_Kd" in mtl:
@@ -266,20 +266,24 @@ class ObjMesh:
 
                 fn = cast(str, mtl["map_Kd"])
                 fn2 = get_resource_path(os.path.basename(fn))
+                print("AH")
                 texture = load_texture(fn2, segment=segment, segment_into_color=segment_into_color)
             else:
                 texture = None
                 if segment:
+                    print("BH")
+                    print(load_texture)
                     # nice little hack: load a tile that we know gets segmented into all-black,
                     # and then change it to another, more useful color for a world obj
                     # However, it seems like the objects that don't have a texture file actually pull their
                     # color  straight from their .obj or .mtl file? Because this hack only overlays the two
                     # colors, it doesn't work very well.
                     # FIXME the objects that fall in this category need to have texture  files too
+                    c = gen_segmentation_color(mesh_name)
                     texture = load_texture(
                         get_resource_path("black_tile.png"),
                         segment=True,
-                        segment_into_color=gen_segmentation_color(mesh_name),
+                        segment_into_color=c
                     )
 
             self.vlists.append(vlist)
