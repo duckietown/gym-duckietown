@@ -1,55 +1,37 @@
-
-branch=$(shell git rev-parse --abbrev-ref HEAD)
-
-img3=duckietown/gym-duckietown-server-python3:$(branch)
-
 all:
-	@echo ## Containerized Python 2 support
-	@echo
-	@echo To build all containers:
-	@echo
-	@echo    make build-docker-python3
-	@echo
-	@echo To push to:
-	@echo
-	@echo  $(img3)
-	@echo
-	@echo To develop in the container (deps in container, code in this dir), use:
-	@echo
-	@echo    make shell-docker-python2-ros
-	@echo
-	@echo Inside, remember to start  launch-xvfb
-
 
 build:
-	$(MAKE) build-docker-python3
-
-push:
-	$(MAKE) push-docker-python3
+	dts build_utils aido-container-build --use-branch daffy
 
 
+push: build
+	dts build_utils aido-container-push  --use-branch daffy
 
 
 
-build-docker-python3:
-	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
-
-build-docker-python3-no-cache:
-	docker build --pull -t $(img3) -f docker/AIDO1/server-python3/Dockerfile .
-
-
-push-docker-python3:
-	docker push $(img3)
-
- 
 
 other_deps:
 	apt install x11-apps
 
 bump-upload:
+	$(MAKE) bump
+	$(MAKE) upload
+
+bump: # v2
 	bumpversion patch
 	git push --tags
-	git push --all
+	git push
+
+upload: # v3
+	dts build_utils check-not-dirty
+	dts build_utils check-tagged
+	dt-check-need-upload --package duckietown-gym-daffy make upload-do
+
+upload-do:
 	rm -f dist/*
-	python setup.py sdist
-	twine upload dist/*
+	rm -rf src/*.egg-info
+	python3 setup.py sdist
+	twine upload --skip-existing --verbose dist/*
+
+black:
+	black -l 110 src

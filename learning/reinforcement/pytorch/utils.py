@@ -16,7 +16,7 @@ def seed(seed):
 
 # Simple replay buffer
 class ReplayBuffer(object):
-    def __init__(self,max_size):
+    def __init__(self, max_size):
         self.storage = []
         self.max_size = max_size
 
@@ -28,7 +28,6 @@ class ReplayBuffer(object):
             # Remove random element in the memory beforea adding a new one
             self.storage.pop(random.randrange(len(self.storage)))
             self.storage.append((state, next_state, action, reward, done))
-
 
     def sample(self, batch_size=100, flat=True):
         ind = np.random.randint(0, len(self.storage), size=batch_size)
@@ -52,13 +51,13 @@ class ReplayBuffer(object):
             "state": np.stack(states),
             "next_state": np.stack(next_states),
             "action": np.stack(actions),
-            "reward": np.stack(rewards).reshape(-1,1),
-            "done": np.stack(dones).reshape(-1,1)
+            "reward": np.stack(rewards).reshape(-1, 1),
+            "done": np.stack(dones).reshape(-1, 1),
         }
 
 
 def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=500):
-    avg_reward = 0.
+    avg_reward = 0.0
     for _ in range(eval_episodes):
         obs = env.reset()
         done = False

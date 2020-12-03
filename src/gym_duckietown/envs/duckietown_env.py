@@ -12,23 +12,11 @@ class DuckietownEnv(Simulator):
     instead of differential drive motor velocities
     """
 
-    def __init__(
-        self,
-        gain=1.0,
-        trim=0.0,
-        radius=0.0318,
-        k=27.0,
-        limit=1.0,
-        **kwargs
-    ):
+    def __init__(self, gain=1.0, trim=0.0, radius=0.0318, k=27.0, limit=1.0, **kwargs):
         Simulator.__init__(self, **kwargs)
-        logger.info('using DuckietownEnv')
+        logger.info("using DuckietownEnv")
 
-        self.action_space = spaces.Box(
-            low=np.array([-1, -1]),
-            high=np.array([1, 1]),
-            dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
 
         # Should be adjusted so that the effective speed of the robot is 0.2 m/s
         self.gain = gain
@@ -74,13 +62,13 @@ class DuckietownEnv(Simulator):
 
         obs, reward, done, info = Simulator.step(self, vels)
         mine = {}
-        mine['k'] = self.k
-        mine['gain'] = self.gain
-        mine['train'] = self.trim
-        mine['radius'] = self.radius
-        mine['omega_r'] = omega_r
-        mine['omega_l'] = omega_l
-        info['DuckietownEnv'] = mine
+        mine["k"] = self.k
+        mine["gain"] = self.gain
+        mine["train"] = self.trim
+        mine["radius"] = self.radius
+        mine["omega_r"] = omega_r
+        mine["omega_l"] = omega_l
+        info["DuckietownEnv"] = mine
         return obs, reward, done, info
 
 
@@ -107,7 +95,7 @@ class DuckietownNav(DuckietownEnv):
         self.goal_tile = None
         DuckietownEnv.__init__(self, **kwargs)
 
-    def reset(self):
+    def reset(self, segment=False):
         DuckietownNav.reset(self)
 
         # Find the tile the agent starts on
@@ -125,12 +113,12 @@ class DuckietownNav(DuckietownEnv):
     def step(self, action):
         obs, reward, done, info = DuckietownNav.step(self, action)
 
-        info['goal_tile'] = self.goal_tile
+        info["goal_tile"] = self.goal_tile
 
         # TODO: add term to reward based on distance to goal?
 
         cur_tile_coords = self.get_grid_coords(self.cur_pos)
-        cur_tile = self._get_tile(self.cur_tile_coords)
+        cur_tile = self._get_tile(*cur_tile_coords)
 
         if cur_tile is self.goal_tile:
             done = True

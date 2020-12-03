@@ -12,7 +12,7 @@ def agent_boundbox(true_pos, width, length, f_vec, r_vec):
     current position, and angle of rotation
     Order of points in bounding box:
     (front)
-    4 - 3    
+    4 - 3
     |   |
     1 - 2
     """
@@ -22,12 +22,14 @@ def agent_boundbox(true_pos, width, length, f_vec, r_vec):
     hlength = 0.5 * length
 
     # Indexing to make sure we only get the x/z dims
-    corners = np.array([
-        true_pos - hwidth * r_vec - hlength * f_vec,
-        true_pos + hwidth * r_vec - hlength * f_vec,
-        true_pos + hwidth * r_vec + hlength * f_vec,
-        true_pos - hwidth * r_vec + hlength * f_vec
-    ])[:, [0, 2]]
+    corners = np.array(
+        [
+            true_pos - hwidth * r_vec - hlength * f_vec,
+            true_pos + hwidth * r_vec - hlength * f_vec,
+            true_pos + hwidth * r_vec + hlength * f_vec,
+            true_pos - hwidth * r_vec + hlength * f_vec,
+        ]
+    )[:, [0, 2]]
 
     return corners
 
@@ -56,39 +58,45 @@ def is_between_ordered(val, lowerbound, upperbound):
     """
     Helper function to check projection intervals (SAT)
     """
-    return lowerbound <= val and val <= upperbound
+    return lowerbound <= val <= upperbound
 
 
-def generate_corners(pos, min_coords, max_coords, theta, scale):
+def generate_corners(
+    pos: np.ndarray, min_coords: np.ndarray, max_coords: np.ndarray, theta: float, scale: float
+) -> np.ndarray:
     """
     Generates corners given obj pos, extents, scale, and rotation
     """
     px = pos[0]
     pz = pos[-1]
-    return np.array([
-        rotate_point(min_coords[0] * scale + px, min_coords[-1] * scale + pz, px, pz, theta),
-        rotate_point(max_coords[0] * scale + px, min_coords[-1] * scale + pz, px, pz, theta),
-        rotate_point(max_coords[0] * scale + px, max_coords[-1] * scale + pz, px, pz, theta),
-        rotate_point(min_coords[0] * scale + px, max_coords[-1] * scale + pz, px, pz, theta),
-    ])
+    return np.array(
+        [
+            rotate_point(min_coords[0] * scale + px, min_coords[-1] * scale + pz, px, pz, theta),
+            rotate_point(max_coords[0] * scale + px, min_coords[-1] * scale + pz, px, pz, theta),
+            rotate_point(max_coords[0] * scale + px, max_coords[-1] * scale + pz, px, pz, theta),
+            rotate_point(min_coords[0] * scale + px, max_coords[-1] * scale + pz, px, pz, theta),
+        ]
+    )
 
 
-def tile_corners(pos, width):
+def tile_corners(pos: np.ndarray, width: float):
     """
     Generates the absolute corner coord for a tile, given grid pos and tile width
     """
     px = pos[0]
     pz = pos[-1]
 
-    return np.array([
-        [px * width - width, pz * width - width],
-        [px * width + width, pz * width - width],
-        [px * width + width, pz * width + width],
-        [px * width - width, pz * width + width]
-    ])
+    return np.array(
+        [
+            [px * width - width, pz * width - width],
+            [px * width + width, pz * width - width],
+            [px * width + width, pz * width + width],
+            [px * width - width, pz * width + width],
+        ]
+    )
 
 
-def generate_norm(corners):
+def generate_norm(corners) -> np.array:
     """
     Generates both (orthogonal, 1 per axis) normal vectors
     for rectangle given vertices *in a particular order* (see generate_corners)
@@ -105,13 +113,9 @@ def find_candidate_tiles(obj_corners, tile_size):
     """
 
     # Find min / max x&y tile coordinates of object
-    minx, miny = np.floor(
-            np.amin(obj_corners, axis=0) / tile_size
-    ).astype(int)
+    minx, miny = np.floor(np.amin(obj_corners, axis=0) / tile_size).astype(int)
 
-    maxx, maxy = np.floor(
-            np.amax(obj_corners, axis=0) / tile_size
-    ).astype(int)
+    maxx, maxy = np.floor(np.amax(obj_corners, axis=0) / tile_size).astype(int)
 
     # The max number of tiles we need to check is every possible
     # combination of x and y within the ranges, so enumerate
@@ -130,25 +134,24 @@ def intersects(duckie, objs_stacked, duckie_norm, norms_stacked):
     of each projection pair. The variables are named as:
     {x's norm + projected on + min/max}.
     """
+
     duckduck_min, duckduck_max = tensor_sat_test(duckie_norm, duckie.T)
     objduck_min, objduck_max = tensor_sat_test(duckie_norm, objs_stacked)
     duckobj_min, duckobj_max = tensor_sat_test(norms_stacked, duckie.T)
     objobj_min, objobj_max = tensor_sat_test(norms_stacked, objs_stacked)
 
+    # logger.info(duckobj_min=duckobj_min, duckobj_max=duckobj_max)
+    # logger.info(objobj_min=objobj_min, objobj_max=objobj_max)
     # Iterate through each object we are checking against
     for idx in range(objduck_min.shape[0]):
         # If any interval doesn't overlap, immediately know objects don't intersect
-        if not overlaps(
-                duckduck_min[0], duckduck_max[0], objduck_min[idx][0], objduck_max[idx][0]):
+        if not overlaps(duckduck_min[0], duckduck_max[0], objduck_min[idx][0], objduck_max[idx][0]):
             continue
-        if not overlaps(
-                duckduck_min[1], duckduck_max[1], objduck_min[idx][1], objduck_max[idx][1]):
+        if not overlaps(duckduck_min[1], duckduck_max[1], objduck_min[idx][1], objduck_max[idx][1]):
             continue
-        if not overlaps(
-                duckobj_min[idx][0], duckobj_max[idx][0], objobj_min[idx][0], objobj_max[idx][0]):
+        if not overlaps(duckobj_min[idx][0], duckobj_max[idx][0], objobj_min[idx][0], objobj_max[idx][0]):
             continue
-        if not overlaps(
-                duckobj_min[idx][1], duckobj_max[idx][1], objobj_min[idx][1], objobj_max[idx][1]):
+        if not overlaps(duckobj_min[idx][1], duckobj_max[idx][1], objobj_min[idx][1], objobj_max[idx][1]):
             continue
         # All projection intervals overlap, collision with an object
         return True
@@ -170,17 +173,13 @@ def intersects_single_obj(duckie, obj, duckie_norm, norm):
     objobj_min, objobj_max = tensor_sat_test(norm, obj)
 
     # If any interval doesn't overlap, immediately know objects don't intersect
-    if not overlaps(
-            duckduck_min[0], duckduck_max[0], objduck_min[0], objduck_max[0]):
+    if not overlaps(duckduck_min[0], duckduck_max[0], objduck_min[0], objduck_max[0]):
         return False
-    if not overlaps(
-            duckduck_min[1], duckduck_max[1], objduck_min[1], objduck_max[1]):
+    if not overlaps(duckduck_min[1], duckduck_max[1], objduck_min[1], objduck_max[1]):
         return False
-    if not overlaps(
-            duckobj_min[0], duckobj_max[0], objobj_min[0], objobj_max[0]):
+    if not overlaps(duckobj_min[0], duckobj_max[0], objobj_min[0], objobj_max[0]):
         return False
-    if not overlaps(
-            duckobj_min[1], duckobj_max[1], objobj_min[1], objobj_max[1]):
+    if not overlaps(duckobj_min[1], duckobj_max[1], objobj_min[1], objobj_max[1]):
         return False
 
     # All projection intervals overlap, collision with an object
@@ -193,8 +192,8 @@ def safety_circle_intersection(d, r1, r2):
     at r1 and r2 either intesect or are enveloped (one inside of other)
     """
     intersect = np.logical_and(
-            np.less_equal(np.power(r1 - r2, 2), np.power(d, 2)),
-            np.less_equal(np.power(d, 2), np.power(r1 + r2, 2))
+        np.less_equal(np.power(r1 - r2, 2), np.power(d, 2)),
+        np.less_equal(np.power(d, 2), np.power(r1 + r2, 2)),
     )
 
     enveloped = np.less(d, abs(r1 - r2))
@@ -204,8 +203,8 @@ def safety_circle_intersection(d, r1, r2):
 
 def safety_circle_overlap(d, r1, r2):
     """
-    Returns a proxy for area (see issue #24) 
-    of two circles with centers separated by d 
+    Returns a proxy for area (see issue #24)
+    of two circles with centers separated by d
     and centered at r1 and r2
     """
     scores = d - r1 - r2

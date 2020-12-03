@@ -1,10 +1,50 @@
 # coding=utf-8
-from .graphics import *
-from .utils import *
+import os
+from typing import cast, Dict, TypedDict
+
+import numpy as np
+import pyglet
+from pyglet import gl
+
+from duckietown_world.resources import get_resource_path
 from . import logger
+from .graphics import load_texture
+
+__all__ = ["ObjMesh", "get_mesh"]
 
 
-class ObjMesh(object):
+class MatInfo(TypedDict, total=False):
+    Kd: np.ndarray
+    map_Kd: str
+
+
+def get_mesh(mesh_name: str, segment: bool = False, change_materials: Dict[str, MatInfo] = None) -> "ObjMesh":
+    """
+            Load a mesh or used a cached version
+    """
+    change_materials = change_materials or {}
+
+    # Assemble the absolute path to the mesh file
+    # file_path = get_file_path("meshes", mesh_name, "obj")
+
+    file_path = get_resource_path(f"{mesh_name}.obj")
+
+    # Save old file path because that's the actual "link" to the file. The cache will have a .SEGMENTED
+    # though.
+    old_file_path = file_path
+    if segment:
+        file_path += ".SEGMENTED"
+
+    key = str((file_path, change_materials))
+
+    if key not in ObjMesh.cache:
+        mesh = ObjMesh(old_file_path, mesh_name, segment, change_materials)
+        ObjMesh.cache[key] = mesh
+
+    return ObjMesh.cache[key]
+
+
+class ObjMesh:
     """
     Load and render OBJ model files
     """
@@ -12,24 +52,16 @@ class ObjMesh(object):
     # Loaded mesh files, indexed by mesh file path
     cache = {}
 
-    @classmethod
-    def get(self, mesh_name):
-        """
-        Load a mesh or used a cached version
-        """
+    mesh_name: str
+    change_materials: Dict[str, MatInfo]
 
-        # Assemble the absolute path to the mesh file
-        file_path = get_file_path('meshes', mesh_name, 'obj')
-
-        if file_path in self.cache:
-            return self.cache[file_path]
-
-        mesh = ObjMesh(file_path)
-        self.cache[file_path] = mesh
-
-        return mesh
-
-    def __init__(self, file_path):
+    def __init__(
+        self,
+        file_path: str,
+        mesh_name: str,
+        segment: bool = False,
+        change_materials: Dict[str, MatInfo] = None,
+    ):
         """
         Load an OBJ model file
 
@@ -37,6 +69,9 @@ class ObjMesh(object):
         - only one object/group
         - only triangle faces
         """
+        self.change_materials = change_materials or {}
+
+        self.mesh_name = mesh_name
 
         # Comments
         # mtllib file_name
@@ -47,61 +82,68 @@ class ObjMesh(object):
         # usemtl mtl_name
         # f v0/t0/n0 v1/t1/n1 v2/t2/n2
 
-        logger.debug('loading mesh "%s"' % os.path.basename(file_path))
+        logger.debug(f"loading mesh {mesh_name!r} from file_path {file_path!r}")
 
         # Attempt to load the materials library
         materials = self._load_mtl(file_path)
-        mesh_file = open(file_path, 'r')
+
+        for k, v in self.change_materials.items():
+            if k in materials:
+                # old = dict(materials[k])
+                # noinspection PyTypeChecker
+                materials[k].update(v)
+                # logger.info("updated", old=old, n=materials[k])
+            else:
+                logger.warning(f"could not find material {k!r} in {list(materials)}")
+        mesh_file = open(file_path, "r")
 
         verts = []
         texs = []
         normals = []
         faces = []
 
-        cur_mtl = ''
-
-        import pyglet
+        cur_mtl = ""
 
         # For each line of the input file
         for line in mesh_file:
-            line = line.rstrip(' \r\n')
+            line = line.rstrip(" \r\n")
 
             # Skip comments
-            if line.startswith('#') or line == '':
+            if line.startswith("#") or line == "":
                 continue
 
-            tokens = line.split(' ')
-            tokens = map(lambda t: t.strip(' '), tokens)
-            tokens = list(filter(lambda t: t != '', tokens))
+            tokens = line.split(" ")
+            tokens = map(lambda t: t.strip(" "), tokens)
+            tokens = list(filter(lambda t: t != "", tokens))
 
             prefix = tokens[0]
             tokens = tokens[1:]
 
-            if prefix == 'v':
-                vert = list(map(lambda v: float(v), tokens))
+            if prefix == "v":
+                vert = list(map(float, tokens))
                 verts.append(vert)
 
-            if prefix == 'vt':
-                tc = list(map(lambda v: float(v), tokens))
+            if prefix == "vt":
+                tc = list(map(float, tokens))
                 texs.append(tc)
 
-            if prefix == 'vn':
-                normal = list(map(lambda v: float(v), tokens))
+            if prefix == "vn":
+                normal = list(map(float, tokens))
                 normals.append(normal)
 
-            if prefix == 'usemtl':
+            if prefix == "usemtl":
                 mtl_name = tokens[0]
                 if mtl_name in materials:
                     cur_mtl = mtl_name
                 else:
-                    cur_mtl = ''
+                    cur_mtl = ""
 
-            if prefix == 'f':
+            if prefix == "f":
                 assert len(tokens) == 3, "only triangle faces are supported"
 
                 face = []
                 for token in tokens:
-                    indices = filter(lambda t: t != '', token.split('/'))
+                    indices = filter(lambda t: t != "", token.split("/"))
                     indices = list(map(int, indices))
                     assert len(indices) == 2 or len(indices) == 3
                     face.append(indices)
@@ -118,14 +160,10 @@ class ObjMesh(object):
             face, mtl_name = face
             if mtl_name != cur_mtl:
                 if len(chunks) > 0:
-                    chunks[-1]['end_idx'] = idx
-                chunks.append({
-                    'mtl': materials[mtl_name],
-                    'start_idx': idx,
-                    'end_idx': None
-                })
+                    chunks[-1]["end_idx"] = idx
+                chunks.append({"mtl": materials[mtl_name], "start_idx": idx, "end_idx": None})
                 cur_mtl = mtl_name
-        chunks[-1]['end_idx'] = len(faces)
+        chunks[-1]["end_idx"] = len(faces)
 
         num_faces = len(faces)
         # logger.debug('num verts=%d' % len(verts))
@@ -144,7 +182,7 @@ class ObjMesh(object):
 
             # Get the color for this face
             f_mtl = materials[mtl_name]
-            f_color = f_mtl['Kd'] if f_mtl else np.array((1,1,1))
+            f_color = f_mtl["Kd"] if f_mtl else np.array((1, 1, 1))
 
             # For each tuple of indices
             for l_idx, indices in enumerate(face):
@@ -152,13 +190,13 @@ class ObjMesh(object):
                 # and texture coordinates are optional
                 if len(indices) == 3:
                     v_idx, t_idx, n_idx = indices
-                    vert = verts[v_idx-1]
-                    texc = texs[t_idx-1]
-                    normal = normals[n_idx-1]
+                    vert = verts[v_idx - 1]
+                    texc = texs[t_idx - 1]
+                    normal = normals[n_idx - 1]
                 else:
                     v_idx, n_idx = indices
-                    vert = verts[v_idx-1]
-                    normal = normals[n_idx-1]
+                    vert = verts[v_idx - 1]
+                    normal = normals[n_idx - 1]
                     texc = [0, 0]
 
                 list_verts[f_idx, l_idx, :] = vert
@@ -168,7 +206,9 @@ class ObjMesh(object):
 
         # Re-center the object so that the base is at y=0
         # and the object is centered in x and z
+        # noinspection PyArgumentList
         min_coords = list_verts.min(axis=0).min(axis=0)
+        # noinspection PyArgumentList
         max_coords = list_verts.max(axis=0).min(axis=0)
         mean_coords = (min_coords + max_coords) / 2
         min_y = min_coords[1]
@@ -179,7 +219,9 @@ class ObjMesh(object):
         list_verts[:, :, 2] -= mean_z
 
         # Recompute the object extents after centering
+        # noinspection PyArgumentList
         self.min_coords = list_verts.min(axis=0).min(axis=0)
+        # noinspection PyArgumentList
         self.max_coords = list_verts.max(axis=0).max(axis=0)
 
         # Vertex lists, one per chunk
@@ -190,94 +232,128 @@ class ObjMesh(object):
 
         # For each chunk
         for chunk in chunks:
-            start_idx = chunk['start_idx']
-            end_idx = chunk['end_idx']
+            start_idx = chunk["start_idx"]
+            end_idx = chunk["end_idx"]
             num_faces_chunk = end_idx - start_idx
 
             # Create a vertex list to be used for rendering
             vlist = pyglet.graphics.vertex_list(
                 3 * num_faces_chunk,
-                ('v3f', list_verts[start_idx:end_idx, :, :].reshape(-1)),
-                ('t2f', list_texcs[start_idx:end_idx, :, :].reshape(-1)),
-                ('n3f', list_norms[start_idx:end_idx, :, :].reshape(-1)),
-                ('c3f', list_color[start_idx:end_idx, :, :].reshape(-1))
+                ("v3f", list_verts[start_idx:end_idx, :, :].reshape(-1)),
+                ("t2f", list_texcs[start_idx:end_idx, :, :].reshape(-1)),
+                ("n3f", list_norms[start_idx:end_idx, :, :].reshape(-1)),
+                ("c3f", list_color[start_idx:end_idx, :, :].reshape(-1)),
             )
 
-            mtl = chunk['mtl']
-            if 'map_Kd' in mtl:
-                texture = load_texture(mtl['map_Kd'])
+            # If we want to control the colors of the objects, we'd need to replace this by a config file
+            # or something
+            # better than a bad hash function. This implementation, however, doesn't seem to have any
+            # collisions, and
+            # generates super well to new objects, so it'd be good to keep it in anyways for future-proofing.
+            def gen_segmentation_color(
+                string,
+            ):  # Dont care about having an awesome hash really, just want this to be deterministic
+                hashed = "".join([str(ord(char)) for char in string])
+                segment_into_color0 = [int(hashed[i : i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
+                assert len(segment_into_color0) == 3
+                return segment_into_color0
+
+            mtl = cast(MatInfo, chunk["mtl"])
+            if "map_Kd" in mtl:
+                segment_into_color = 0
+                if segment:
+                    segment_into_color = gen_segmentation_color(mesh_name)
+
+                fn = cast(str, mtl["map_Kd"])
+                fn2 = get_resource_path(os.path.basename(fn))
+                texture = load_texture(fn2, segment=segment, segment_into_color=segment_into_color)
             else:
                 texture = None
+                if segment:
+                    # nice little hack: load a tile that we know gets segmented into all-black,
+                    # and then change it to another, more useful color for a world obj
+                    # However, it seems like the objects that don't have a texture file actually pull their
+                    # color  straight from their .obj or .mtl file? Because this hack only overlays the two
+                    # colors, it doesn't work very well.
+                    # FIXME the objects that fall in this category need to have texture  files too
+                    texture = load_texture(
+                        get_resource_path("black_tile.png"),
+                        segment=True,
+                        segment_into_color=gen_segmentation_color(mesh_name),
+                    )
 
             self.vlists.append(vlist)
             self.textures.append(texture)
 
-    def _load_mtl(self, model_file):
+    def _load_mtl(self, model_file: str) -> Dict[str, MatInfo]:
         model_dir, file_name = os.path.split(model_file)
 
         # Create a default material for the model
         default_mtl = {
-            'Kd': np.array([1, 1, 1]),
+            "Kd": np.array([1, 1, 1]),
         }
 
         # Determine the default texture path for the default material
-        tex_name = file_name.split('.')[0]
-        tex_path = get_file_path('textures', tex_name, 'png')
-        if os.path.exists(tex_path):
-            default_mtl['map_Kd'] = tex_path
+        tex_name = file_name.split(".")[0]
+        try:
+            tex_path = get_resource_path(f"{tex_name}.png")
+        except KeyError:
+            # logger.warning(f"Cannot find texture path {tex_name}.png")
+            pass
+        else:
+            default_mtl["map_Kd"] = tex_path
 
-        materials = {
-            '': default_mtl
-        }
+        materials: Dict[str, MatInfo] = {"": default_mtl}
 
-        mtl_path = model_file.split('.')[0] + '.mtl'
-
-        if not os.path.exists(mtl_path):
+        try:
+            mtl_path = get_resource_path(f"{tex_name}.mtl")
+        except KeyError as e:
+            # logger.warning(f"Cannot find material {tex_name}.mtl ")
             return materials
 
-        logger.debug('loading materials from "%s"' % mtl_path)
-
-        mtl_file = open(mtl_path, 'r')
+        logger.debug(f"loading materials from {mtl_path}")
 
         cur_mtl = None
 
-        # For each line of the input file
-        for line in mtl_file:
-            line = line.rstrip(' \r\n')
+        with open(mtl_path, "r") as mtl_file:
 
-            # Skip comments
-            if line.startswith('#') or line == '':
-                continue
+            # For each line of the input file
+            for line in mtl_file:
+                line = line.rstrip(" \r\n")
 
-            tokens = line.split(' ')
-            tokens = map(lambda t: t.strip(' '), tokens)
-            tokens = list(filter(lambda t: t != '', tokens))
+                # Skip comments
+                if line.startswith("#") or line == "":
+                    continue
 
-            prefix = tokens[0]
-            tokens = tokens[1:]
+                tokens = line.split(" ")
+                tokens = map(lambda t: t.strip(" "), tokens)
+                tokens = list(filter(lambda t: t != "", tokens))
 
-            if prefix == 'newmtl':
-                cur_mtl = {}
-                materials[tokens[0]] = cur_mtl
+                prefix = tokens[0]
+                tokens = tokens[1:]
 
-            # Diffuse color
-            if prefix == 'Kd':
-                vals = list(map(lambda v: float(v), tokens))
-                vals = np.array(vals)
-                cur_mtl['Kd'] = vals
+                if prefix == "newmtl":
+                    cur_mtl = {}
+                    materials[tokens[0]] = cur_mtl
 
-            # Texture file name
-            if prefix == 'map_Kd':
-                tex_file = tokens[-1]
-                tex_file = os.path.join(model_dir, tex_file)
-                cur_mtl['map_Kd'] = tex_file
+                # Diffuse color
+                if prefix == "Kd":
+                    vals = list(map(lambda v: float(v), tokens))
+                    vals = np.array(vals)
+                    cur_mtl["Kd"] = vals
 
-        mtl_file.close()
+                # Texture file name
+                if prefix == "map_Kd":
+                    tex_file = tokens[-1]
+                    tex_file = os.path.join(model_dir, tex_file)
+                    cur_mtl["map_Kd"] = tex_file
 
         return materials
 
-    def render(self):
-        from pyglet import gl
+    def render(self, segment: bool = False):
+        if segment:
+            self = get_mesh(self.mesh_name, True)
+
         for idx, vlist in enumerate(self.vlists):
             texture = self.textures[idx]
 

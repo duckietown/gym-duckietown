@@ -23,16 +23,14 @@ class TensorflowModel:
         self._initialize(observation_shape, action_shape, graph_location)
 
     def predict(self, state):
-        action = self.tf_session.run(self._computation_graph, feed_dict={
-            self._observation: [state],
-        })
+        action = self.tf_session.run(self._computation_graph, feed_dict={self._observation: [state],})
         return np.squeeze(action)
 
     def train(self, observations, actions):
-        _, loss = self.tf_session.run([self._optimization_op, self._loss], feed_dict={
-            self._observation: observations,
-            self._action: actions
-        })
+        _, loss = self.tf_session.run(
+            [self._optimization_op, self._loss],
+            feed_dict={self._observation: observations, self._action: actions},
+        )
         return loss
 
     def commit(self):
@@ -40,12 +38,20 @@ class TensorflowModel:
 
     def computation_graph(self):
         model = one_residual(self._preprocessed_state, seed=self.seed)
-        model = tf.layers.dense(model, units=64, activation=tf.nn.relu,
-                                kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
-                                bias_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed))
-        model = tf.layers.dense(model, units=32, activation=tf.nn.relu,
-                                kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
-                                bias_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed))
+        model = tf.layers.dense(
+            model,
+            units=64,
+            activation=tf.nn.relu,
+            kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
+            bias_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
+        )
+        model = tf.layers.dense(
+            model,
+            units=32,
+            activation=tf.nn.relu,
+            kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
+            bias_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
+        )
 
         model = tf.layers.dense(model, self._action.shape[1])
 
@@ -69,8 +75,8 @@ class TensorflowModel:
         self._preprocessed_state = and_standardize
 
     def _create(self, input_shape, output_shape):
-        self._observation = tf.placeholder(dtype=tf.float32, shape=input_shape, name='state')
-        self._action = tf.placeholder(dtype=tf.float32, shape=output_shape, name='action')
+        self._observation = tf.placeholder(dtype=tf.float32, shape=input_shape, name="state")
+        self._action = tf.placeholder(dtype=tf.float32, shape=output_shape, name="action")
         self._pre_process()
 
         self._computation_graph = self.computation_graph()

@@ -25,7 +25,7 @@ This simulator was created as part of work done at [Mila](https://mila.quebec/).
 </p>
 
 <h2 align="center">
-Welcome to <b>Duckietown</b>! 
+Welcome to <b>Duckietown</b>!
 </h2>
 
 ## Introduction
@@ -53,7 +53,7 @@ will automatically cycle through all available [map files](https://github.com/du
 a variety of different maps at the same time, with the idea that training on a variety of
 different scenarios will make for a more robust policy/model.
 
-`gym-duckietown` is an _accompanying_ simulator to real Duckiebots, which allow you to run your code on the real robot. We provide a domain randomization API, which can help you transfer your trained policies from simulation to real world. Without using a domain transfer method, your learned models will likely overfit to various aspects of the simulator, which won't transfer to the real world. When you deploy, you and your Duckiebot will be running around in circles trying to figure out what's going on. 
+`gym-duckietown` is an _accompanying_ simulator to real Duckiebots, which allow you to run your code on the real robot. We provide a domain randomization API, which can help you transfer your trained policies from simulation to real world. Without using a domain transfer method, your learned models will likely overfit to various aspects of the simulator, which won't transfer to the real world. When you deploy, you and your Duckiebot will be running around in circles trying to figure out what's going on.
 
 <p align="center">
 <img src="media/domainrand-sim.gif" width="300px" height="200px" ><img src="media/needfordr.gif" width="300px" height="200px" ><br>
@@ -205,7 +205,7 @@ Note that it is possible to have `gen_demos.py` and `train_imitate.py` running s
 
 ### Map File Format
 
-The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](http://docs.duckietown.org/daffy/opmanual_duckietown/out/duckietown_specs.html).
+The simulator supports a YAML-based file format which is designed to be easy to hand edit. See the [maps subdirectory](https://github.com/duckietown/gym-duckietown/blob/master/gym_duckietown/maps) for examples. Each map file has two main sections: a two-dimensional array of tiles, and a listing of objects to be placed around the map. The tiles are based on the [Duckietown appearance specification](https://docs.duckietown.org/daffy/opmanual_duckietown/out/duckietown_specs.html).
 
 The available tile types are:
 - empty

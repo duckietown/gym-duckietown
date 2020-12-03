@@ -2,6 +2,8 @@ import numpy as np
 
 
 # parameters for the pure pursuit controller
+from gym_duckietown.simulator import get_right_vec
+
 POSITION_THRESHOLD = 0.04
 REF_VELOCITY = 0.8
 GAIN = 10
@@ -9,8 +11,14 @@ FOLLOWING_DISTANCE = 0.3
 
 
 class PurePursuitExpert:
-    def __init__(self, env, ref_velocity=REF_VELOCITY, position_threshold=POSITION_THRESHOLD,
-                 following_distance=FOLLOWING_DISTANCE, max_iterations=1000):
+    def __init__(
+        self,
+        env,
+        ref_velocity=REF_VELOCITY,
+        position_threshold=POSITION_THRESHOLD,
+        following_distance=FOLLOWING_DISTANCE,
+        max_iterations=1000,
+    ):
         self.env = env.unwrapped
         self.following_distance = following_distance
         self.max_iterations = max_iterations
@@ -40,7 +48,7 @@ class PurePursuitExpert:
         point_vec = curve_point - self.env.cur_pos
         point_vec /= np.linalg.norm(point_vec)
 
-        dot = np.dot(self.env.get_right_vec(), point_vec)
+        dot = np.dot(get_right_vec(self.env.cur_angle), point_vec)
         steering = GAIN * -dot
 
         return self.ref_velocity, steering
