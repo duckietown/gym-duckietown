@@ -266,13 +266,10 @@ class ObjMesh:
 
                 fn = cast(str, mtl["map_Kd"])
                 fn2 = get_resource_path(os.path.basename(fn))
-                print("AH")
                 texture = load_texture(fn2, segment=segment, segment_into_color=segment_into_color)
             else:
                 texture = None
                 if segment:
-                    print("BH")
-                    print(load_texture)
                     # nice little hack: load a tile that we know gets segmented into all-black,
                     # and then change it to another, more useful color for a world obj
                     # However, it seems like the objects that don't have a texture file actually pull their

@@ -109,6 +109,12 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
             red_text = np.logical_and(np.logical_and(where_theres_blue, where_theres_green), where_theres_red)
             im[red_text] = 0
 
+            """
+            If we use plain colored textures, this is not needed. Kept in a comment in case we want to go back
+            to non-plain-colored tiles.
+            
+            This is very slow computationally, so if we can avoid it, we should.
+            
             hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
 
             lower = np.array([0, 0, 0], dtype="uint8")
@@ -124,6 +130,8 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
 
             result = cv2.bitwise_and(hsv, hsv, mask=mask)
             im = cv2.cvtColor(result, cv2.COLOR_HSV2BGR)
+            """
+            im = cv2.cvtColor(im, cv2.COLOR_BGRA2BGR)   # if you uncomment the big comment above, remove this line
 
             rows, cols, channels = im.shape
 

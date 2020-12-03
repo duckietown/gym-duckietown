@@ -1,11 +1,10 @@
 import math
 import os
 import random
-from time import sleep
 
 import numpy as np
-
 from duckietown_world import MapFormat1Constants
+
 from gym_duckietown.envs import DuckietownEnv
 from gym_duckietown.simulator import AGENT_SAFETY_RAD
 
@@ -172,8 +171,6 @@ MAX_STEPS = 500
 while True:
     obs = environment.reset()
     environment.render()
-    print("BBBB")
-    sleep(10)
 
     rewards = []
 
@@ -185,14 +182,12 @@ while True:
 
         obs, rew, done, misc = environment.step(np.array(action))
         rewards.append(rew)
-        environment.render()
+        environment.render(segment=True)
 
         nb_of_steps += 1
 
         if done or nb_of_steps > MAX_STEPS:
             environment.render()
-            print("AAAAA")
-            sleep(10)
             break
     print("mean episode reward:", np.mean(rewards))
 
