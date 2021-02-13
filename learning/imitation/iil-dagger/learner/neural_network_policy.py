@@ -148,7 +148,7 @@ class NeuralNetworkPolicy:
             ]
         )
 
-        observations = [compose_obs(observation).numpy() for observation in observations]
+        observations = [compose_obs(observation).cpu().numpy() for observation in observations]
         try:
             # scaling velocity to become in 0-1 range which is multiplied by max speed to get actual vel
             # also scaling steering angle to become in range -1 to 1 to make it easier to regress
@@ -158,7 +158,7 @@ class NeuralNetworkPolicy:
             ]
         except:
             pass
-        expert_actions = [torch.tensor(expert_action).numpy() for expert_action in expert_actions]
+        expert_actions = [torch.tensor(expert_action).cpu().numpy() for expert_action in expert_actions]
 
         return observations, expert_actions
 

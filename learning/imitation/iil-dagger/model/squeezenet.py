@@ -38,7 +38,7 @@ class Squeezenet(nn.Module):
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = models.squeezenet1_1()
         self.num_outputs = num_outputs
-        self.max_velocity_tensor = torch.tensor(max_velocity).to(self._device)
+        self.max_velocity_tensor = torch.tensor([max_velocity]).to(self._device)
         self.max_steering = max_steering
 
         # using a subset of full squeezenet for input image features
@@ -117,12 +117,12 @@ class Squeezenet(nn.Module):
         output = self.model(images)
         if self.num_outputs == 1:
             omega = output
-            v_tensor = self.max_velocity_tensor.clone()
+            v_tensor = self.max_velocity_tensor.clone().unsqueeze(1)
         else:
             v_tensor = output[:, 0].unsqueeze(1)
             omega = output[:, 1].unsqueeze(1) * self.max_steering
         output = torch.cat((v_tensor, omega), 1).squeeze().detach()
-        return output
+        return output.cpu().numpy()
 
 
 if __name__ == "__main__":
