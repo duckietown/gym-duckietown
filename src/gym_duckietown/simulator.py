@@ -32,7 +32,7 @@ from duckietown_world import (
     SE2Transform, get_transforms,
 )
 
-from duckietown_world.structure.map_factory import MapFactory
+from duckietown_world.structure.map_factory import MapFactory, get_map_path, get_existing_map_path
 from duckietown_world.structure.duckietown_map import DuckietownMap
 from duckietown_world.gltf.export import get_duckiebot_color_from_colorname
 from duckietown_world.resources import get_resource_path
@@ -759,9 +759,9 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path
-        self.map_file_path = "/home/sergey/duckietown/duckietown-world/src/duckietown_world/data/maps/test_draw_8"
+        self.map_file_path = "/home/sergey/duckietown/duckietown-world/src/duckietown_world/data/maps/test_draw_25"
         #get_resource_path(f"{map_name}.yaml")
-
+        #self.map_file_path = get_existing_map_path("demo_map")
         logger.debug(f'loading map file "{self.map_file_path}"')
         self.map_data: DuckietownMap = MapFactory.load_map(self.map_file_path)
         #with open(self.map_file_path, "r") as f:
@@ -1824,8 +1824,9 @@ class Simulator(gym.Env):
             gl.glPushMatrix()
             TS = self.road_tile_size
             gl.glTranslatef((i + 0.5) * TS, 0, (j + 0.5) * TS)
+            #logger.debug("{} {} {}".format(i, j, angle))
             gl.glRotatef(angle * 90 + 180, 0, 1, 0)
-
+            #gl.glRotatef(angle * 90, 0, 1, 0)
             # gl.glEnable(gl.GL_BLEND)
             # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
