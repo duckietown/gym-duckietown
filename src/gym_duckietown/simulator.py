@@ -962,6 +962,7 @@ class Simulator(gym.Env):
         assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
 
         static = desc.get("static", True)
+        rand_pos = desc.get("random_pos",False)
         # static = desc.get('static', False)
         # print('static is now', static)
 
@@ -973,6 +974,7 @@ class Simulator(gym.Env):
             "scale": scale,
             "optional": optional,
             "static": static,
+            "rand_pos": rand_pos
         }
 
         if static:

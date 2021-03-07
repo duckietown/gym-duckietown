@@ -1,5 +1,6 @@
 # coding=utf-8
 import math
+import random
 from typing import Dict, Tuple
 
 import numpy as np
@@ -50,6 +51,7 @@ class WorldObj:
         self.min_coords = obj["mesh"].min_coords
         self.max_coords = obj["mesh"].max_coords
         self.static = obj["static"]
+        self.random_pos = obj["rand_pos"]
         self.safety_radius = safety_radius_mult * calculate_safety_radius(self.mesh, self.scale)
 
         self.domain_rand = domain_rand
@@ -341,6 +343,9 @@ class DuckieObj(WorldObj):
         WorldObj.__init__(self, obj, domain_rand, safety_radius_mult)
 
         self.walk_distance = walk_distance
+        if self.random_pos:
+            self.pos = [self.pos[0] + random.randint(-5,5),self.pos[1] + random.randint(-5,5)]
+            self.y_rot = np.rad2deg(self.angle+random.randint(-90,90))
 
         # Dynamic duckie stuff
 
