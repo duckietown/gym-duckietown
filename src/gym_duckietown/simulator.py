@@ -13,7 +13,7 @@ import numpy as np
 import pyglet
 import yaml
 from duckietown_world.structure.bases import _Frame, _PlacedObject
-from duckietown_world.structure.objects import _Tile, _TrafficSign, _Citizen, _GroundTag
+from duckietown_world.structure.objects import _Tile, _TrafficSign, _Citizen, _GroundTag, _Vehicle
 from geometry import SE2value
 from gym import spaces
 from gym.utils import seeding
@@ -759,7 +759,7 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path
-        self.map_file_path = "/home/sergey/duckietown/duckietown-world/src/duckietown_world/data/maps/test_draw_25"
+        self.map_file_path = "/home/sergey/duckietown/duckietown-world/src/duckietown_world/data/maps/test_draw_27"
         #get_resource_path(f"{map_name}.yaml")
         #self.map_file_path = get_existing_map_path("demo_map")
         logger.debug(f'loading map file "{self.map_file_path}"')
@@ -899,7 +899,7 @@ class Simulator(gym.Env):
                 raise ValueError(objects)
             
             '''
-        for layer in [map_data.trafficsigns, map_data.citizens]:
+        for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles]:
             for info, obj in layer:
                 logger.debug('sign layer, ', obj)
                 obj_name, obj_type = info
@@ -924,6 +924,8 @@ class Simulator(gym.Env):
     def _interpret_signs(self, obj_name: str, obj: _PlacedObject):
         if isinstance(obj, _TrafficSign):
             kind = obj.type
+        elif isinstance(obj, _Vehicle):
+            kind = "duckiebot"
         else:
             kind = "duckie"
         frame: _Frame = obj.frame
@@ -939,6 +941,9 @@ class Simulator(gym.Env):
             change_materials = {"April_Tag": minfo}
             mesh = get_mesh("sign_generic", change_materials=change_materials)
             scale = 1.0
+        elif isinstance(obj, _Vehicle):
+            scale = 1.0
+            mesh = get_mesh(kind)
         else:
             scale = 0.06
             mesh = get_mesh(kind)
@@ -957,6 +962,8 @@ class Simulator(gym.Env):
             obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
         elif isinstance(obj, _Citizen):
             obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT,  self.road_tile_size)
+        elif isinstance(obj, _Vehicle):
+            obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH)
 
         self.objects.append(obj)
 
