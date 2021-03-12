@@ -28,6 +28,7 @@ install_requires = [
     "numpy>=1.10.0",
     "pyglet<=1.5.0",
     # 'pyglet',
+    "git+https://github.com/duckietown/duckietown-world@ente-devel-map-format-divided",
     "pyzmq>=16.0.0",
     "scikit-image>=0.13.1",
     "opencv-python>=3.4",
