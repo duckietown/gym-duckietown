@@ -164,7 +164,7 @@ DEFAULT_FRAMERATE = 30
 
 DEFAULT_MAX_STEPS = 1500
 
-DEFAULT_MAP_NAME = "udem1"
+DEFAULT_MAP_NAME = "demo"
 
 DEFAULT_FRAME_SKIP = 1
 
@@ -758,15 +758,12 @@ class Simulator(gym.Env):
         # Store the map name
         self.map_name = map_name
 
-        # Get the full map file path
-        self.map_file_path = "/home/sergey/duckietown/duckietown-world/src/duckietown_world/data/maps/test_draw_27"
-        #get_resource_path(f"{map_name}.yaml")
-        #self.map_file_path = get_existing_map_path("demo_map")
+        # Get the full map file path\
+        print(self.map_name)
+        print(get_resource_path(f"maps/{self.map_name}/main.yaml"))
+        self.map_file_path = "/".join(get_resource_path(f"maps/{self.map_name}/main.yaml").split("/")[:-1])
         logger.debug(f'loading map file "{self.map_file_path}"')
         self.map_data: DuckietownMap = MapFactory.load_map(self.map_file_path)
-        #with open(self.map_file_path, "r") as f:
-        #    self.map_data = yaml.load(f, Loader=yaml.Loader)
-
         self._interpret_map(self.map_data)
 
     def _interpret_map(self, map_data: DuckietownMap):
@@ -778,7 +775,6 @@ class Simulator(gym.Env):
             self._init_vlists()
 
             tiles: List[List[_Tile]] = map_data.tiles.only_tiles()  # map_data["tiles"]
-            print('AAAAAAAAAAAAAAA', tiles)
             assert len(tiles) > 0
             assert len(tiles[0]) > 0
 
@@ -877,8 +873,6 @@ class Simulator(gym.Env):
 
         # (N): Safety radius for object used in calculating reward
         self.collidable_safety_radii = []
-        #return # TODO: delete it - for debug
-        # For each object
         try:
             objects = map_data["objects"]
         except Exception:#KeyError:
@@ -904,8 +898,7 @@ class Simulator(gym.Env):
                 logger.debug('sign layer, ', obj)
                 obj_name, obj_type = info
                 assert isinstance(obj, _PlacedObject)
-                self._interpret_signs(obj_name, obj)
-                # self.interpret_object(obj_name, obj)
+                self._interpret_object(obj_name, obj)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -921,7 +914,7 @@ class Simulator(gym.Env):
         self.collidable_centers = np.array(self.collidable_centers)
         self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
-    def _interpret_signs(self, obj_name: str, obj: _PlacedObject):
+    def _interpret_object(self, obj_name: str, obj: _PlacedObject):
         if isinstance(obj, _TrafficSign):
             kind = obj.type
         elif isinstance(obj, _Vehicle):
@@ -966,112 +959,6 @@ class Simulator(gym.Env):
             obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH)
 
         self.objects.append(obj)
-
-    def interpret_object(self, objname: str, desc: MapFormat1Object):
-        kind = desc["kind"]
-
-        W = self.grid_width
-        tile_size = self.road_tile_size
-        transform: SE2Transform = get_transform(desc, W, tile_size)
-        # logger.info(desc=desc, transform=transform)
-
-        pose = transform.as_SE2()
-
-        pos, angle_rad = self.weird_from_cartesian(pose)
-
-        # c = self.cartesian_from_weird(pos, angle_rad)
-        # logger.debug(desc=desc, pose=geometry.SE2.friendly(pose), weird=(pos, angle_rad), c=geometry.SE2.friendly(c))
-
-        # pos = desc["pos"]
-        # x, z = pos[0:2]
-        # y = pos[2] if len(pos) == 3 else 0.0
-
-        # rotate = desc.get("rotate", 0.0)
-        optional = desc.get("optional", False)
-
-        # pos = self.road_tile_size * np.array((x, y, z))
-
-        # Load the mesh
-
-        if kind == MapFormat1Constants.KIND_DUCKIEBOT:
-            use_color = desc.get("color", "red")
-
-            mesh = get_duckiebot_mesh(use_color)
-
-        elif kind.startswith("sign"):
-            change_materials: Dict[str, MatInfo]
-            # logger.info(kind=kind, desc=desc)
-            minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
-            change_materials = {"April_Tag": minfo}
-            mesh = get_mesh("sign_generic", change_materials=change_materials)
-        elif kind == "floor_tag":
-            return
-        else:
-            mesh = get_mesh(kind)
-
-        if "height" in desc:
-            scale = desc["height"] / mesh.max_coords[1]
-        else:
-            if "scale" in desc:
-                scale = desc["scale"]
-            else:
-                scale = 1.0
-        assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
-
-        static = desc.get("static", True)
-        # static = desc.get('static', False)
-        # print('static is now', static)
-
-        obj_desc = {
-            "kind": kind,
-            "mesh": mesh,
-            "pos": pos,
-            "angle": angle_rad,
-            "scale": scale,
-            "optional": optional,
-            "static": static,
-        }
-
-        if static:
-            if kind == MF1C.KIND_TRAFFICLIGHT:
-                obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
-            else:
-                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
-        else:
-            if kind == MF1C.KIND_DUCKIEBOT:
-                obj = DuckiebotObj(
-                    obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH
-                )
-            elif kind == MF1C.KIND_DUCKIE:
-                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
-            elif kind == MF1C.KIND_CHECKERBOARD:
-                obj = CheckerboardObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
-            else:
-                msg = "Object kind unknown."
-                raise InvalidMapException(msg, kind=kind)
-
-        self.objects.append(obj)
-
-        # Compute collision detection information
-
-        # angle = rotate * (math.pi / 180)
-
-        # # Find drivable tiles object could intersect with
-        # # possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
-
-        # If the object intersects with a drivable tile
-        if (
-            static
-            and kind != MF1C.KIND_TRAFFICLIGHT
-            # We want collision checking also for things outside the lanes
-            # # and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
-        ):
-            # noinspection PyUnresolvedReferences
-            self.collidable_centers.append(pos)  # XXX: changes types during initialization
-            self.collidable_corners.append(obj.obj_corners.T)
-            self.collidable_norms.append(obj.obj_norm)
-            # noinspection PyUnresolvedReferences
-            self.collidable_safety_radii.append(obj.safety_radius)  # XXX: changes types during initialization
 
     def close(self):
         pass
