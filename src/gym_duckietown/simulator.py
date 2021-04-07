@@ -248,7 +248,10 @@ class Simulator(gym.Env):
         self.enable_leds = enable_leds
         information = get_graphics_information()
         logger.info(
-            f"Information about the graphics card:", pyglet_version=pyglet.version, information=information
+            f"Information about the graphics card:",
+            pyglet_version=pyglet.version,
+            information=information,
+            nvidia_around=os.path.exists("/proc/driver/nvidia/version"),
         )
 
         # first initialize the RNG
