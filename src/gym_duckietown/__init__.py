@@ -1,5 +1,5 @@
 # coding=utf-8
-__version__ = "6.1.3"
+__version__ = "6.1.4"
 
 from zuper_commons.fs import AbsFilePath
 from zuper_commons.logs import ZLogger
