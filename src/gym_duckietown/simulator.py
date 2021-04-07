@@ -247,7 +247,9 @@ class Simulator(gym.Env):
         """
         self.enable_leds = enable_leds
         information = get_graphics_information()
-        logger.info(f"Information about the graphics card:", information=information)
+        logger.info(
+            f"Information about the graphics card:", pyglet_version=pyglet.version, information=information
+        )
 
         # first initialize the RNG
         self.seed_value = seed
