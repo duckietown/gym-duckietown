@@ -11,7 +11,7 @@ import os
 
 import pyglet
 
-pyglet.options["headless"] = True
+# pyglet.options["headless"] = True
 
 path = os.path.dirname(os.path.dirname(__file__))
 logger.debug(f"gym-duckietown version {__version__} path {path}\n")
