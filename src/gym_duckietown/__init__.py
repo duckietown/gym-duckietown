@@ -1,5 +1,5 @@
 # coding=utf-8
-__version__ = "6.1.1"
+__version__ = "6.1.9"
 
 from zuper_commons.fs import AbsFilePath
 from zuper_commons.logs import ZLogger
@@ -8,6 +8,10 @@ from duckietown_world.resources import list_maps2
 
 logger = ZLogger("gym-duckietown")
 import os
+
+import pyglet
+
+# pyglet.options["headless"] = True
 
 path = os.path.dirname(os.path.dirname(__file__))
 logger.debug(f"gym-duckietown version {__version__} path {path}\n")

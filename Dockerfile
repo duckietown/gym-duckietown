@@ -26,6 +26,8 @@ COPY . .
 
 RUN pip install -v  --no-deps .
 
+RUN pip install pyglet==1.5.15
+
 #   pip install -v -e .
 
 RUN pipdeptree

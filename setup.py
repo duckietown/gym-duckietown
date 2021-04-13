@@ -26,7 +26,7 @@ line = "daffy"
 install_requires = [
     "gym>=0.17.1",
     "numpy>=1.10.0",
-    "pyglet<=1.5.0",
+    "pyglet",
     # 'pyglet',
     "pyzmq>=16.0.0",
     "scikit-image>=0.13.1",
