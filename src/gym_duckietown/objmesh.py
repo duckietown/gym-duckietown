@@ -256,7 +256,7 @@ class ObjMesh:
                 hashed = "".join([str(ord(char)) for char in string])
                 segment_into_color0 = [int(hashed[i : i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
                 assert len(segment_into_color0) == 3
-                return segment_into_color0
+                return tuple(segment_into_color0)
 
             mtl = cast(MatInfo, chunk["mtl"])
             if "map_Kd" in mtl:

@@ -17,7 +17,7 @@ from . import logger
 
 
 def get_texture(tex_name: str, rng=None, segment: bool = False) -> "Texture":
-    paths = get_texture_file(tex_name)
+    paths = get_texture_file(tex_name if not segment else f"tiles-processed/segmentation/{tex_name}/texture")   # forces segemented textures
 
     if rng:
         path_idx = rng.randint(0, len(paths))
@@ -25,12 +25,8 @@ def get_texture(tex_name: str, rng=None, segment: bool = False) -> "Texture":
     else:
         path = paths[0]
 
-    oldpath = path
-    if segment:
-        path += ".SEGMENTED"
-
     if path not in Texture.tex_cache:
-        Texture.tex_cache[path] = Texture(load_texture(oldpath, segment), tex_name=tex_name, rng=rng)
+        Texture.tex_cache[path] = Texture(load_texture(path, segment), tex_name=tex_name, rng=rng)
 
     return Texture.tex_cache[path]
 
