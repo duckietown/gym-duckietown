@@ -53,7 +53,7 @@ class Texture:
 
 
 def should_segment_out(tex_path):
-    for yes in ["sign", "trafficlight", "asphalt"]:
+    for yes in ["sign", "trafficlight", "asphalt", "floor", "grass"]:
         if yes in tex_path:
             return True
     for no in ["left", "right", "way", "curve", "straight"]:
@@ -61,9 +61,31 @@ def should_segment_out(tex_path):
             return False
     return True
 
+def get_segment_mapping(tex_path):
+    from .segmentationmap import mapping
+
+    name = tex_path.split("/")[-1].split(".")[0]
+
+    if name in mapping:
+        return mapping[name]
+    else:
+        # If we want to control the colors of the objects, we'd need to replace this by a config file
+        # or something
+        # better than a bad hash function. This implementation, however, doesn't seem to have any
+        # collisions, and
+        # generates super well to new objects, so it'd be good to keep it in anyways for future-proofing.
+        def gen_segmentation_color(
+                string,
+        ):  # Dont care about having an awesome hash really, just want this to be deterministic
+            hashed = "".join([str(ord(char)) for char in string])
+            segment_into_color0 = [int(hashed[i: i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
+            assert len(segment_into_color0) == 3
+            return tuple(segment_into_color0)
+        return gen_segmentation_color(name)
+
 
 @lru_cache(maxsize=None)
-def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
+def load_texture(tex_path: str, segment: bool = False):
     """ segment_into_black controls what type of segmentation we apply: for tiles and all ground textures,
     replacing
     unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too
@@ -71,8 +93,6 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
     view of
     things).
     """
-    if segment_into_color is None:
-        segment_into_color = [0, 0, 0]
     logger.debug(f"loading texture: {tex_path}")
     img = pyglet.image.load(tex_path)
     # img_format = 'RGBA'
@@ -88,11 +108,12 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
         if should_segment_out(tex_path):  # replace all by 'segment_into_color'
             # https://gamedev.stackexchange.com/questions/55945/how-to-draw-image-in-memory-manually-in-pyglet
             to_fill = np.ones((img.height, img.width), dtype=int)
-            to_fill = np.kron(to_fill, np.array(segment_into_color, dtype=int))
+            to_fill = np.kron(to_fill, np.array(get_segment_mapping(tex_path), dtype=int))
             to_fill = list(to_fill.flatten())
             rawData = (GLubyte * len(to_fill))(*to_fill)
             img = pyglet.image.ImageData(img.width, img.height, "RGB", rawData)
-        else:  # replace asphalt by black
+
+        elif False:  # replace by black
             # https://gist.github.com/nkymut/1cb40ea6ae4de0cf9ded7332f1ca0d55
 
             im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)

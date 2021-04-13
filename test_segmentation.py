@@ -165,7 +165,7 @@ def to_image(np_array):
 
 
 environment = DuckietownEnv(
-    domain_rand=False, max_steps=math.inf, randomize_maps_on_reset=False
+    domain_rand=False, max_steps=math.inf, randomize_maps_on_reset=False, map_name="loop_pedestrians"
 )
 
 policy = PurePursuitPolicy(environment)
