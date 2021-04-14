@@ -97,3 +97,7 @@ while True:
             print("*** CRASHED ***")
         print("recompense finale = %.3f" % total_recompense)
         break
+
+    #vediamo se funziona
+
+    #...
