@@ -28,6 +28,8 @@ env.render()
 
 total_recompense = 0
 
+VARIABILE_DI_PROVA_INUTILE = "Bene"
+
 sampling_time = 0.1  # not sure about this
 prev_dist = 0.0    # distance_error(k-1)
 prev_angle = 0.0   # angle_error(k-1)
