@@ -2,7 +2,7 @@
 Controller for duckie bot in Duckietown environment
 """
 
-# run "python3 basic_control.py --name-map <map_name>" to start simulation
+# run "python3 basic_control.py --map-name <map_name>" to start simulation
 
 import time
 import sys
@@ -11,6 +11,7 @@ import math
 import numpy as np
 import gym
 from gym_duckietown.envs import DuckietownEnv
+from pyglet.window import key
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--env-name", default=None)
@@ -88,6 +89,21 @@ while True:
         % (distance_to_road_center, angle_from_straight_in_rads, prop_angle_action, prop_dist_action, deriv_dist_action)
     )
 
+    #enables user to reset or exit the simulation
+    @env.unwrapped.window.event
+    def on_key_press(symbol, modifiers):
+    	"""
+    	This handler processes keyboard commands that control the simulation
+    	"""
+
+    	if symbol == key.BACKSPACE or symbol == key.SLASH:
+        	env.reset()
+        	env.render()
+        	return
+    	elif symbol == key.ESCAPE:
+        	env.close()
+        	sys.exit(0)
+
     # should execute the render of the next frame
     env.render()
 
@@ -96,8 +112,5 @@ while True:
         if recompense < 0:
             print("*** CRASHED ***")
         print("recompense finale = %.3f" % total_recompense)
-        break
-
-    #vediamo se funziona
-
-    #...
+        env.reset()
+        env.render()
