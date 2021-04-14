@@ -64,6 +64,7 @@ def should_segment_out(tex_path):
 def get_segment_mapping(tex_path):
     from .segmentationmap import mapping
 
+    tex_path = tex_path.replace("/texture", "")
     name = tex_path.split("/")[-1].split(".")[0]
 
     if name in mapping:
@@ -93,6 +94,7 @@ def load_texture(tex_path: str, segment: bool = False):
     view of
     things).
     """
+
     logger.debug(f"loading texture: {tex_path}")
     img = pyglet.image.load(tex_path)
     # img_format = 'RGBA'
@@ -113,7 +115,7 @@ def load_texture(tex_path: str, segment: bool = False):
             rawData = (GLubyte * len(to_fill))(*to_fill)
             img = pyglet.image.ImageData(img.width, img.height, "RGB", rawData)
 
-        elif False:  # replace by black
+        else:  # replace by black
             # https://gist.github.com/nkymut/1cb40ea6ae4de0cf9ded7332f1ca0d55
 
             im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)

@@ -2,10 +2,11 @@ mapping = {
     "house": "3deb34",
     "bus": "ebd334",
     "truck": "961fad",
-    "duckie": "f7ef0a",
+    "duckie": "cfa923",
     "cone": "ffa600",
     "floor": "000000",
-    "grass": "000000"
+    "grass": "000000",
+    "barrier": "000099"
 }
 
 mapping = {
