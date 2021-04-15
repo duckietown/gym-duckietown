@@ -1,6 +1,9 @@
 from ctypes import c_char_p, cast
 from typing import Dict
+import json
+import pyglet
 
+pyglet.options["headless"] = True
 from pyglet import gl
 
 __all__ = ["get_graphics_information"]
@@ -24,5 +27,9 @@ def get_graphics_information() -> Dict:
     return results
 
 
+def main():
+    print(json.dumps(get_graphics_information(), indent=2))
+
+
 if __name__ == "__main__":
-    print(str(get_graphics_information()))
+    main()

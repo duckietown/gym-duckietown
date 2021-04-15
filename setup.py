@@ -53,9 +53,5 @@ setup(
     keywords="duckietown, environment, agent, rl, openaigym, openai-gym, gym",
     include_package_data=True,
     install_requires=install_requires,
-    entry_points={
-        "console_scripts": [
-            # "duckietown-start-gym=gym_duckietown.launcher:main",
-        ],
-    },
+    entry_points={"console_scripts": ["dt-check-gpu=gym_duckietown.check_hw:main",],},
 )
