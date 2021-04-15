@@ -1,5 +1,4 @@
 import itertools
-import math
 import os
 from collections import namedtuple
 from ctypes import POINTER
@@ -9,6 +8,7 @@ from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, Ty
 import geometry
 import geometry as g
 import gym
+import math
 import numpy as np
 import pyglet
 import yaml
@@ -899,7 +899,6 @@ class Simulator(gym.Env):
                     self.interpret_object(obj_name, desc)
             elif isinstance(objects, dict):
                 for obj_name, desc in objects.items():
-
                     self.interpret_object(obj_name, desc)
             else:
                 raise ValueError(objects)
@@ -931,7 +930,8 @@ class Simulator(gym.Env):
         pos, angle_rad = self.weird_from_cartesian(pose)
 
         # c = self.cartesian_from_weird(pos, angle_rad)
-        # logger.debug(desc=desc, pose=geometry.SE2.friendly(pose), weird=(pos, angle_rad), c=geometry.SE2.friendly(c))
+        # logger.debug(desc=desc, pose=geometry.SE2.friendly(pose), weird=(pos, angle_rad),
+        # c=geometry.SE2.friendly(c))
 
         # pos = desc["pos"]
         # x, z = pos[0:2]
