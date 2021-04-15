@@ -47,15 +47,17 @@ while True:
     # TODO: Décide comment calculer la vitesse et la direction
 
     # proportional constant on angle
-    k_p_angle = 15
+    k_p_angle = 10
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
     # proportional constant on distance 
-    k_p_dist = 8
+    k_p_dist = 15
     prop_dist_action = k_p_dist * distance_to_road_center
     # integral constant on distance ( still not using it up to now)
-    k_i_dist = 3
+    k_i_dist = 1.2
+    storage += sampling_time * distance_to_road_center
+    integral_dist_action = k_i_dist * storage
     # derivative constant on distance
-    k_d_dist = 4
+    k_d_dist = 10
     deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)*sampling_time
     # derivative constant on angle
     k_d_angle = 10
@@ -72,7 +74,7 @@ while True:
 
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
     angular_speed = (
-        prop_angle_action + prop_dist_action + deriv_dist_action + deriv_angle_action
+        prop_dist_action + deriv_dist_action + prop_angle_action + deriv_angle_action
     ) # also the distance from the center of road affect the angular speed in order to lead duckie_bot toward the center
 
     # update previous value to gain the incremental ratio in the next loop
@@ -85,8 +87,8 @@ while True:
 
     # prints variations of parameters
     print(
-        "dist_err: %.3f, angle_err: %.3f, prop_angle_action: %.3f, prop_dist_action: %.3f, deriv_dist_action: %.3f"
-        % (distance_to_road_center, angle_from_straight_in_rads, prop_angle_action, prop_dist_action, deriv_dist_action)
+        "dist_err: %.3f, angle_err: %.3f, prop_angle_action: %.3f, prop_dist_action: %.3f, deriv_dist_action: %.3f, deriv_angle action: %.3f, integral_dist_action: %.3f"
+        % (distance_to_road_center, angle_from_straight_in_rads, prop_angle_action, prop_dist_action, deriv_dist_action, deriv_angle_action, integral_dist_action)
     )
 
     #enables user to reset or exit the simulation
@@ -106,11 +108,3 @@ while True:
 
     # should execute the render of the next frame
     env.render()
-
-    # simulation end listener
-    if fini:
-        if recompense < 0:
-            print("*** CRASHED ***")
-        print("recompense finale = %.3f" % total_recompense)
-        env.reset()
-        env.render()
