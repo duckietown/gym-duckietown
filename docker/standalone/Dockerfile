@@ -16,5 +16,5 @@ COPY . .
 
 #RUN pip install -v -e .
 
-RUN pip install pyglet==1.5.15
+RUN python3 -m pip install pyglet==1.5.15
 RUN python3 -c "from gym_duckietown import *"
