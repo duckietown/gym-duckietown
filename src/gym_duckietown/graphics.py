@@ -101,9 +101,21 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
 
             im = cv2.imread(tex_path, cv2.IMREAD_UNCHANGED)
 
-            hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+            # remove the red text
+            im_for_text_filter = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+            where_theres_red = im_for_text_filter[:,:,0] >= 1
+            where_theres_green = np.logical_and(im_for_text_filter[:,:,1] >= 1, im_for_text_filter[:,:,1] <= 70)
+            where_theres_blue = np.logical_and(im_for_text_filter[:, :, 2] >= 1, im_for_text_filter[:, :, 2] <= 70)
+            red_text = np.logical_and(np.logical_and(where_theres_blue, where_theres_green), where_theres_red)
+            im[red_text] = 0
 
-            # Threshold of blue in HSV space
+            """
+            If we use plain colored textures, this is not needed. Kept in a comment in case we want to go back
+            to non-plain-colored tiles.
+            
+            This is very slow computationally, so if we can avoid it, we should.
+            
+            hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
 
             lower = np.array([0, 0, 0], dtype="uint8")
             upper = np.array([179, 100, 160], dtype="uint8")
@@ -118,6 +130,8 @@ def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
 
             result = cv2.bitwise_and(hsv, hsv, mask=mask)
             im = cv2.cvtColor(result, cv2.COLOR_HSV2BGR)
+            """
+            im = cv2.cvtColor(im, cv2.COLOR_BGRA2BGR)   # if you uncomment the big comment above, remove this line
 
             rows, cols, channels = im.shape
 

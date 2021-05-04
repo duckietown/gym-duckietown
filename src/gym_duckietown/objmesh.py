@@ -249,14 +249,14 @@ class ObjMesh:
             # or something
             # better than a bad hash function. This implementation, however, doesn't seem to have any
             # collisions, and
-            # generates super well to new objects, so it'd be good to keep it in anyways for future-proofing.
+            # generalizes super well to new objects, so it'd be good to keep it in anyways for future-proofing.
             def gen_segmentation_color(
                 string,
             ):  # Dont care about having an awesome hash really, just want this to be deterministic
                 hashed = "".join([str(ord(char)) for char in string])
                 segment_into_color0 = [int(hashed[i : i + 3]) % 255 for i in range(0, len(hashed), 3)][:3]
                 assert len(segment_into_color0) == 3
-                return segment_into_color0
+                return tuple(segment_into_color0)
 
             mtl = cast(MatInfo, chunk["mtl"])
             if "map_Kd" in mtl:
@@ -279,7 +279,7 @@ class ObjMesh:
                     texture = load_texture(
                         get_resource_path("black_tile.png"),
                         segment=True,
-                        segment_into_color=gen_segmentation_color(mesh_name),
+                        segment_into_color=gen_segmentation_color(mesh_name)
                     )
 
             self.vlists.append(vlist)
