@@ -1,5 +1,4 @@
 import itertools
-import math
 import os
 from collections import namedtuple
 from ctypes import POINTER
@@ -9,6 +8,7 @@ from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, Ty
 import geometry
 import geometry as g
 import gym
+import math
 import numpy as np
 import pyglet
 import yaml
@@ -103,7 +103,7 @@ DEFAULT_CAMERA_WIDTH = 640
 DEFAULT_CAMERA_HEIGHT = 480
 
 # Blue sky horizon color
-BLUE_SKY_COLOR = np.array([0.45, 0.82, 1])
+BLUE_SKY = np.array([0.45, 0.82, 1])
 
 # Color meant to approximate interior walls
 WALL_COLOR = np.array([0.64, 0.71, 0.28])
@@ -224,6 +224,7 @@ class Simulator(gym.Env):
         randomize_maps_on_reset: bool = False,
         num_tris_distractors: int = 12,
         color_ground: Sequence[float] = (0.15, 0.15, 0.15),
+        color_sky: Sequence[float] = BLUE_SKY,
         style: str = "photos",
         enable_leds: bool = False,
     ):
@@ -252,13 +253,19 @@ class Simulator(gym.Env):
         """
         self.enable_leds = enable_leds
         information = get_graphics_information()
-        logger.info(f"Information about the graphics card:", information=information)
+        logger.info(
+            f"Information about the graphics card:",
+            pyglet_version=pyglet.version,
+            information=information,
+            nvidia_around=os.path.exists("/proc/driver/nvidia/version"),
+        )
 
         # first initialize the RNG
         self.seed_value = seed
         self.seed(seed=self.seed_value)
         self.num_tris_distractors = num_tris_distractors
         self.color_ground = color_ground
+        self.color_sky = list(color_sky)
 
         # If true, then we publish all transparency information
         self.full_transparency = full_transparency
@@ -542,7 +549,7 @@ class Simulator(gym.Env):
         if self.domain_rand:
             horz_mode = self.randomization_settings["horz_mode"]
             if horz_mode == 0:
-                self.horizon_color = self._perturb(BLUE_SKY_COLOR)
+                self.horizon_color = self._perturb(self.color_sky)
             elif horz_mode == 1:
                 self.horizon_color = self._perturb(WALL_COLOR)
             elif horz_mode == 2:
@@ -550,7 +557,7 @@ class Simulator(gym.Env):
             elif horz_mode == 3:
                 self.horizon_color = self._perturb([0.9, 0.9, 0.9], 0.4)
         else:
-            self.horizon_color = BLUE_SKY_COLOR
+            self.horizon_color = self.color_sky
 
         # Setup some basic lighting with a far away sun
         if self.domain_rand:
@@ -660,6 +667,9 @@ class Simulator(gym.Env):
                 tile = self.start_tile
             else:
                 # Select a random drivable tile to start on
+                if not self.drivable_tiles:
+                    msg = "There are no drivable tiles. Use start_tile or self.user_tile_start"
+                    raise Exception(msg)
                 tile_idx = self.np_random.randint(0, len(self.drivable_tiles))
                 tile = self.drivable_tiles[tile_idx]
 
@@ -889,7 +899,6 @@ class Simulator(gym.Env):
                     self.interpret_object(obj_name, desc)
             elif isinstance(objects, dict):
                 for obj_name, desc in objects.items():
-
                     self.interpret_object(obj_name, desc)
             else:
                 raise ValueError(objects)

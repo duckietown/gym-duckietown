@@ -1,13 +1,16 @@
 # coding=utf-8
-__version__ = "6.1.1"
+__version__ = "6.1.12"
 
-from zuper_commons.fs import AbsFilePath
 from zuper_commons.logs import ZLogger
 
 from duckietown_world.resources import list_maps2
 
 logger = ZLogger("gym-duckietown")
 import os
+
+import pyglet
+
+pyglet.options["headless"] = True
 
 path = os.path.dirname(os.path.dirname(__file__))
 logger.debug(f"gym-duckietown version {__version__} path {path}\n")
@@ -17,7 +20,7 @@ from gym.envs.registration import register
 from .utils import get_subdir_path
 
 
-def reg_map_env(map_name0: str, map_file: AbsFilePath):
+def reg_map_env(map_name0: str, map_file: str):
     gym_id = f"Duckietown-{map_name0}-v0"
 
     # logger.info('Registering gym environment id: %s' % gym_id)
