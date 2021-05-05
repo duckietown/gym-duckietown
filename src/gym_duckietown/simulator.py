@@ -759,20 +759,13 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path\
-        print(self.map_name)
-        #print(get_resource_path(f"maps/{self.map_name}/main.yaml"))
         self.map_file_path = "/".join(get_resource_path(f"maps/{self.map_name}/main.yaml").split("/")[:-1])
-        print(self.map_file_path)
-        self.map_file_path = "/home/sergey/osll/test/maps/test3"
         logger.debug(f'loading map file "{self.map_file_path}"')
         self.map_data: DuckietownMap = MapFactory.load_map(self.map_file_path)
         self._interpret_map(self.map_data)
 
     def _interpret_map(self, map_data: DuckietownMap):
         try:
-            #if not "tile_size" in map_data:
-            #    msg = "Must now include explicit tile_size in the map data."
-            #    raise InvalidMapException(msg)
             self.road_tile_size = 0.585  # map_data["tile_size"]
             self._init_vlists()
 
@@ -877,24 +870,8 @@ class Simulator(gym.Env):
         self.collidable_safety_radii = []
         try:
             objects = map_data["objects"]
-        except Exception:#KeyError:
+        except Exception:
             pass
-        else:
-            pass
-            '''
-            if isinstance(objects, list):
-                for obj_idx, desc in enumerate(objects):
-                    kind = desc["kind"]
-                    obj_name = f"ob{obj_idx:02d}-{kind}"
-                    self.interpret_object(obj_name, desc)
-            elif isinstance(objects, dict):
-                for obj_name, desc in objects.items():
-
-                    self.interpret_object(obj_name, desc)
-            else:
-                raise ValueError(objects)
-            
-            '''
         for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles]:
             for info, obj in layer:
                 logger.debug('sign layer, ', obj)
