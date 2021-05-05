@@ -760,8 +760,10 @@ class Simulator(gym.Env):
 
         # Get the full map file path\
         print(self.map_name)
-        print(get_resource_path(f"maps/{self.map_name}/main.yaml"))
+        #print(get_resource_path(f"maps/{self.map_name}/main.yaml"))
         self.map_file_path = "/".join(get_resource_path(f"maps/{self.map_name}/main.yaml").split("/")[:-1])
+        print(self.map_file_path)
+        self.map_file_path = "/home/sergey/osll/test/maps/test3"
         logger.debug(f'loading map file "{self.map_file_path}"')
         self.map_data: DuckietownMap = MapFactory.load_map(self.map_file_path)
         self._interpret_map(self.map_data)
@@ -922,7 +924,8 @@ class Simulator(gym.Env):
         else:
             kind = "duckie"
         frame: _Frame = obj.frame
-        transform: SE2Transform = SE2Transform(p=[frame.pose.x, frame.pose.y], theta=frame.pose.yaw)
+        print()
+        transform: SE2Transform = SE2Transform(p=[frame.pose.y, frame.pose.x], theta=frame.pose.yaw)
         # TODO: DW fun get this ^
         pose = transform.as_SE2()
         pos, angle_rad = self.weird_from_cartesian(pose)
