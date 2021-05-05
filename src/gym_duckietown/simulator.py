@@ -12,11 +12,14 @@ import math
 import numpy as np
 import pyglet
 import yaml
+from duckietown_world.structure.bases import _Frame, _PlacedObject
+from duckietown_world.structure.objects import _Tile, _TrafficSign, _Citizen, _GroundTag, _Vehicle
 from geometry import SE2value
 from gym import spaces
 from gym.utils import seeding
 from numpy.random.mtrand import RandomState
 from pyglet import gl, image, window
+
 
 from duckietown_world import (
     get_DB18_nominal,
@@ -26,8 +29,11 @@ from duckietown_world import (
     MapFormat1Constants,
     MapFormat1Constants as MF1C,
     MapFormat1Object,
-    SE2Transform,
+    SE2Transform, get_transforms,
 )
+
+from duckietown_world.structure.map_factory import MapFactory, get_map_path, get_existing_map_path
+from duckietown_world.structure.duckietown_map import DuckietownMap
 from duckietown_world.gltf.export import get_duckiebot_color_from_colorname
 from duckietown_world.resources import get_resource_path
 from duckietown_world.world_duckietown.map_loading import get_transform
@@ -63,7 +69,7 @@ DIM = 0.5
 TileKind = NewType("TileKind", str)
 
 
-class TileDict(TypedDict):
+class  TileDict(TypedDict):
     # {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable})
     coords: Tuple[int, int]
     kind: TileKind
@@ -158,7 +164,7 @@ DEFAULT_FRAMERATE = 30
 
 DEFAULT_MAX_STEPS = 1500
 
-DEFAULT_MAP_NAME = "udem1"
+DEFAULT_MAP_NAME = "demo"
 
 DEFAULT_FRAME_SKIP = 1
 
@@ -762,25 +768,25 @@ class Simulator(gym.Env):
         # Store the map name
         self.map_name = map_name
 
-        # Get the full map file path
-        self.map_file_path = get_resource_path(f"{map_name}.yaml")
-
+        # Get the full map file path\
+        print(self.map_name)
+        #print(get_resource_path(f"maps/{self.map_name}/main.yaml"))
+        self.map_file_path = "/".join(get_resource_path(f"maps/{self.map_name}/main.yaml").split("/")[:-1])
+        print(self.map_file_path)
+        self.map_file_path = "/home/sergey/osll/test/maps/test3"
         logger.debug(f'loading map file "{self.map_file_path}"')
-
-        with open(self.map_file_path, "r") as f:
-            self.map_data = yaml.load(f, Loader=yaml.Loader)
-
+        self.map_data: DuckietownMap = MapFactory.load_map(self.map_file_path)
         self._interpret_map(self.map_data)
 
-    def _interpret_map(self, map_data: MapFormat1):
+    def _interpret_map(self, map_data: DuckietownMap):
         try:
-            if not "tile_size" in map_data:
-                msg = "Must now include explicit tile_size in the map data."
-                raise InvalidMapException(msg)
-            self.road_tile_size = map_data["tile_size"]
+            #if not "tile_size" in map_data:
+            #    msg = "Must now include explicit tile_size in the map data."
+            #    raise InvalidMapException(msg)
+            self.road_tile_size = 0.585  # map_data["tile_size"]
             self._init_vlists()
 
-            tiles = map_data["tiles"]
+            tiles: List[List[_Tile]] = map_data.tiles.only_tiles()  # map_data["tiles"]
             assert len(tiles) > 0
             assert len(tiles[0]) > 0
 
@@ -794,34 +800,28 @@ class Simulator(gym.Env):
             self.drivable_tiles = []
 
             # For each row in the grid
+            print(map_data.trafficsigns)
             for j, row in enumerate(tiles):
-
+                print(row)
                 if len(row) != self.grid_width:
                     msg = "each row of tiles must have the same length"
                     raise InvalidMapException(msg, row=row)
 
                 # For each tile in this row
                 for i, tile in enumerate(row):
-                    tile = tile.strip()
-
-                    if tile == "empty":
+                    print(tile)
+                    tile_type = tile.type
+                    if tile_type == "empty":
                         continue
 
                     directions = ["S", "E", "N", "W"]
                     default_orient = "E"
 
-                    if "/" in tile:
-                        kind, orient = tile.split("/")
-                        kind = kind.strip(" ")
-                        orient = orient.strip(" ")
-                        angle = directions.index(orient)
-
-                    elif "4" in tile:
+                    kind = tile_type
+                    orient = tile.orientation
+                    angle = directions.index(orient)
+                    if "4" in kind:
                         kind = "4way"
-                        angle = directions.index(default_orient)
-
-                    else:
-                        kind = tile
                         angle = directions.index(default_orient)
 
                     DRIVABLE_TILES = [
@@ -865,7 +865,7 @@ class Simulator(gym.Env):
             msg = "Cannot load map data"
             raise InvalidMapException(msg, map_data=map_data)
 
-    def _load_objects(self, map_data: MapFormat1):
+    def _load_objects(self, map_data: DuckietownMap):
         # Create the objects array
         self.objects = []
 
@@ -885,13 +885,13 @@ class Simulator(gym.Env):
 
         # (N): Safety radius for object used in calculating reward
         self.collidable_safety_radii = []
-
-        # For each object
         try:
             objects = map_data["objects"]
-        except KeyError:
+        except Exception:#KeyError:
             pass
         else:
+            pass
+            '''
             if isinstance(objects, list):
                 for obj_idx, desc in enumerate(objects):
                     kind = desc["kind"]
@@ -902,6 +902,14 @@ class Simulator(gym.Env):
                     self.interpret_object(obj_name, desc)
             else:
                 raise ValueError(objects)
+            
+            '''
+        for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles]:
+            for info, obj in layer:
+                logger.debug('sign layer, ', obj)
+                obj_name, obj_type = info
+                assert isinstance(obj, _PlacedObject)
+                self._interpret_object(obj_name, obj)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -917,62 +925,35 @@ class Simulator(gym.Env):
         self.collidable_centers = np.array(self.collidable_centers)
         self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
-    def interpret_object(self, objname: str, desc: MapFormat1Object):
-        kind = desc["kind"]
-
-        W = self.grid_width
-        tile_size = self.road_tile_size
-        transform: SE2Transform = get_transform(desc, W, tile_size)
-        # logger.info(desc=desc, transform=transform)
-
+    def _interpret_object(self, obj_name: str, obj: _PlacedObject):
+        if isinstance(obj, _TrafficSign):
+            kind = obj.type
+        elif isinstance(obj, _Vehicle):
+            kind = "duckiebot"
+        else:
+            kind = "duckie"
+        frame: _Frame = obj.frame
+        print()
+        transform: SE2Transform = SE2Transform(p=[frame.pose.y, frame.pose.x], theta=frame.pose.yaw)
+        # TODO: DW fun get this ^
         pose = transform.as_SE2()
-
         pos, angle_rad = self.weird_from_cartesian(pose)
-
-        # c = self.cartesian_from_weird(pos, angle_rad)
-        # logger.debug(desc=desc, pose=geometry.SE2.friendly(pose), weird=(pos, angle_rad),
-        # c=geometry.SE2.friendly(c))
-
-        # pos = desc["pos"]
-        # x, z = pos[0:2]
-        # y = pos[2] if len(pos) == 3 else 0.0
-
-        # rotate = desc.get("rotate", 0.0)
-        optional = desc.get("optional", False)
-
-        # pos = self.road_tile_size * np.array((x, y, z))
-
-        # Load the mesh
-
-        if kind == MapFormat1Constants.KIND_DUCKIEBOT:
-            use_color = desc.get("color", "red")
-
-            mesh = get_duckiebot_mesh(use_color)
-
-        elif kind.startswith("sign"):
-            change_materials: Dict[str, MatInfo]
-            # logger.info(kind=kind, desc=desc)
-            minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
+        optional = False
+        change_materials: Dict[str, MatInfo]
+        # logger.info(kind=kind, desc=desc)
+        minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
+        if isinstance(obj, _TrafficSign) or isinstance(obj, _GroundTag):
             change_materials = {"April_Tag": minfo}
             mesh = get_mesh("sign_generic", change_materials=change_materials)
-        elif kind == "floor_tag":
-            return
-        else:
+            scale = 1.0
+        elif isinstance(obj, _Vehicle):
+            scale = 1.0
             mesh = get_mesh(kind)
-
-        if "height" in desc:
-            scale = desc["height"] / mesh.max_coords[1]
         else:
-            if "scale" in desc:
-                scale = desc["scale"]
-            else:
-                scale = 1.0
-        assert not ("height" in desc and "scale" in desc), "cannot specify both height and scale"
-
-        static = desc.get("static", True)
-        # static = desc.get('static', False)
-        # print('static is now', static)
-
+            scale = 0.06
+            mesh = get_mesh(kind)
+        static = True
+        logger.debug(pos)
         obj_desc = {
             "kind": kind,
             "mesh": mesh,
@@ -982,47 +963,14 @@ class Simulator(gym.Env):
             "optional": optional,
             "static": static,
         }
-
-        if static:
-            if kind == MF1C.KIND_TRAFFICLIGHT:
-                obj = TrafficLightObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
-            else:
-                obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
-        else:
-            if kind == MF1C.KIND_DUCKIEBOT:
-                obj = DuckiebotObj(
-                    obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH
-                )
-            elif kind == MF1C.KIND_DUCKIE:
-                obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
-            elif kind == MF1C.KIND_CHECKERBOARD:
-                obj = CheckerboardObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, self.road_tile_size)
-            else:
-                msg = "Object kind unknown."
-                raise InvalidMapException(msg, kind=kind)
+        if isinstance(obj, _TrafficSign) or isinstance(obj, _GroundTag):
+            obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
+        elif isinstance(obj, _Citizen):
+            obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT,  self.road_tile_size)
+        elif isinstance(obj, _Vehicle):
+            obj = DuckiebotObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT, WHEEL_DIST, ROBOT_WIDTH, ROBOT_LENGTH)
 
         self.objects.append(obj)
-
-        # Compute collision detection information
-
-        # angle = rotate * (math.pi / 180)
-
-        # # Find drivable tiles object could intersect with
-        # # possible_tiles = find_candidate_tiles(obj.obj_corners, self.road_tile_size)
-
-        # If the object intersects with a drivable tile
-        if (
-            static
-            and kind != MF1C.KIND_TRAFFICLIGHT
-            # We want collision checking also for things outside the lanes
-            # # and self._collidable_object(obj.obj_corners, obj.obj_norm, possible_tiles)
-        ):
-            # noinspection PyUnresolvedReferences
-            self.collidable_centers.append(pos)  # XXX: changes types during initialization
-            self.collidable_corners.append(obj.obj_corners.T)
-            self.collidable_norms.append(obj.obj_norm)
-            # noinspection PyUnresolvedReferences
-            self.collidable_safety_radii.append(obj.safety_radius)  # XXX: changes types during initialization
 
     def close(self):
         pass
@@ -1782,8 +1730,9 @@ class Simulator(gym.Env):
             gl.glPushMatrix()
             TS = self.road_tile_size
             gl.glTranslatef((i + 0.5) * TS, 0, (j + 0.5) * TS)
+            #logger.debug("{} {} {}".format(i, j, angle))
             gl.glRotatef(angle * 90 + 180, 0, 1, 0)
-
+            #gl.glRotatef(angle * 90, 0, 1, 0)
             # gl.glEnable(gl.GL_BLEND)
             # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
