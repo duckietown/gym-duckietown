@@ -1693,9 +1693,7 @@ class Simulator(gym.Env):
             gl.glPushMatrix()
             TS = self.road_tile_size
             gl.glTranslatef((i + 0.5) * TS, 0, (j + 0.5) * TS)
-            #logger.debug("{} {} {}".format(i, j, angle))
             gl.glRotatef(angle * 90 + 180, 0, 1, 0)
-            #gl.glRotatef(angle * 90, 0, 1, 0)
             # gl.glEnable(gl.GL_BLEND)
             # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
