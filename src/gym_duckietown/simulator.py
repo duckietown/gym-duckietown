@@ -13,7 +13,7 @@ import numpy as np
 import pyglet
 import yaml
 from duckietown_world.structure.bases import _Frame, _PlacedObject
-from duckietown_world.structure.objects import _Tile, _TrafficSign, _Citizen, _GroundTag, _Vehicle
+from duckietown_world.structure.objects import _Tile, _TrafficSign, _Citizen, _GroundTag, _Vehicle, _Decoration
 from geometry import SE2value
 from gym import spaces
 from gym.utils import seeding
@@ -65,6 +65,7 @@ from .randomization import Randomizer
 from .utils import get_subdir_path
 
 DIM = 0.5
+DEFAULT_SCALE = 0.06
 
 TileKind = NewType("TileKind", str)
 
@@ -783,16 +784,13 @@ class Simulator(gym.Env):
             self.drivable_tiles = []
 
             # For each row in the grid
-            print(map_data.trafficsigns)
             for j, row in enumerate(tiles):
-                print(row)
                 if len(row) != self.grid_width:
                     msg = "each row of tiles must have the same length"
                     raise InvalidMapException(msg, row=row)
 
                 # For each tile in this row
                 for i, tile in enumerate(row):
-                    print(tile)
                     tile_type = tile.type
                     if tile_type == "empty":
                         continue
@@ -803,7 +801,7 @@ class Simulator(gym.Env):
                     kind = tile_type
                     orient = tile.orientation
                     angle = directions.index(orient)
-                    if "4" in kind:
+                    if kind.startswith("4"):
                         kind = "4way"
                         angle = directions.index(default_orient)
 
@@ -817,7 +815,7 @@ class Simulator(gym.Env):
                     ]
                     drivable = kind in DRIVABLE_TILES
 
-                    # logger.info(f'kind {kind} drivable {drivable} row = {row}')
+                    logger.info(f'kind {kind} drivable {drivable} row = {row}')
 
                     tile = cast(
                         TileDict, {"coords": (i, j), "kind": kind, "angle": angle, "drivable": drivable}
@@ -872,9 +870,8 @@ class Simulator(gym.Env):
             objects = map_data["objects"]
         except Exception:
             pass
-        for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles]:
+        for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles, map_data.decorations]:
             for info, obj in layer:
-                logger.debug('sign layer, ', obj)
                 obj_name, obj_type = info
                 assert isinstance(obj, _PlacedObject)
                 self._interpret_object(obj_name, obj)
@@ -894,14 +891,13 @@ class Simulator(gym.Env):
         self.collidable_safety_radii = np.array(self.collidable_safety_radii)
 
     def _interpret_object(self, obj_name: str, obj: _PlacedObject):
-        if isinstance(obj, _TrafficSign):
+        if isinstance(obj, _TrafficSign) or isinstance(obj, _Decoration):
             kind = obj.type
         elif isinstance(obj, _Vehicle):
             kind = "duckiebot"
         else:
             kind = "duckie"
         frame: _Frame = obj.frame
-        print()
         transform: SE2Transform = SE2Transform(p=[frame.pose.y, frame.pose.x], theta=frame.pose.yaw)
         # TODO: DW fun get this ^
         pose = transform.as_SE2()
@@ -918,10 +914,9 @@ class Simulator(gym.Env):
             scale = 1.0
             mesh = get_mesh(kind)
         else:
-            scale = 0.06
+            scale = DEFAULT_SCALE
             mesh = get_mesh(kind)
         static = True
-        logger.debug(pos)
         obj_desc = {
             "kind": kind,
             "mesh": mesh,
@@ -931,7 +926,7 @@ class Simulator(gym.Env):
             "optional": optional,
             "static": static,
         }
-        if isinstance(obj, _TrafficSign) or isinstance(obj, _GroundTag):
+        if isinstance(obj, _TrafficSign) or isinstance(obj, _GroundTag) or isinstance(obj, _Decoration):
             obj = WorldObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT)
         elif isinstance(obj, _Citizen):
             obj = DuckieObj(obj_desc, self.domain_rand, SAFETY_RAD_MULT,  self.road_tile_size)
