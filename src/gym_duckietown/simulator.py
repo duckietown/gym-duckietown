@@ -3,7 +3,15 @@ import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, TypedDict, Union
+
+import sys
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
+
+from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, Union
 
 import geometry
 import geometry as g
