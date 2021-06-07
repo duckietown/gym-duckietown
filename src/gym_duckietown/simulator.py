@@ -3,7 +3,15 @@ import os
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
-from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, TypedDict, Union
+
+import sys
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
+
+from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, Union
 
 import geometry
 import geometry as g
@@ -629,7 +637,7 @@ class Simulator(gym.Env):
             kind = tile["kind"]
             fn = get_texture_file(f"tiles-processed/{self.style}/{kind}/texture")[0]
             # ft = get_fancy_textures(self.style, texture_name)
-            t = load_texture(fn, segment=False)
+            t = load_texture(fn, segment=False, segment_into_color=False)
             tt = Texture(t, tex_name=kind, rng=rng)
             tile["texture"] = tt
 
