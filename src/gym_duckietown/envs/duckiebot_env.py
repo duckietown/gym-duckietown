@@ -168,7 +168,13 @@ class DuckiebotEnv(gym.Env):
         # Draw the image to the rendering window
         width = self.img.shape[1]
         height = self.img.shape[0]
-        imgData = pyglet.image.ImageData(width, height, "RGB", self.img.tobytes(), pitch=width * 3,)
+        imgData = pyglet.image.ImageData(
+            width,
+            height,
+            "RGB",
+            self.img.tobytes(),
+            pitch=width * 3,
+        )
         imgData.blit(0, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         if mode == "human":
