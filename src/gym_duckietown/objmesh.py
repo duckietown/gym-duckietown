@@ -27,7 +27,7 @@ class MatInfo(TypedDict, total=False):
 
 def get_mesh(mesh_name: str, segment: bool = False, change_materials: Dict[str, MatInfo] = None) -> "ObjMesh":
     """
-            Load a mesh or used a cached version
+    Load a mesh or used a cached version
     """
     change_materials = change_materials or {}
 

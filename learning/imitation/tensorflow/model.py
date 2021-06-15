@@ -23,7 +23,12 @@ class TensorflowModel:
         self._initialize(observation_shape, action_shape, graph_location)
 
     def predict(self, state):
-        action = self.tf_session.run(self._computation_graph, feed_dict={self._observation: [state],})
+        action = self.tf_session.run(
+            self._computation_graph,
+            feed_dict={
+                self._observation: [state],
+            },
+        )
         return np.squeeze(action)
 
     def train(self, observations, actions):

@@ -1,7 +1,5 @@
 # coding=utf-8
-__version__ = "6.1.15"
-
-import platform
+__version__ = "6.1.16"
 
 from zuper_commons.logs import ZLogger
 
@@ -12,12 +10,7 @@ import os
 
 import pyglet
 
-on_mac = "Darwin" in platform.system()
-print(pyglet.options)
-if on_mac:
-    pyglet.options["headless"] = False
-else:
-    pyglet.options["headless"] = True
+pyglet.options["headless"] = True
 
 path = os.path.dirname(os.path.dirname(__file__))
 logger.debug(f"gym-duckietown version {__version__} path {path}\n")

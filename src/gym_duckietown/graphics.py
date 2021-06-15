@@ -68,7 +68,7 @@ def should_segment_out(tex_path):
 
 @lru_cache(maxsize=None)
 def load_texture(tex_path: str, segment: bool = False, segment_into_color=None):
-    """ segment_into_black controls what type of segmentation we apply: for tiles and all ground textures,
+    """segment_into_black controls what type of segmentation we apply: for tiles and all ground textures,
     replacing
     unimportant stuff with black is a good idea. For other things, replacing it with transparency is good too
     (for example, we don't want black traffic lights, because they go over the roads, and they'd cut our

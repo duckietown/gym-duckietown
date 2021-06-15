@@ -1047,7 +1047,7 @@ class Simulator(gym.Env):
 
     def _get_tile(self, i: int, j: int) -> Optional[TileDict]:
         """
-            Returns None if the duckiebot is not in a tile.
+        Returns None if the duckiebot is not in a tile.
         """
         i = int(i)
         j = int(j)
@@ -1145,7 +1145,7 @@ class Simulator(gym.Env):
 
     def _get_curve(self, i, j):
         """
-            Get the Bezier curve control points for a given tile
+        Get the Bezier curve control points for a given tile
         """
         tile = self._get_tile(i, j)
         assert tile is not None
@@ -1160,8 +1160,18 @@ class Simulator(gym.Env):
             pts = (
                 np.array(
                     [
-                        [[-0.20, 0, -0.50], [-0.20, 0, -0.25], [-0.20, 0, 0.25], [-0.20, 0, 0.50],],
-                        [[0.20, 0, 0.50], [0.20, 0, 0.25], [0.20, 0, -0.25], [0.20, 0, -0.50],],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, -0.25],
+                            [-0.20, 0, 0.25],
+                            [-0.20, 0, 0.50],
+                        ],
+                        [
+                            [0.20, 0, 0.50],
+                            [0.20, 0, 0.25],
+                            [0.20, 0, -0.25],
+                            [0.20, 0, -0.50],
+                        ],
                     ]
                 )
                 * self.road_tile_size
@@ -1171,8 +1181,18 @@ class Simulator(gym.Env):
             pts = (
                 np.array(
                     [
-                        [[-0.20, 0, -0.50], [-0.20, 0, 0.00], [0.00, 0, 0.20], [0.50, 0, 0.20],],
-                        [[0.50, 0, -0.20], [0.30, 0, -0.20], [0.20, 0, -0.30], [0.20, 0, -0.50],],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, 0.00],
+                            [0.00, 0, 0.20],
+                            [0.50, 0, 0.20],
+                        ],
+                        [
+                            [0.50, 0, -0.20],
+                            [0.30, 0, -0.20],
+                            [0.20, 0, -0.30],
+                            [0.20, 0, -0.50],
+                        ],
                     ]
                 )
                 * self.road_tile_size
@@ -1182,8 +1202,18 @@ class Simulator(gym.Env):
             pts = (
                 np.array(
                     [
-                        [[-0.20, 0, -0.50], [-0.20, 0, -0.20], [-0.30, 0, -0.20], [-0.50, 0, -0.20],],
-                        [[-0.50, 0, 0.20], [-0.30, 0, 0.20], [0.30, 0, 0.00], [0.20, 0, -0.50],],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, -0.20],
+                            [-0.30, 0, -0.20],
+                            [-0.50, 0, -0.20],
+                        ],
+                        [
+                            [-0.50, 0, 0.20],
+                            [-0.30, 0, 0.20],
+                            [0.30, 0, 0.00],
+                            [0.20, 0, -0.50],
+                        ],
                     ]
                 )
                 * self.road_tile_size
@@ -1194,12 +1224,42 @@ class Simulator(gym.Env):
             pts = (
                 np.array(
                     [
-                        [[-0.20, 0, -0.50], [-0.20, 0, -0.25], [-0.20, 0, 0.25], [-0.20, 0, 0.50],],
-                        [[-0.20, 0, -0.50], [-0.20, 0, 0.00], [0.00, 0, 0.20], [0.50, 0, 0.20],],
-                        [[0.20, 0, 0.50], [0.20, 0, 0.25], [0.20, 0, -0.25], [0.20, 0, -0.50],],
-                        [[0.50, 0, -0.20], [0.30, 0, -0.20], [0.20, 0, -0.20], [0.20, 0, -0.50],],
-                        [[0.20, 0, 0.50], [0.20, 0, 0.20], [0.30, 0, 0.20], [0.50, 0, 0.20],],
-                        [[0.50, 0, -0.20], [0.30, 0, -0.20], [-0.20, 0, 0.00], [-0.20, 0, 0.50],],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, -0.25],
+                            [-0.20, 0, 0.25],
+                            [-0.20, 0, 0.50],
+                        ],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, 0.00],
+                            [0.00, 0, 0.20],
+                            [0.50, 0, 0.20],
+                        ],
+                        [
+                            [0.20, 0, 0.50],
+                            [0.20, 0, 0.25],
+                            [0.20, 0, -0.25],
+                            [0.20, 0, -0.50],
+                        ],
+                        [
+                            [0.50, 0, -0.20],
+                            [0.30, 0, -0.20],
+                            [0.20, 0, -0.20],
+                            [0.20, 0, -0.50],
+                        ],
+                        [
+                            [0.20, 0, 0.50],
+                            [0.20, 0, 0.20],
+                            [0.30, 0, 0.20],
+                            [0.50, 0, 0.20],
+                        ],
+                        [
+                            [0.50, 0, -0.20],
+                            [0.30, 0, -0.20],
+                            [-0.20, 0, 0.00],
+                            [-0.20, 0, 0.50],
+                        ],
                     ]
                 )
                 * self.road_tile_size
@@ -1210,9 +1270,24 @@ class Simulator(gym.Env):
             pts = (
                 np.array(
                     [
-                        [[-0.20, 0, -0.50], [-0.20, 0, 0.00], [0.00, 0, 0.20], [0.50, 0, 0.20],],
-                        [[-0.20, 0, -0.50], [-0.20, 0, -0.25], [-0.20, 0, 0.25], [-0.20, 0, 0.50],],
-                        [[-0.20, 0, -0.50], [-0.20, 0, -0.20], [-0.30, 0, -0.20], [-0.50, 0, -0.20],],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, 0.00],
+                            [0.00, 0, 0.20],
+                            [0.50, 0, 0.20],
+                        ],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, -0.25],
+                            [-0.20, 0, 0.25],
+                            [-0.20, 0, 0.50],
+                        ],
+                        [
+                            [-0.20, 0, -0.50],
+                            [-0.20, 0, -0.20],
+                            [-0.30, 0, -0.20],
+                            [-0.50, 0, -0.20],
+                        ],
                     ]
                 )
                 * self.road_tile_size
@@ -1258,10 +1333,10 @@ class Simulator(gym.Env):
         self, pos: np.array, angle: float
     ) -> Tuple[Optional[np.array], Optional[np.array]]:
         """
-            Get the closest point on the curve to a given point
-            Also returns the tangent at that point.
+        Get the closest point on the curve to a given point
+        Also returns the tangent at that point.
 
-            Returns None, None if not in a lane.
+        Returns None, None if not in a lane.
         """
 
         i, j = self.get_grid_coords(pos)
@@ -1413,9 +1488,9 @@ class Simulator(gym.Env):
 
     def _valid_pose(self, pos: g.T3value, angle: float, safety_factor: float = 1.0) -> bool:
         """
-            Check that the agent is in a valid pose
+        Check that the agent is in a valid pose
 
-            safety_factor = minimum distance
+        safety_factor = minimum distance
         """
 
         # Compute the coordinates of the base of both wheels
@@ -1949,7 +2024,11 @@ class Simulator(gym.Env):
         height = img.shape[0]
         img = np.ascontiguousarray(np.flip(img, axis=0))
         img_data = image.ImageData(
-            width, height, "RGB", img.ctypes.data_as(POINTER(gl.GLubyte)), pitch=width * 3,
+            width,
+            height,
+            "RGB",
+            img.ctypes.data_as(POINTER(gl.GLubyte)),
+            pitch=width * 3,
         )
         img_data.blit(0, 0, 0, width=WINDOW_WIDTH, height=WINDOW_HEIGHT)
 
