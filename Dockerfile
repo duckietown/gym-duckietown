@@ -12,7 +12,7 @@ RUN apt-get update -y && apt-get install -y  \
     && \
     rm -rf /var/lib/apt/lists/*
 
-ARG PIP_INDEX_URL
+ARG PIP_INDEX_URL="https://pypi.org/simple"
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 
 WORKDIR /gym-duckietown
