@@ -20,7 +20,7 @@ WORKDIR /gym-duckietown
 COPY . .
 
 #RUN pip install -v -e .
-RUN pip3 install -U "pip>=20.2"
+RUN python3 -m pip install -U "pip>=20.2"
 #RUN python3 -c "from gym_duckietown import *"
 
 
@@ -28,19 +28,19 @@ RUN pip3 install -U "pip>=20.2"
 ## first install the ones that do not change
 
 COPY requirements.pin.txt .
-RUN pip3 install  -r requirements.pin.txt
+RUN python3 -m pip install  -r requirements.pin.txt
 #
 COPY requirements.* ./
 RUN cat requirements.* > .requirements.txt
 RUN cat .requirements.txt
 
-RUN pip3 install  -r .requirements.txt
+RUN python3 -m pip install  -r .requirements.txt
 
 COPY . .
 
-RUN pip3 install -v  --no-deps .
+RUN python3 -m pip install -v  --no-deps .
 
-RUN pip3 install pyglet==1.5.15
+RUN python3 -m pip install pyglet==1.5.15
 
 #   pip install -v -e .
 
