@@ -20,7 +20,7 @@ WORKDIR /gym-duckietown
 COPY . .
 
 #RUN pip install -v -e .
-RUN python3 -m pip install -U "pip>=20.2"
+RUN python3 -m pip install -U "pip>=21"
 #RUN python3 -c "from gym_duckietown import *"
 
 
