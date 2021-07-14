@@ -27,7 +27,6 @@ install_requires = [
     "gym>=0.17.1",
     "numpy>=1.10.0",
     "pyglet",
-    # 'pyglet',
     "git+https://github.com/duckietown/duckietown-world@ente-devel-map-format-divided",
     "pyzmq>=16.0.0",
     "scikit-image>=0.13.1",

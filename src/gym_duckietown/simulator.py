@@ -11,7 +11,6 @@ import gym
 import math
 import numpy as np
 import pyglet
-import yaml
 from duckietown_world.structure.bases import _Frame, _PlacedObject
 from duckietown_world.structure.objects import _Tile, _TrafficSign, _Citizen, _GroundTag, _Vehicle, _Decoration
 from geometry import SE2value
@@ -165,7 +164,7 @@ DEFAULT_FRAMERATE = 30
 
 DEFAULT_MAX_STEPS = 1500
 
-DEFAULT_MAP_NAME = "demo"
+DEFAULT_MAP_NAME = "udem1"
 
 DEFAULT_FRAME_SKIP = 1
 
@@ -770,20 +769,20 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path\
-        self.map_file_path = "/".join(get_resource_path(f"maps/{self.map_name}/main.yaml").split("/")[:-1])
+        self.map_file_path = get_resource_path(f"/maps/{self.map_name}/main.yaml").split("main.yaml")[0]
         logger.debug(f'loading map file "{self.map_file_path}"')
         self.map_data: DuckietownMap = MapFactory.load_map(self.map_file_path)
         self._interpret_map(self.map_data)
 
     def _interpret_map(self, map_data: DuckietownMap):
         try:
-            self.road_tile_size = 0.585  # map_data["tile_size"]
+            # assume that the tiles have the same width and height
+            self.road_tile_size = map_data.tile_maps[map_data.get_context()].x
             self._init_vlists()
 
-            tiles: List[List[_Tile]] = map_data.tiles.only_tiles()  # map_data["tiles"]
+            tiles: List[List[_Tile]] = map_data.tiles.only_tiles()
             assert len(tiles) > 0
             assert len(tiles[0]) > 0
-
             # Create the grid
             self.grid_height = len(tiles)
             self.grid_width = len(tiles[0])
@@ -811,9 +810,6 @@ class Simulator(gym.Env):
                     kind = tile_type
                     orient = tile.orientation
                     angle = directions.index(orient)
-                    if kind.startswith("4"):
-                        kind = "4way"
-                        angle = directions.index(default_orient)
 
                     DRIVABLE_TILES = [
                         "straight",
@@ -882,10 +878,11 @@ class Simulator(gym.Env):
             pass
           
         for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles, map_data.decorations]:
-            for info, obj in layer:
-                obj_name, obj_type = info
-                assert isinstance(obj, _PlacedObject)
-                self._interpret_object(obj_name, obj)
+            if layer:
+                for info, obj in layer:
+                    obj_name, obj_type = info
+                    assert isinstance(obj, _PlacedObject)
+                    self._interpret_object(obj_name, obj)
 
         # If there are collidable objects
         if len(self.collidable_corners) > 0:
@@ -906,8 +903,10 @@ class Simulator(gym.Env):
             kind = obj.type
         elif isinstance(obj, _Vehicle):
             kind = "duckiebot"
-        else:
+        elif isinstance(obj, _Citizen):
             kind = "duckie"
+        else:
+            kind = None
         frame: _Frame = obj.frame
         transform: SE2Transform = SE2Transform(p=[frame.pose.y, frame.pose.x], theta=frame.pose.yaw)
         # TODO: DW fun get this ^
@@ -915,7 +914,6 @@ class Simulator(gym.Env):
         pos, angle_rad = self.weird_from_cartesian(pose)
         optional = False
         change_materials: Dict[str, MatInfo]
-        # logger.info(kind=kind, desc=desc)
         minfo = cast(MatInfo, {"map_Kd": f"{kind}.png"})
         if isinstance(obj, _TrafficSign) or isinstance(obj, _GroundTag):
             change_materials = {"April_Tag": minfo}
