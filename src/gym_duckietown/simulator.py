@@ -877,7 +877,7 @@ class Simulator(gym.Env):
         except Exception:
             pass
           
-        for layer in [map_data.trafficsigns, map_data.citizens, map_data.vehicles, map_data.decorations]:
+        for layer in [map_data.traffic_signs, map_data.citizens, map_data.vehicles, map_data.decorations]:
             if layer:
                 for info, obj in layer:
                     obj_name, obj_type = info
