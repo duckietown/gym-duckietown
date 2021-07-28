@@ -21,7 +21,7 @@ def get_version(filename):
 
 version = get_version(filename="src/gym_duckietown/__init__.py")
 
-line = "daffy"
+line = "ente"
 
 install_requires = [
     "gym>=0.17.1",
