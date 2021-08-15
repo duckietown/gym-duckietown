@@ -108,7 +108,7 @@ Please note that if you use Conda to install this package instead of pip, you wi
 
 ```
 source activate gym-duckietown
-export PYTHONPATH="${PYTHONPATH}:`pwd`"
+export PYTHONPATH="${PYTHONPATH}:`pwd`/src"
 ```
 
 ### Docker Image

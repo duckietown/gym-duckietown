@@ -4,13 +4,18 @@ channels:
     - defaults
 dependencies:
     - python=3.6
-    - pytorch=0.3
+    - pip
+    - pytorch
     - torchvision
     - pyzmq
     - numpy
     - pyyaml=3.12
     - pip:
         - gym
+        - duckietown-world-daffy
+        - pipdeptree
+        - typing-extensions
+        - carnivalmirror
         - pyglet
         - opencv-python
         - scikit-image
