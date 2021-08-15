@@ -107,7 +107,7 @@ conda env create -f environment.yaml
 Please note that if you use Conda to install this package instead of pip, you will need to activate your Conda environment and add the package to your Python path before you can use it:
 
 ```
-source activate gym-duckietown
+conda activate gym-duckietown
 export PYTHONPATH="${PYTHONPATH}:`pwd`/src"
 ```
 
