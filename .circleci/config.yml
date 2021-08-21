@@ -25,7 +25,4 @@ workflows:
     jobs:
       - test-3.8:
           context: pip-staging
-      - test-3.7:
-          context: pip-staging
-      - test-3.6:
-          context: pip-staging
+
