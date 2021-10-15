@@ -768,6 +768,11 @@ class Simulator(gym.Env):
         """
 
         # Store the map name
+        if os.path.exists(map_name) and os.path.isfile(map_name):
+            # if env is loaded using gym's register function, we need to extract the map name from the complete url
+            map_name = os.path.basename(map_name)
+            assert map_name.endswith(".yaml")
+            map_name = ".".join(map_name.split(".")[:-1])
         self.map_name = map_name
 
         # Get the full map file path
