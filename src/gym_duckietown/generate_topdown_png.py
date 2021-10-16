@@ -1,3 +1,6 @@
+# FIXME: This script assumes python 2.7 - see e.g. dependency "bpy"
+
+
 # NOTE: This script should be run from the blender interface, otherwise the bpy module will not be available
 # Moreover, blender should be opened from the same place as this script is located
 

@@ -34,7 +34,6 @@ install_requires = [
     f"duckietown-world-{line}",
     "PyGeometry-z6",
     "carnivalmirror==0.6.2",
-    "bpy",
     "zuper-commons-z6",
     "typing-extensions",
     "Pillow",
