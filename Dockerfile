@@ -1,4 +1,4 @@
-ARG AIDO_REGISTRY
+ARG DOCKER_REGISTRY
 
 FROM nvidia/opengl:1.2-glvnd-devel
 
