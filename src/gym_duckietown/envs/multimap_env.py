@@ -1,9 +1,7 @@
 # coding=utf-8
-import os
 import gym
 
 from .duckietown_env import DuckietownEnv
-from ..utils import get_subdir_path
 
 
 class MultiMapEnv(gym.Env):
@@ -15,20 +13,10 @@ class MultiMapEnv(gym.Env):
     def __init__(self, **kwargs):
         self.env_list = []
 
-        maps_dir = "."
-
         self.window = None
-
+        map_names = ["loop_only_duckies", "small_loop_only_duckies"]
         # Try loading each of the available map files
-        for map_file in os.listdir(maps_dir):
-            if not map_file.endswith(".yaml"):
-                continue
-            map_name = map_file.split(".")[0]
-
-            # Do not load the regression test maps
-            if map_name.startswith("regress"):
-                continue
-
+        for map_name in map_names:
             env = DuckietownEnv(map_name=map_name, **kwargs)
 
             self.action_space = env.action_space
