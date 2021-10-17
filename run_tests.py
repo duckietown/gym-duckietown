@@ -8,7 +8,7 @@ from gym_duckietown.simulator import get_agent_corners
 from gym_duckietown.wrappers import PyTorchObsWrapper
 
 env = gym.make("Duckietown-udem1-v0")
-
+env.reset()
 # Try stepping a few times
 for i in range(0, 10):
     obs, _, _, _ = env.step(np.array([0.1, 0.1]))
