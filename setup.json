@@ -1,0 +1,33 @@
+{
+  "install_requires": [
+    "Pillow",
+    "PyGeometry-z6",
+    "carnivalmirror==0.6.2",
+    "duckietown-world-daffy",
+    "gym>=0.17.1",
+    "numpy>=1.10.0",
+    "opencv-python>=3.4",
+    "pyglet",
+    "pyyaml>=3.11",
+    "pyzmq>=16.0.0",
+    "typing-extensions",
+    "zuper-commons-z6"
+  ],
+  "tests_require": [],
+  "srcdir": "src",
+  "package_name": "duckietown-gym-daffy",
+  "entry_points": {
+    "console_scripts": []
+  },
+  "zip_safe": true,
+  "include_package_data": true,
+  "modules": [
+    "gym_duckietown",
+    "gym_duckietown.envs",
+    "gym_duckietown.randomization"
+  ],
+  "version": "6.1.27",
+  "author": "",
+  "author_email": "",
+  "url": ""
+}
