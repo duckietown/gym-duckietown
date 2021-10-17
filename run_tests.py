@@ -34,8 +34,7 @@ assert first_obs.shape == env.observation_space.shape
 assert first_obs.shape == second_obs.shape
 
 # Try loading each of the available map files
-for map_file in os.listdir("src/gym_duckietown/maps"):
-    map_name = map_file.split(".")[0]
+for map_name in ["loop_only_duckies", "small_loop_only_duckies"]:
     env = DuckietownEnv(map_name=map_name)
     env.reset()
 
