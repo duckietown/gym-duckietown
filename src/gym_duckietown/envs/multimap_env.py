@@ -15,12 +15,14 @@ class MultiMapEnv(gym.Env):
     def __init__(self, **kwargs):
         self.env_list = []
 
-        maps_dir = get_subdir_path("maps")
+        maps_dir = "."
 
         self.window = None
 
         # Try loading each of the available map files
         for map_file in os.listdir(maps_dir):
+            if not map_file.endswith(".yaml"):
+                continue
             map_name = map_file.split(".")[0]
 
             # Do not load the regression test maps
