@@ -181,7 +181,7 @@ LanePosition0 = namedtuple("LanePosition", "dist dot_dir angle_deg angle_rad")
 
 class LanePosition(LanePosition0):
     def as_json_dict(self):
-        """ Serialization-friendly format. """
+        """Serialization-friendly format."""
         return dict(dist=self.dist, dot_dir=self.dot_dir, angle_deg=self.angle_deg, angle_rad=self.angle_rad)
 
 
@@ -2125,7 +2125,7 @@ class FrameBufferMemory:
     height: int
 
     def __init__(self, *, width: int, height: int):
-        """ H, W """
+        """H, W"""
         self.width = width
         self.height = height
 

@@ -44,7 +44,7 @@ def recvArray(socket):
 
 
 class DuckiebotEnv(gym.Env):
-    """An environment that is the actual real robot """
+    """An environment that is the actual real robot"""
 
     metadata = {"render.modes": ["human", "rgb_array", "app"], "video.frames_per_second": 30}
 

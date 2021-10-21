@@ -12,4 +12,4 @@ class InvalidMapException(GymDuckietownException):
 
 
 class NotInLane(GymDuckietownException):
-    """ Raised when the Duckiebot is not in a lane. """
+    """Raised when the Duckiebot is not in a lane."""
