@@ -13,8 +13,9 @@ jobs:
       - run: python3 -m flake8 . --count --show-source --statistics --select=E901,E999,F821,F822,F823
       - run: 
           command:
-            mkdir a
-            cd a && xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ../run_tests.py
+            ls
+            mkdir -p tmp-test-executions
+            cd tmp-test-executions && xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ../run_tests.py
   test-3.8:
     <<: *template
     docker:
