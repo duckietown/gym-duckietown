@@ -577,7 +577,7 @@ class Simulator(gym.Env):
         # specular = np.array([0.3, 0.3, 0.3, 1])
         specular = np.array([0.0, 0.0, 0.0, 1])
 
-        logger.info(light_pos=light_pos, ambient=ambient, diffuse=diffuse, specular=specular)
+        # logger.info(light_pos=light_pos, ambient=ambient, diffuse=diffuse, specular=specular)
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, (gl.GLfloat * 4)(*light_pos))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, (gl.GLfloat * 4)(*ambient))
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, (gl.GLfloat * 4)(*diffuse))

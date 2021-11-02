@@ -29,3 +29,5 @@ recursive-include src/gym_duckietown *.mtl
 recursive-include src/gym_duckietown *.json
 recursive-include src/gym_duckietown *.yaml
 recursive-include src/gym_duckietown *.jpg
+recursive-exclude src/gym_duckietown *.pyc
+prune src/**/__pycache__
