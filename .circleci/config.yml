@@ -14,7 +14,7 @@ jobs:
       - run:
           command: |
             ls
-            xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ../run_tests.py
+            xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ./run_tests.py
   test-3.8:
     <<: *template
     docker:
