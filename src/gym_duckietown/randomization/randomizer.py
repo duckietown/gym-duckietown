@@ -5,6 +5,16 @@ from numpy.random.mtrand import RandomState
 from .. import logger
 from ..utils import get_file_path
 
+DEFAULT_CONFIG = {
+    "horz_mode": {"type": "int", "low": 0, "high": 4},
+    "light_pos": {"type": "uniform", "low": [-150, 170, -150], "high": [150, 220, 150], "size": 3},
+    "camera_noise": {"type": "uniform", "low": -0.005, "high": 0.005, "size": 3},
+    "trim": {"type": "normal", "loc": 0, "scale": 0.02},
+    "camera_height": {"type": "uniform", "low": 0.92, "high": 1.08},
+    "camera_angle": {"type": "uniform", "low": 0.8, "high": 1.2},
+    "camera_fov_y": {"type": "uniform", "low": 0.8, "high": 1.2},
+}
+
 
 class Randomizer:
     def __init__(self, randomization_config_fp="default_dr.json", default_config_fp="default.json"):
@@ -17,9 +27,9 @@ class Randomizer:
             )
             self.randomization_config = dict()
 
-        with open(get_file_path("randomization/config", default_config_fp, "json"), mode="r") as f:
-            self.default_config = json.load(f)
-
+        # with open(get_file_path("randomization/config", default_config_fp, "json"), mode="r") as f:
+        #     self.default_config = json.load(f)
+        self.default_config = DEFAULT_CONFIG
         # Sorted list to generate parameters in the same order
         self.keys = sorted(set(list(self.randomization_config.keys()) + list(self.default_config.keys())))
 
