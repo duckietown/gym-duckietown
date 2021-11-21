@@ -37,7 +37,7 @@ class DAgger(InteractiveImitationLearning):
         except:
             return control_policy
         if self.active_policy:
-            # keep using tecaher untill duckiebot converges back on track
+            # keep using tecaher until duckiebot converges back on track
             if not (abs(lp.dist) < self.convergence_distance and abs(lp.angle_rad) < self.convergence_angle):
                 return self.teacher
         else:
