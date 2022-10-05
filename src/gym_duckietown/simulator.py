@@ -635,7 +635,7 @@ class Simulator(gym.Env):
             rng = self.np_random if self.domain_rand else None
 
             kind = tile["kind"]
-            fn = get_texture_file(f"tiles-processed/{self.style}/{kind}/texture")[0]
+            fn = get_texture_file(os.path.join("tiles-processed", self.style, kind, "texture"))[0]
             # ft = get_fancy_textures(self.style, texture_name)
             t = load_texture(fn, segment=False, segment_into_color=False)
             tt = Texture(t, tex_name=kind, rng=rng)
