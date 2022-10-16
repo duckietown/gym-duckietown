@@ -651,7 +651,7 @@ class Simulator(gym.Env):
 
             # Randomize whether the object is visible or not
             if obj.optional and self.domain_rand:
-                obj.visible = self.np_random.randint(0, 2) == 0
+                obj.visible = self.np_random.integers(0, 2) == 0
             else:
                 obj.visible = True
 
