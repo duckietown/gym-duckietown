@@ -1,6 +1,8 @@
 ARG DOCKER_REGISTRY
 
-FROM nvidia/opengl:1.2-glvnd-devel
+# FROM nvidia/opengl:1.2-glvnd-devel
+# FROM utensils/opengl:stable
+FROM ubuntu:22.04
 
 RUN apt-get update -y && apt-get install -y  \
     freeglut3-dev \
@@ -11,13 +13,13 @@ RUN apt-get update -y && apt-get install -y  \
     && \
     rm -rf /var/lib/apt/lists/*
 
-ARG PIP_INDEX_URL="https://pypi.org/simple"
-ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+# ARG PIP_INDEX_URL="https://pypi.org/simple"
+# ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 
 WORKDIR /gym-duckietown
 
 
-RUN python3 -m pip install -U "pip>=21"
+RUN python3 -m pip install -U pip
 
 ## first install the ones that do not change
 
