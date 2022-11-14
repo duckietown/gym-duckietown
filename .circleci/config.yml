@@ -6,11 +6,11 @@ jobs:
     steps:
       - checkout
       - run: apt-get update
-      - run:  apt-get install -y xvfb freeglut3-dev
+      - run: apt-get install -y xvfb freeglut3-dev
 #      - run: pip3 install --user -r requirements.pin.txt
 #      - run: pip3 install --user -r requirements.txt
-      - run: pip3 install --user . # do not install editable
-      - run: pip3 install --user flake8
+      - run: python3 -m pip install --user . # do not install editable
+      - run: python3 -m pip install --user flake8
       - run: python3 -m flake8 . --count --show-source --statistics --select=E901,E999,F821,F822,F823
       - run:
           command: |
