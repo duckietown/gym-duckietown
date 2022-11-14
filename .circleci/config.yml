@@ -5,7 +5,7 @@ jobs:
       - image: ubuntu:22.04
     steps:
       - checkout
-      - run: sudo apt-get install xvfb freeglut3-dev
+      - run:  apt-get install xvfb freeglut3-dev
 #      - run: pip3 install --user -r requirements.pin.txt
 #      - run: pip3 install --user -r requirements.txt
       - run: pip3 install --user . # do not install editable
