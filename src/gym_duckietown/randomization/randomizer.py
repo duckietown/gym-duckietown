@@ -37,7 +37,11 @@ class Randomizer:
         """Returns a dictionary of randomized parameters, with key: parameter name and value: randomized
         value
         """
+        # assert isinstance(rng, RandomState)
         randomization_settings = {}
+        # from numpy.random import Generator
+        # from numpy import __version__ as np_version
+        # assert isinstance(rng, Generator), (rng, np_version)
 
         for k in self.keys:
             setting = None
@@ -52,7 +56,10 @@ class Randomizer:
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
-                    setting = rng.randint(low=low, high=high, size=size)
+                    try:
+                        setting = rng.randint(low=low, high=high, size=size)
+                    except:
+                        setting = rng.integers(low=low, high=high, size=size)
 
                 elif randomization_definition["type"] == "uniform":
                     try:
