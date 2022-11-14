@@ -6,7 +6,7 @@ jobs:
     steps:
       - checkout
       - run: apt-get update
-      - run: apt-get install -y xvfb freeglut3-dev python3
+      - run: apt-get install -y xvfb freeglut3-dev python3-pip
 #      - run: pip3 install --user -r requirements.pin.txt
 #      - run: pip3 install --user -r requirements.txt
       - run: python3 -m pip install --user . # do not install editable
