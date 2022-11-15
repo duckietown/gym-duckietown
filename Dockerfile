@@ -2,7 +2,7 @@ ARG DOCKER_REGISTRY
 
 # FROM nvidia/opengl:1.2-glvnd-devel
 # FROM utensils/opengl:stable
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 RUN apt-get update -y && apt-get install -y  \
     freeglut3-dev \
@@ -35,7 +35,6 @@ RUN ls
 RUN python3 setup.py sdist
 RUN tar tfz dist/*
 RUN python3 -m pip install dist/*
-RUN find /usr/local/lib/python3.8/dist-packages/gym_duckietown
 
 RUN python3 -c "import gym_duckietown;print(gym_duckietown.__file__)"
 RUN python3 -c "from gym_duckietown.randomization import Randomizer; r = Randomizer()"
