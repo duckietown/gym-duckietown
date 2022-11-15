@@ -39,7 +39,7 @@ RUN python3 -m pip install dist/*
 RUN python3 -c "import gym_duckietown;print(gym_duckietown.__file__)"
 RUN python3 -c "from gym_duckietown.randomization import Randomizer; r = Randomizer()"
 
-
+RUN python3 -c "import cv2"
 
 RUN pipdeptree
 
