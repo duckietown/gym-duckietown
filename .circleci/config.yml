@@ -1,8 +1,8 @@
 version: 2
 jobs:
-  test-3.10: &template
+  test-3.8: &template
     docker:
-      - image: ubuntu:22.04
+      - image: ubuntu:20.04
     steps:
       - checkout
       - run: apt-get update
@@ -16,10 +16,10 @@ jobs:
           command: |
             ls
             xvfb-run -a -s "-screen 0 1024x768x24 -ac +extension GLX +render -noreset" ./run_tests.py
-  test-3.8:
-    <<: *template
-    docker:
-      - image: ubuntu:20.04
+#  test-3.8:
+#    <<: *template
+#    docker:
+#      - image: ubuntu:20.04
 workflows:
   version: 2
   build_and_test:
