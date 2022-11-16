@@ -2,13 +2,21 @@ version: 2
 jobs:
   test-3.8: &template
     docker:
-      - image: ubuntu:20.04
+      - image: ${DOCKER_REGISTRY}/duckietown/dt-commons:daffy
     steps:
       - checkout
       - run: apt-get update
-      - run: apt-get install -y xvfb freeglut3-dev python3-pip
-#      - run: pip3 install --user -r requirements.pin.txt
-#      - run: pip3 install --user -r requirements.txt
+      - run: |
+          apt-get install -y xvfb freeglut3-dev python3-pip freeglut3-dev \
+            libglib2.0-0 \
+            libsm6 \
+            libxrender1 \
+            libxext6 \
+            python3-pip \
+            python3-numpy \
+            python3-scipy \
+            wget \
+            curl
       - run: python3 -m pip install --user . # do not install editable
       - run: python3 -m pip install --user flake8
       - run: python3 -m flake8 . --count --show-source --statistics --select=E901,E999,F821,F822,F823
