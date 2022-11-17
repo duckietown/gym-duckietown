@@ -1,5 +1,5 @@
 # coding=utf-8
-__version__ = "6.1.32"
+__version__ = "6.1.33"
 
 import platform
 
