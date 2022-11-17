@@ -30,12 +30,12 @@ install_requires = [
     # 'pyglet',
     "pyzmq>=16.0.0",
     "opencv-python>=3.4",
-    "pyyaml>=3.11",
+    "PyYAML>=3.11",
     f"duckietown-world-{line}",
     "PyGeometry-z6",
     "carnivalmirror==0.6.2",
     "zuper-commons-z6",
-    "typing-extensions",
+    "typing_extensions",
     "Pillow",
 ]
 
