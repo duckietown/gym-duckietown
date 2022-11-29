@@ -48,7 +48,7 @@ class DAgger(InteractiveImitationLearning):
         return control_policy
 
     def _on_episode_done(self):
-        self.alpha = self.p ** self._episode
+        self.alpha = self.p**self._episode
         # Clear experience
         self._observations = []
         self._expert_actions = []

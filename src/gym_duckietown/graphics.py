@@ -291,8 +291,8 @@ def bezier_point(cps, t):
 
     p = ((1 - t) ** 3) * cps[0, :]
     p += 3 * t * ((1 - t) ** 2) * cps[1, :]
-    p += 3 * (t ** 2) * (1 - t) * cps[2, :]
-    p += (t ** 3) * cps[3, :]
+    p += 3 * (t**2) * (1 - t) * cps[2, :]
+    p += (t**3) * cps[3, :]
 
     return p
 
@@ -305,7 +305,7 @@ def bezier_tangent(cps, t):
 
     p = 3 * ((1 - t) ** 2) * (cps[1, :] - cps[0, :])
     p += 6 * (1 - t) * t * (cps[2, :] - cps[1, :])
-    p += 3 * (t ** 2) * (cps[3, :] - cps[2, :])
+    p += 3 * (t**2) * (cps[3, :] - cps[2, :])
 
     norm = np.linalg.norm(p)
     p /= norm
