@@ -42,7 +42,7 @@ class Randomizer:
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
-                    setting = rng.randint(low=low, high=high, size=size)
+                    setting = rng.integers(low=low, high=high, size=size)
 
                 elif randomization_definition["type"] == "uniform":
                     try:
