@@ -3,7 +3,7 @@ FROM nvidia/opengl:1.2-glvnd-devel
 RUN apt-get update -y && apt-get install -y  \
     freeglut3-dev \
     python3-pip \
-    python3-numpy
+    python3-numpy \
     python3-scipy \
     wget curl vim git \
     && \
