@@ -62,7 +62,7 @@ different scenarios will make for a more robust policy/model.
 The recommended way to test your model on the real hardware is to use [one of the AI Driving Olympics templates](https://docs-old.duckietown.org/daffy/AIDO/out/embodied.html). 
 We have some baseline RL implementations that also may be useful for this purpose, 
 [one that is standalone](https://docs-old.duckietown.org/daffy/AIDO/out/embodied_rl.html), and 
-[one that is based on Residual Policy Learning and integrates with ROS]. 
+[one that is based on Residual Policy Learning and integrates with ROS](https://docs-old.duckietown.org/daffy/AIDO/out/embodied_rpl.html). 
 
 <!--The `Duckiebot-v0` environment is meant to connect to software running on
 a real Duckiebot and remotely control the robot. It is a tool to test that policies
