@@ -32,6 +32,8 @@ parser.add_argument("--seed", default=1, type=int, help="seed")
 args = parser.parse_args()
 
 if args.env_name and args.env_name.find("Duckietown") != -1:
+    env = gym.make(args.env_name)
+else:
     env = DuckietownEnv(
         seed=args.seed,
         map_name=args.map_name,
@@ -43,8 +45,6 @@ if args.env_name and args.env_name.find("Duckietown") != -1:
         camera_rand=args.camera_rand,
         dynamics_rand=args.dynamics_rand,
     )
-else:
-    env = gym.make(args.env_name)
 
 env.reset()
 env.render()
