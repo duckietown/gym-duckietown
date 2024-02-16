@@ -13,7 +13,10 @@ import os
 
 def launch_env(map_name, randomize_maps_on_reset=False, domain_rand=False):
     environment = DuckietownEnv(
-        domain_rand=domain_rand, max_steps=math.inf, map_name=map_name, randomize_maps_on_reset=False
+        domain_rand=domain_rand,
+        max_steps=math.inf,
+        map_name=map_name,
+        randomize_maps_on_reset=False,
     )
     return environment
 
@@ -25,12 +28,14 @@ def teacher(env, max_velocity):
 def process_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--episode", "-i", default=10, type=int)
-    parser.add_argument("--horizon", "-r", default=64, type=int)
+    parser.add_argument("--horizon", "-r", default=128, type=int)
     parser.add_argument("--learning-rate", "-l", default=2, type=int)
     parser.add_argument("--decay", "-d", default=2, type=int)
     parser.add_argument("--save-path", "-s", default="iil_baseline", type=str)
     parser.add_argument("--map-name", "-m", default="loop_empty", type=str)
     parser.add_argument("--num-outputs", "-n", default=2, type=int)
+    parser.add_argument("--domain-rand", "-dr", action="store_true")
+    parser.add_argument("--randomize-map", "-rm", action="store_true")
     return parser
 
 
@@ -50,13 +55,19 @@ if __name__ == "__main__":
     if not (os.path.isdir(config.save_path)):
         os.makedirs(config.save_path)
     # launching environment
-    environment = launch_env(config.map_name)
+    environment = launch_env(
+        config.map_name,
+        domain_rand=config.domain_rand,
+        randomize_maps_on_reset=config.randomize_map,
+    )
 
     task_horizon = config.horizon
     task_episode = config.episode
 
     model = Squeezenet(num_outputs=config.num_outputs, max_velocity=max_velocity)
-    policy_optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[config.learning_rate])
+    policy_optimizer = torch.optim.Adam(
+        model.parameters(), lr=learning_rates[config.learning_rate]
+    )
 
     dataset = MemoryMapDataset(25000, (3, *input_shape), (2,), config.save_path)
     learner = NeuralNetworkPolicy(
