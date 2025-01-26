@@ -1,6 +1,6 @@
 import json
 
-from numpy.random.mtrand import RandomState
+from numpy.random import Generator
 
 from .. import logger
 from ..utils import get_file_path
@@ -33,11 +33,10 @@ class Randomizer:
         # Sorted list to generate parameters in the same order
         self.keys = sorted(set(list(self.randomization_config.keys()) + list(self.default_config.keys())))
 
-    def randomize(self, rng: RandomState) -> dict:
+    def randomize(self, rng: Generator) -> dict:
         """Returns a dictionary of randomized parameters, with key: parameter name and value: randomized
         value
         """
-        # assert isinstance(rng, RandomState)
         randomization_settings = {}
         # from numpy.random import Generator
         # from numpy import __version__ as np_version
@@ -56,10 +55,7 @@ class Randomizer:
                     except:
                         raise IndexError("Please check your randomization definition for: {}".format(k))
 
-                    try:
-                        setting = rng.randint(low=low, high=high, size=size)
-                    except:
-                        setting = rng.integers(low=low, high=high, size=size)
+                    setting = rng.integers(low=low, high=high, size=size)
 
                 elif randomization_definition["type"] == "uniform":
                     try:

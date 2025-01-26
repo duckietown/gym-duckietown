@@ -23,7 +23,7 @@ import yaml
 from geometry import SE2value
 from gym import spaces
 from gym.utils import seeding
-from numpy.random.mtrand import RandomState
+from numpy.random import Generator, default_rng
 from pyglet import gl, image, window
 
 from duckietown_world import (
@@ -201,7 +201,7 @@ class Simulator(gym.Env):
     grid_height: int
     step_count: int
     timestamp: float
-    np_random: RandomState
+    np_random: Generator
     grid: List[TileDict]
 
     def __init__(
@@ -1041,7 +1041,7 @@ class Simulator(gym.Env):
         pass
 
     def seed(self, seed=None):
-        self.np_random, _ = seeding.np_random(seed)
+        self.np_random = default_rng(seed)
         return [seed]
 
     def _set_tile(self, i: int, j: int, tile: TileDict) -> None:

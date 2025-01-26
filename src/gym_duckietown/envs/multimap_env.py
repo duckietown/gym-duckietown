@@ -10,14 +10,13 @@ class MultiMapEnv(gym.Env):
     multi-taks learning
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, map_names=["straight_road", "4way", "udem1", "small_loop", "small_loop_cw", "zigzag_dists", "loop_obstacles", "loop_pedestrians"], **kwargs):
         self.env_list = []
 
         self.window = None
-        map_names = ["loop_only_duckies", "small_loop_only_duckies"]
         # Try loading each of the available map files
         for map_name in map_names:
-            env = DuckietownEnv(map_name=map_name, **kwargs)
+            env = gym.make(f'Duckietown-{map_name}-v0', **kwargs)
 
             self.action_space = env.action_space
             self.observation_space = env.observation_space
@@ -48,6 +47,11 @@ class MultiMapEnv(gym.Env):
         env = self.env_list[self.cur_env_idx]
         return env.reset()
 
+    @property
+    def frame_rate(self):
+        # Return the frame rate of the current environment
+        return self.env_list[self.cur_env_idx].frame_rate
+
     def step(self, action):
         env = self.env_list[self.cur_env_idx]
 
@@ -69,11 +73,11 @@ class MultiMapEnv(gym.Env):
 
         # Make all environments use the same rendering window
         if self.window is None:
-            ret = env.render(mode, close)
+            ret = env.render(mode=mode, close=close)
             self.window = env.window
         else:
             env.window = self.window
-            ret = env.render(mode, close)
+            ret = env.render(mode=mode, close=close)
 
         return ret
 
